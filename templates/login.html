@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-col justify-center items-center px-4 py-10">
+  <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-md">
+    <h2 class="text-xl font-semibold text-gray-700 mb-6 text-center">Login</h2>
+
+    <form method="POST" class="flex flex-col gap-4 w-full">
+      <input type="text" name="username" placeholder="Username"
+             class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      <input type="password" name="password" placeholder="Password"
+             class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+      <button type="submit" class="bg-blue-500 text-white rounded px-4 py-2 hover:bg-blue-600 transition">Login</button>
+      {% if error %}
+        <p class="text-red-500 text-center">{{ error }}</p>
+      {% endif %}
+    </form>
+    <div class="text-center mt-4">
+      <a href="{{ url_for('signup') }}" class="text-green-500 hover:underline">Sign Up</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

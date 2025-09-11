@@ -1,11 +1,13 @@
 from flask import Flask, render_template_string, request, redirect, url_for, session, flash, jsonify, send_file
 import mysql.connector
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import timedelta
 import os
 import io
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key_1234567890")
+app.permanent_session_lifetime = timedelta(minutes=10)  # 세션 10분
 
 # ----------------------
 # DB 설정
@@ -227,7 +229,6 @@ MY_RESUMES_HTML = """
     </li>
 {% endfor %}
 </ul>
-<a href="/" class="mt-4 inline-block text-blue-500 hover:underline">Back to Home</a>
 </div>
 </main>
 
@@ -276,6 +277,7 @@ def login():
         cursor.close()
         conn.close()
         if row and check_password_hash(row[1], password):
+            session.permanent = True  # 세션 만료 설정
             session['user'] = username
             session['user_id'] = row[0]
             return redirect(url_for("index"))
@@ -300,7 +302,7 @@ def upload():
     if not file.filename.lower().endswith((".pdf", ".docx", ".hwp")):
         return jsonify({"message": "허용되지 않은 파일 형식입니다."}), 400
 
-    filename = file.filename  # 원본 이름 그대로 저장
+    filename = file.filename
     filedata = file.read()
 
     conn = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME)
@@ -314,7 +316,6 @@ def upload():
     conn.close()
 
     return jsonify({"message": f"{filename} 업로드 완료!"})
-
 
 @app.route("/my-resumes")
 def my_resumes():
@@ -348,8 +349,8 @@ def view_file(file_id):
     data = io.BytesIO(file_row['filedata'])
     ext = filename.split('.')[-1].lower()
 
-    # PDF는 브라우저에서 바로 보기
     if ext == "pdf":
+        # 브라우저에서 바로 보기
         return send_file(data, download_name=filename, as_attachment=False, mimetype="application/pdf")
     else:
         # DOCX/HWP 등은 다운로드
@@ -359,5 +360,6 @@ def view_file(file_id):
 # 앱 실행
 # ----------------------
 if __name__ == "__main__":
-    init_db()  # DB와 테이블 초기화
+    init_db()  # DB 및 테이블 초기화
     app.run(debug=True)
+
