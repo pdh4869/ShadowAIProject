@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>민감정보 마스킹 시스템 대시보드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1 class="dashboard-title">민감정보 마스킹 시스템 대시보드</h1>
+        <div class="header-metrics">
+            <div class="metric-card">
+                <div class="metric-label">오늘 탐지 건수</div>
+                <div class="metric-value">125</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">오늘 마스킹/차단 건수</div>
+                <div class="metric-value">78</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Top PII 유형</div>
+                <div class="metric-value">주민번호, 이메일, 계좌번호</div>
+            </div>
+        </div>
+
+        <div class="main-content-grid">
+            <div class="chart-card">
+                <h2>알림 (마스킹 vs 차단)</h2>
+                <div class="chart-wrapper">
+                    <div class="legend">
+                        <span class="legend-item" style="background-color: #4CAF50;"></span> 마스킹
+                        <span class="legend-item" style="background-color: #FF5252;"></span> 차단
+                    </div>
+                    <canvas id="detectionChart"></canvas>
+                </div>
+            </div>
+            <div class="log-card">
+                <h2>최근 로그</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>시간</th>
+                            <th>유형</th>
+                            <th>설명</th>
+                            <th>심각도</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025-09-11 14:20</td>
+                            <td>탐지</td>
+                            <td>이력서 내 주민번호 발견</td>
+                            <td><span class="severity-badge high">High</span></td>
+                        </tr>
+                        <tr>
+                            <td>2025-09-11 14:10</td>
+                            <td>탐지</td>
+                            <td>문서 업로드 내 이메일 주소 발견</td>
+                            <td><span class="severity-badge medium">Medium</span></td>
+                        </tr>
+                        <tr>
+                            <td>2025-09-11 13:55</td>
+                            <td>차단</td>
+                            <td>계좌번호 포함 데이터 전송 차단</td>
+                            <td><span class="severity-badge high">High</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-card">
+                <h2>RBAC (권한 관리)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>역할</th>
+                            <th>권한</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Viewer</td>
+                            <td>조회만 가능</td>
+                        </tr>
+                        <tr>
+                            <td>Analyst</td>
+                            <td>로그 분석, 정책 확인 가능</td>
+                        </tr>
+                        <tr>
+                            <td>Admin</td>
+                            <td>정책 변경, 사용자 관리</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="chart-card">
+                <h2>일별/주별 탐지 건수</h2>
+                <div class="chart-wrapper">
+                    <canvas id="dailyDetectionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiDataUrl = "{{ url_for('api_data') }}";
+
+        async function fetchAndRenderChart() {
+            try {
+                const response = await fetch(apiDataUrl);
+                const data = await response.json();
+                
+                const labels = data.map(item => item.ts.substring(5, 10));
+                const values = data.map(item => item.value);
+
+                const ctx = document.getElementById('dailyDetectionChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '탐지 건수',
+                            data: values,
+                            borderColor: '#36A2EB',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.4,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: false
+                                },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 7
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: false
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+        
+        const donutCtx = document.getElementById('detectionChart').getContext('2d');
+        new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['마스킹', '차단'],
+                datasets: [{
+                    label: '알림 건수',
+                    data: [80, 20],
+                    backgroundColor: ['#4CAF50', '#FF5252'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        fetchAndRenderChart();
+    </script>
+</body>
+</html>
