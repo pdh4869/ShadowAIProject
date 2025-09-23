@@ -29,9 +29,9 @@ llm-upload-collector/
 ### 1) 백엔드 서버 실행
 ```bash
 cd backend
-python -m venv venv
+python -m venv venv (가상환경 생성)
 venv\Scripts\activate(윈도우)
-pip install -r requirements.txt
+pip install -r requirements.txt (최초 1회 설치)
 uvicorn server:app --host 127.0.0.1 --port 18080(backend 폴더에서)
 ```
 - 서버 기본 포트: `http://127.0.0.1:18080`
