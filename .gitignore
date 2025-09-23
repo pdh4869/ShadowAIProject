@@ -1,0 +1,43 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# --- Node / Frontend (혹시 확장프로그램에서 npm 사용 시) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Build / Dist files ---
+dist/
+build/
+*.egg-info/
+
+# --- Logs ---
+*.log
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.iml
+
+# --- Jupyter ---
+.ipynb_checkpoints
+
+# 수집된 결과 제외
+backend/collected/*
+!backend/collected/.gitkeep

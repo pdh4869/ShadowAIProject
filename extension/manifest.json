@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "LLM Upload Collector",
+  "version": "1.0.1",
+  "permissions": ["runtime"],
+  "host_permissions": ["http://127.0.0.1:18080/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://*.chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*",
+        "https://oaistatic.com/*",
+        "https://*.oaistatic.com/*",
+        "https://gemini.google.com/*",
+        "https://claude.ai/*",
+        "https://poe.com/*",
+        "https://perplexity.ai/*",
+        "https://huggingface.co/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}
