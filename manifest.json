@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PII Detector Agent (Local)",
+  "description": "웹 입력/업로드 개인정보 경량 탐지 및 팝업 확인",
+  "version": "1.0",
+  "permissions": ["storage", "scripting", "activeTab"],
+  "host_permissions": ["<all_urls>", "https://chat.openai.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>", "https://chat.openai.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}
