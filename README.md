@@ -30,9 +30,9 @@ llm-upload-collector/
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate      # (Windows: venv\Scripts\activate)
+venv\Scripts\activate(윈도우)
 pip install -r requirements.txt
-python server.py
+uvicorn server:app --host 127.0.0.1 --port 18080(backend 폴더에서)
 ```
 - 서버 기본 포트: `http://127.0.0.1:18080`
 - 수집된 결과는 `backend/collected/` 폴더에 저장됨
