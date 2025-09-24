@@ -112,22 +112,80 @@ Google Chrome에서 주소창에 chrome://extensions/를 입력하여 확장 프
 
 
 🔌 API 엔드포인트
-이 프로젝트는 다음과 같은 API 엔드포인트를 사용합니다.
+서버 A (인증 서버: app.py, port: 5001)
+1. POST /api/login
+설명: 사용자의 사번과 비밀번호를 확인하여 인증하고, 성공 시 JWT 토큰을 발급합니다.
 
-서버 A (app.py, port:5001)
-POST /api/login
+요청 본문 (JSON):
 
-설명: 사용자를 인증하고 JWT 토큰을 발급합니다.
+JSON
 
-요청 본문 (JSON): {"employee_id": "...", "password": "..."}
+{
+    "employee_id": "사용자 사번",
+    "password": "사용자 비밀번호"
+}
+성공 응답 (JSON):
 
-성공 응답 (JSON): {"token": "..."}
+JSON
 
-서버 B (receive_server.py, port:5002)
-POST /api/receive-data
+{
+    "token": "GENERATED_JWT_TOKEN"
+}
+실패 응답 (JSON):
 
-설명: 확장 프로그램으로부터 사번 데이터를 수신합니다.
+JSON
 
-요청 본문 (JSON): {"employee_id": "..."}
+{
+    "message": "사번 또는 비밀번호가 잘못되었습니다."
+}
+2. GET /api/profile
+설명: 로그인된 사용자의 정보(사번)를 조회합니다. 요청 시 유효한 JWT 토큰이 필요합니다.
+
+요청 헤더:
+
+Authorization: Bearer <JWT_TOKEN_STRING>
+성공 응답 (JSON):
+
+JSON
+
+{
+    "employee_id": "사용자 사번"
+}
+실패 응답 (JSON):
+
+JSON
+
+{
+    "message": "토큰이 유효하지 않습니다!"
+}
+서버 B (대시보드/로그 서버: dashboard_server.py, port: 5002)
+1. POST /api/receive-data
+설명: 확장 프로그램으로부터 활동 로그 데이터를 수신하여 데이터베이스의 log 테이블에 저장합니다.
+
+요청 본문 (JSON):
+
+JSON
+
+{
+    "employee_id": "사용자 사번",
+    "timestamp": "ISO 형식의 시간 문자열",
+    "visited_url": "현재 탭의 URL"
+}
+성공 응답 (JSON):
+
+JSON
+
+{
+    "status": "success",
+    "message": "데이터가 성공적으로 로그 테이블에 저장되었습니다."
+}
+실패 응답 (JSON):
+
+JSON
+
+{
+    "status": "error",
+    "message": "employee_id가 누락되었습니다."
+}
 
 성공 응답 (JSON): {"status": "success", "message": "..."}
