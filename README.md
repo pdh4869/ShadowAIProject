@@ -8,6 +8,7 @@ Chrome Extension Login & Data Forwarding System
 
 로그인에 성공하면, 사용자의 특정 데이터(예: 사번)를 또 다른 서버 엔드포인트로 전송하는 기능이 포함되어 있습니다.
 
+
 ✨ 주요 기능
 팝업 내장 로그인: 별도의 웹 페이지 탭을 열지 않고, 확장 프로그램 팝업 안에서 직접 아이디와 비밀번호를 입력하여 로그인합니다.
 
@@ -21,6 +22,7 @@ Chrome Extension Login & Data Forwarding System
 
 CORS 처리: 확장 프로그램 환경(chrome-extension://...)과 서버 간의 교차 출처 리소스 공유(CORS) 문제를 처리합니다.
 
+
 🛠️ 기술 스택
 백엔드: Python, Flask, Flask-SQLAlchemy, Flask-Cors, PyJWT
 
@@ -28,13 +30,16 @@ CORS 처리: 확장 프로그램 환경(chrome-extension://...)과 서버 간의
 
 프론트엔드: JavaScript (Chrome Extension APIs), HTML, CSS
 
+
 🚀 설치 및 실행 방법
+
 1. 사전 준비
 Python 3.x 버전 설치
 
 MySQL 서버 설치 및 실행
 
 Google Chrome 브라우저
+
 
 2. 백엔드 서버 설정
 프로젝트 클론 또는 다운로드
@@ -87,6 +92,7 @@ Google Chrome에서 주소창에 chrome://extensions/를 입력하여 확장 프
 
 설치된 확장 프로그램 카드에서 ID를 복사한 뒤, 위 '백엔드 설정' 4단계에 따라 app.py의 CHROME_EXTENSION_ID 변수에 붙여넣고 서버를 재시작합니다.
 
+
 📂 파일 구조
 
 
@@ -103,6 +109,7 @@ Google Chrome에서 주소창에 chrome://extensions/를 입력하여 확장 프
 ├── app.py                    # 메인 인증 서버 (서버 A)
 
 └── receive_server.py         # 데이터 수신 테스트용 서버 (서버 B)
+
 
 🔌 API 엔드포인트
 이 프로젝트는 다음과 같은 API 엔드포인트를 사용합니다.
