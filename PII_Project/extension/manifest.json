@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "PII Detector",
+  "version": "1.0",
+  "description": "경량 정규식 탐지는 클라이언트, 정교 탐지·파일 처리는 서버에서 수행",
+  "permissions": ["scripting", "storage", "tabs"],
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "http://127.0.0.1:18080/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://gemini.google.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["pagehooks.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
