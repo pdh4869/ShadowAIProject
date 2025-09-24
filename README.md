@@ -88,7 +88,8 @@ Google Chrome에서 주소창에 chrome://extensions/를 입력하여 확장 프
 설치된 확장 프로그램 카드에서 ID를 복사한 뒤, 위 '백엔드 설정' 4단계에 따라 app.py의 CHROME_EXTENSION_ID 변수에 붙여넣고 서버를 재시작합니다.
 
 📂 파일 구조
-.
+
+
 ├── extension/                # 크롬 확장 프로그램 폴더
 
 │   ├── popup.html            # 팝업 UI
