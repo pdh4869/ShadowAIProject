@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "My Auth Extension",
+  "version": "1.0",
+  "description": "A simple extension with server login.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs"     
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:5001/*",
+    "http://127.0.0.1:5002/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://127.0.0.1:5001/*"
+    ]
+  }
+}
