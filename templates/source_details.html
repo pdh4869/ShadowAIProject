@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}소스별 현황 상세{% endblock %}
+
+{% block page_title %}
+<div style="font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0;">소스별 현황 상세</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; border:1px solid transparent; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.25); overflow:hidden; }
+    .filters{display:grid;grid-template-columns:repeat(12,1fr);gap:12px; padding:16px}
+    .field{grid-column:span 4;display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:12px;color:var(--muted)}
+    .field input,.field select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#0b1220;font-size:14px;color:var(--text)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
+    .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#0b1220;font-weight:700;cursor:pointer;color:var(--text)}
+    .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);text-align:left;padding:10px}
+    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:top;color:var(--text)}
+    .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}
+    .status.ok{background:rgba(16,185,129,.15);color:#10b981}
+    .status.fail{background:rgba(239,68,68,.15);color:#ef4444}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18212f;font-size:12px;color:#c7d2fe}
+    .empty{padding:28px;text-align:center;color:var(--muted)}
+</style>
+
+<section class="card" aria-label="필터">
+    <div class="filters">
+        <div class="field"><label for="from">시작 일자</label><input type="date" id="from" /></div>
+        <div class="field"><label for="to">종료 일자</label><input type="date" id="to" /></div>
+        <div class="field">
+            <label for="source">소스 유형</label>
+            <select id="source">
+                <option value="">전체</option>
+                {% for file_type in file_types %}<option>{{ file_type.type_name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="field"><label for="status">상태</label>
+            <select id="status">
+                <option value="">전체</option><option>성공</option><option>실패</option>
+            </select>
+        </div>
+        <div class="field"><label for="emp">사용자(사번)</label><input id="emp" placeholder="예: A1023" /></div>
+        <div class="field"><label for="q">검색(파일명)</label><input id="q" placeholder="예: report.pdf" /></div>
+    </div>
+    <div class="toolbar">
+        <div class="muted" id="summary"></div>
+        <div class="actions">
+            <button class="btn" id="resetBtn">초기화</button>
+            <button class="btn primary" id="applyBtn">적용</button>
+        </div>
+    </div>
+</section>
+
+<section class="card mt-4 p-4" aria-label="소스별 그래프">
+    <h2 class="font-semibold text-base">소스별 분포 (막대)</h2>
+    <div class="py-3" style="position: relative; height: 250px;">
+        <canvas id="barChart"></canvas>
+    </div>
+</section>
+
+<section class="card mt-4" aria-label="목록">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:100px">상태</th><th style="width:120px">일자</th><th style="width:110px">사용자</th>
+                    <th style="width:220px">개인정보 유형</th><th style="width:140px">소스 유형</th><th>파일명</th><th>실패 사유</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><span class="status {{ 'ok' if log.status == '성공' else 'fail' }}">{{ log.status }}</span></td>
+                    <td>{{ log.timestamp.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ log.employee_id }}</td>
+                    <td><div class="chips">{% for pii in log.pii_types %}<span class="chip">{{ pii.type_name }}</span>{% endfor %}</div></td>
+                    <td>{{ log.file_type.type_name }}</td>
+                    <td>{{ log.filename or '-' }}</td>
+                    <td>{{ log.reason or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="empty">조건에 맞는 결과가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const barChartData = {{ bar_chart_data|tojson|safe }};
+
+    // --- ▼▼▼ (핵심 수정) 수동 차트 그리기를 Chart.js 라이브러리 사용으로 변경 ▼▼▼ ---
+    if (barChartData && barChartData.length > 0) {
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: barChartData.map(d => d.source),
+                datasets: [{
+                    label: '탐지 건수',
+                    data: barChartData.map(d => d.count),
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { 
+                            color: '#94a3b8',
+                            stepSize: 1 // y축 눈금을 정수로 표시
+                        }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+    // --- ▲▲▲ ---
+    
+    function applyFilters() {
+        const params = new URLSearchParams();
+        const from = document.getElementById('from').value, to = document.getElementById('to').value, source = document.getElementById('source').value, status = document.getElementById('status').value, emp = document.getElementById('emp').value, q = document.getElementById('q').value;
+        if (from) params.set('from', from); if (to) params.set('to', to); if (source) params.set('source', source); if (status) params.set('status', status); if (emp) params.set('emp', emp); if (q) params.set('q', q);
+        window.location.href = `/source_details?${params.toString()}`;
+    }
+
+    function populateFilters() {
+        const params = new URLSearchParams(window.location.search);
+        document.getElementById('from').value = params.get('from') || '';
+        document.getElementById('to').value = params.get('to') || '';
+        document.getElementById('source').value = params.get('source') || '';
+        document.getElementById('status').value = params.get('status') || '';
+        document.getElementById('emp').value = params.get('emp') || '';
+        document.getElementById('q').value = params.get('q') || '';
+        document.getElementById('summary').textContent = `총 {{ logs|length }}건`;
+    }
+
+    document.getElementById('applyBtn').addEventListener('click', applyFilters);
+    document.getElementById('resetBtn').addEventListener('click', () => { window.location.href = '/source_details'; });
+    document.addEventListener('DOMContentLoaded', populateFilters);
+</script>
+{% endblock %}

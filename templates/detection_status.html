@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}일간/주간/월간 탐지 현황{% endblock %}
+
+{% block page_title %}
+<div style="font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0;">탐지 현황 상세</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; border:1px solid transparent; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.25); overflow:hidden; }
+    .pill-nav{ display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--border); }
+    .pill{ padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:#0b1220; font-size:13px; text-decoration: none; color:var(--text); }
+    .pill.active{ background:var(--brand); border-color:var(--brand); color:#fff; }
+    .stat-card { padding: 1.25rem; }
+    .stat-card-title { font-size: 0.875rem; color: var(--muted); }
+    .stat-card-value { font-size: 2.25rem; font-weight: 800; line-height: 1; margin-top: 0.5rem;}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);text-align:left;padding:10px}
+    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:top}
+    .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}
+    .status.ok{background:rgba(16,185,129,.15);color:#10b981}
+    .status.fail{background:rgba(239,68,68,.15);color:#ef4444}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18212f;font-size:12px;color:#c7d2fe}
+    .empty{padding:28px;text-align:center;color:var(--muted)}
+</style>
+
+<div class="card mb-4">
+    <div class="pill-nav">
+        <a href="/detection_status?period=daily" class="pill {{ 'active' if active_period == 'daily' }}">일간</a>
+        <a href="/detection_status?period=weekly" class="pill {{ 'active' if active_period == 'weekly' }}">주간</a>
+        <a href="/detection_status?period=monthly" class="pill {{ 'active' if active_period == 'monthly' }}">월간</a>
+    </div>
+</div>
+
+<section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="card stat-card col-span-2 md:col-span-4 bg-blue-900/20">
+        <div class="stat-card-title">
+            {% if active_period == 'daily' %}오늘{% elif active_period == 'weekly' %}이번 주{% else %}이번 달{% endif %}
+            전체 탐지 건수
+        </div>
+        <div class="stat-card-value text-blue-400">{{ total_count }}</div>
+    </div>
+    {% set pii_types = ['이메일', '휴대폰번호', '주민등록번호', '신용카드번호'] %}
+    {% for pii_type in pii_types %}
+    <div class="card stat-card">
+        <div class="stat-card-title">{{ pii_type }}</div>
+        <div class="stat-card-value">{{ detection_stats.get(pii_type, 0) }}</div>
+    </div>
+    {% endfor %}
+</section>
+
+<section class="card mt-4" aria-label="최근 로그 목록">
+    <div class="p-4"><h2 class="font-semibold">최근 로그</h2></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:100px">상태</th>
+                    <th style="width:150px">일시</th>
+                    <th style="width:110px">사용자</th>
+                    <th style="width:220px">개인정보 유형</th>
+                    <th style="width:140px">소스 유형</th>
+                    <th>파일명</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><span class="status {{ 'ok' if log.status == '성공' else 'fail' }}">{{ log.status }}</span></td>
+                    <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ log.employee_id }}</td>
+                    <td>
+                        <div class="chips">
+                        {% for pii in log.pii_types %}
+                            <span class="chip">{{ pii.type_name }}</span>
+                        {% endfor %}
+                        </div>
+                    </td>
+                    <td>{{ log.file_type.type_name }}</td>
+                    <td>{{ log.filename or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty">기록된 로그가 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { width: 250px; text-align: center; font-family: sans-serif; }
+        #logged-in-view { display: none; }
+        input { width: 90%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 8px 15px; margin-top: 5px;}
+        #error-message, #log-status { font-size: 12px; height: 15px; }
+        #error-message { color: red; }
+        #log-status { color: green; }
+    </style>
+</head>
+<body>
+    <h3>Extension Login</h3>
+    <hr>
+
+    <div id="logged-out-view">
+        <form id="login-form">
+            <input type="text" id="employee_id" placeholder="Employee ID" required>
+            <p id="error-message"></p>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <div id="logged-in-view">
+        <p id="welcome-message">로그인 되었습니다.</p>
+        
+        <button id="send-data-btn">로그 기록하기</button>
+        
+        <p id="log-status"></p>
+        
+        <button id="logout-btn">Logout</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

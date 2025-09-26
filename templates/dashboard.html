@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}탐지 현황 대시보드{% endblock %}
+
+{% block page_title %}
+<div class="page-title">개인정보 탐지 대시보드</div>
+{% endblock %}
+
+{% block content %}
+<section class="grid md:grid-cols-2 gap-3 mb-4">
+    <div class="bg-white p-3 rounded shadow">
+        <h2 class="font-semibold mb-1 text-sm">탐지 건수 (최근 7일)</h2>
+        <canvas id="chartDetectionsOverTime" height="80"></canvas>
+    </div>
+    
+    <a href="/detection_status?period=daily" class="bg-white p-3 rounded shadow block">
+        <h3 class="font-semibold mb-1 text-sm">금일 탐지 유형</h3>
+        <p class="text-xs text-gray-400 mb-2">총 건수: <strong><span>{{ today_stats.total }}</span></strong></p>
+        <table class="min-w-full text-xs">
+            <thead><tr class="text-left text-gray-500"><th class="py-1">유형</th><th class="py-1">건수</th></tr></thead>
+            <tbody>
+                {% for item in today_stats.types %}
+                <tr class="border-t border-gray-700/50"><td class="py-1">{{ item.type }}</td><td>{{ item.count }}</td></tr>
+                {% else %}
+                <tr><td colspan="2" class="py-2 text-center text-gray-400">금일 탐지된 내용이 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </a>
+</section>
+
+<section class="grid md:grid-cols-2 gap-3 mb-4">
+    <div class="bg-white p-3 rounded shadow">
+        <h2 class="font-semibold mb-1 text-sm">사용자별 탐지 빈도 (TOP 5)</h2>
+        <canvas id="chartAccountCounts" height="140"></canvas>
+    </div>
+    <a href="/source_details" class="bg-white p-3 rounded shadow flex flex-col items-center">
+        <h3 class="font-semibold mb-1 text-sm">소스별 분포</h3>
+        <div class="w-52 h-52"><canvas id="chartSourcePie" height="130"></canvas></div>
+    </a>
+</section>
+
+<section class="grid md:grid-cols-2 gap-3 mb-4">
+    <div class="bg-white p-3 rounded shadow">
+        <h3 class="font-semibold mb-1 text-sm">탐지 유형별 통계</h3>
+        <table class="min-w-full text-xs mb-0">
+            <thead><tr class="text-left text-gray-500"><th class="py-1">유형</th><th class="py-1">건수</th><th class="py-1">비율</th></tr></thead>
+            <tbody>
+                {% for item in pii_type_overall_stats %}
+                <tr class="border-t">
+                    <td class="py-1">{{ item.type }}</td>
+                    <td>{{ item.count }}</td>
+                    <td>{{ "%.1f"|format(item.percentage) }}%</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="py-2 text-center text-gray-400">데이터가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="bg-white p-3 rounded shadow">
+        <h2 class="font-semibold mb-1 text-sm">최근 탐지 실패</h2>
+        
+        <ul class="mt-1 text-xs text-gray-400 space-y-1">
+            {% for failure in recent_failures %}
+            <li>• {{ failure.timestamp.strftime('%Y-%m-%d') }} — 사번: {{ failure.employee_id }} / {{ failure.filename or '-' }} ({{ failure.reason or '사유 없음' }})</li>
+            {% else %}
+            <li>최근 실패 기록이 없습니다.</li>
+            {% endfor %}
+        </ul>
+        </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const detectionsOverTime = {{ detections_over_time|tojson|safe }};
+    const accountCounts = {{ top_users|tojson|safe }};
+    const sourceStats = {{ source_stats|tojson|safe }};
+
+    const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
+
+    new Chart(document.getElementById("chartDetectionsOverTime"), {
+        type: "line",
+        data: { labels: detectionsOverTime.map(d => d.date), datasets: [{ data: detectionsOverTime.map(d => d.count), fill: true, tension: 0.3, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }] },
+        options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+    });
+    new Chart(document.getElementById("chartAccountCounts"), {
+        type: "bar",
+        data: { labels: accountCounts.map(a => a.account), datasets: [{ data: accountCounts.map(a => a.count), backgroundColor: '#3b82f6' }] },
+        options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+    });
+    new Chart(document.getElementById("chartSourcePie"), {
+        type: "pie",
+        data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count), backgroundColor: ['#3b82f6', '#14b8a6', '#8b5cf6', '#f59e0b', '#ef4444'] }] },
+        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: '#cbd5e1' } }, datalabels: { color: '#fff', formatter: (v) => totalSources > 0 ? ((v/totalSources)*100).toFixed(1)+'%' : '0%' } } },
+        plugins: [ChartDataLabels]
+    });
+</script>
+{% endblock %}
