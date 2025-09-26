@@ -3,49 +3,55 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}개인정보 탐지 대시보드{% endblock %} - Privacy Monitor</title>
+    <title>{% block title %}{% endblock %} - Privacy Monitor</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <style>
-        :root{ --bg:#0f172a; --card:#0b1220; --surface:#0b1220; --text:#e5e7eb; --muted:#94a3b8; --brand:#3b82f6; --brand-2:#2563eb; --border:#1f2937; }
-        *{ box-sizing:border-box }
-        html,body{ margin:0; padding:0; background: radial-gradient(1000px 600px at 75% -10%, rgba(37,99,235,.12), transparent), radial-gradient(800px 500px at 20% 110%, rgba(20,184,166,.08), transparent), var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
-        .brandbar{ display:flex; align-items:center; gap:10px; padding:16px 22px; color:#93c5fd; font-weight:700; letter-spacing:.4px; }
+        :root{--bg:#0f172a; --card:#0b1220; --text:#e5e7eb; --muted:#94a3b8; --brand:#3b82f6; --border:#1f2937;}
+        body{ margin:0; padding:0; background: radial-gradient(1000px 600px at 75% -10%, rgba(37,99,235,.12), transparent), radial-gradient(800px 500px at 20% 110%, rgba(20,184,166,.08), transparent), var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+        .brandbar{ display:flex; align-items:center; gap:10px; padding:16px 22px; color:#93c5fd; font-weight:700; }
         .brandbar .dot{ width:10px; height:10px; border-radius:50%; background:conic-gradient(from 0deg, #3b82f6, #14b8a6, #8b5cf6, #3b82f6); filter:blur(.2px); }
-        .page-title{ font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0; }
+        .pm-container{ max-width:1100px; margin:0 auto; padding:0 16px; }
         .pm-navwrap{ padding:8px; border:1px solid var(--border); border-radius:14px; background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; margin:0 auto 18px auto; max-width:1040px; }
         .pm-nav{ display:flex; gap:16px; justify-content:center; align-items:center; flex-wrap:wrap; }
-        .pm-nav a{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; min-width:100px; max-width:140px; border-radius:999px; border:1px solid var(--border); color:#cbd5e1; font-size:12px; text-decoration:none; background:#0b1220; white-space:nowrap; flex:0 1 140px; }
+        .pm-nav a{ display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; min-width:140px; border-radius:999px; border:1px solid var(--border); color:#cbd5e1; font-size:12px; text-decoration:none; background:#0b1220; }
         .pm-nav a:hover{ border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15) inset; }
         .pm-nav a.active{ border-color:#3b82f6; color:#e5edff; background: var(--brand); }
-        .bg-white{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box !important; border:1px solid transparent !important; border-radius:16px !important; box-shadow: 0 10px 40px rgba(0,0,0,.25) !important; color:var(--text) !important; }
-        .text-gray-500 { color: var(--muted) !important; }
-        h1, h2, h3 { color: var(--text) }
-        table { width:100%; border-collapse:collapse; }
-        thead tr { background:#0b1220; }
-        thead th { color:#94a3b8 !important; border-bottom:1px solid var(--border); }
-        tbody td { border-top:1px solid #1f2937; }
+        .user-box { position: absolute; top: 12px; right: 16px; z-index: 10; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+        .user-box .emp-id { color: #d1d5db; }
+        .user-box .emp-id strong { color: #fff; font-weight: 600; }
+        .user-box a { color: #93c5fd; text-decoration: none; }
+        .user-box a:hover { text-decoration: underline; }
     </style>
+    {% block head %}{% endblock %}
 </head>
-<body>
+<body class="text-gray-200">
     <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
-    
-    {% block page_title %}{% endblock %}
-
-    <div class="pm-navwrap">
-        <nav class="pm-nav" aria-label="주요 메뉴">
-            <a href="/dashboard" class="{{ 'active' if active_page == 'dashboard' else '' }}">탐지 현황</a>
-            <a href="/personal_information_type" class="{{ 'active' if active_page == 'pii_type' else '' }}">개인정보 유형별 현황</a>
-            <a href="/source_details" class="{{ 'active' if active_page == 'source' else '' }}">소스별 현황</a>
-            <a href="/alerts" class="{{ 'active' if active_page == 'alerts' else '' }}">알림</a>    
-        </nav>
+    <div class="user-box">
+        {% if current_user.is_authenticated %}
+            <span class="emp-id"><strong>{{ current_user.employee_id }}</strong> ({{ current_user.privilege }})</span>
+            {% if current_user.privilege == 'super' %}
+                <a href="{{ url_for('admin_manage') }}">계정 관리</a>
+            {% endif %}
+            <a href="{{ url_for('dashboard_logout') }}">로그아웃</a>
+        {% else %}
+            <a href="{{ url_for('dashboard_login_page') }}">로그인</a>
+        {% endif %}
     </div>
-
-    <div class="max-w-6xl mx-auto p-4">
+    <div class="pm-container">
+        {% block page_title %}{% endblock %}
+        <div class="pm-navwrap">
+            <nav class="pm-nav" aria-label="주요 메뉴">
+                <a href="{{ url_for('show_dashboard') }}" class="{{ 'active' if active_page == 'dashboard' else '' }}">탐지 현황</a>
+                <a href="{{ url_for('show_detection_status') }}" class="{{ 'active' if active_page == 'detection_status' else '' }}">탐지 현황 상세</a>
+                <a href="{{ url_for('show_personal_information_type') }}" class="{{ 'active' if active_page == 'pii_type' else '' }}">개인정보 유형별 현황</a>
+                <a href="{{ url_for('show_source_details') }}" class="{{ 'active' if active_page == 'source' else '' }}">소스별 현황</a>
+                <a href="{{ url_for('show_alerts') }}" class="{{ 'active' if active_page == 'alerts' else '' }}">알림</a>
+            </nav>
+        </div>
         {% block content %}{% endblock %}
     </div>
-
     {% block scripts %}{% endblock %}
 </body>
 </html>

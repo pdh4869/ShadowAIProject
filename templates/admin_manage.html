@@ -1,0 +1,709 @@
+{% extends "admin_base.html" %}
+{% block title %}계정 관리{% endblock %}
+{% block page_title %}<div style="font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0;">계정 관리</div>{% endblock %}
+
+{% block content %}
+<style>
+    :root{--warn:#f59e0b; --danger:#ef4444; --success:#10b981;}
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; border:1px solid transparent; border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,.25); overflow:hidden; margin-bottom: 20px; }
+    .topbar{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border); }
+    .btn{ padding:10px 14px; border:1px solid var(--border); background:#0b1220; color:var(--text); border-radius:10px; cursor:pointer; font-weight:700; text-decoration: none; display: inline-block; }
+    .btn.primary{ background:var(--brand); border-color:var(--brand); color:#fff; }
+    .btn.success{ background:var(--success); border-color:var(--success); color:#fff; }
+    .btn.danger{ background:#0b1220; color:var(--danger); border-color:var(--danger); }
+    .btn:disabled{ opacity:.5; cursor:not-allowed; }
+    .tools{ display:flex; gap:8px; align-items:center; }
+    .search{ padding:9px 12px; border:1px solid var(--border); border-radius:10px; width:260px; background:#0b1220; color:var(--text); }
+    .table-wrap{ overflow:auto; }
+    table{ width:100%; border-collapse:collapse; }
+    thead th{ position:sticky; top:0; background:#0b1220; border-bottom:1px solid var(--border); font-size:12px; color:#94a3b8; text-align:left; padding:10px; }
+    tbody td{ border-bottom:1px solid var(--border); padding:12px; font-size:14px; vertical-align:middle; color:var(--text); }
+    tbody tr:hover{ background:rgba(148,163,184,.05); }
+    .badge{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .role.super{ background:rgba(99,102,241,.15); color:#c7d2fe; }
+    .role.admin{ background:rgba(14,116,144,.15); color:#a5f3fc; }
+    .perm-banner{ background:rgba(245,158,11,.12); color:#fed7aa; border:1px solid rgba(245,158,11,.35); padding:10px 12px; border-radius:10px; margin-bottom:12px; font-size: 14px; }
+    .table-actions{ display:flex; gap:8px; }
+    .empty{ padding:28px; text-align:center; color:var(--muted); }
+    
+    /* 팝업 창 스타일 */
+    .popup-overlay{ 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0,0,0,0.7); 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        z-index: 1000; 
+    }
+    .popup-window{ 
+        background: #0b1220; 
+        border: 1px solid var(--border); 
+        border-radius: 16px; 
+        width: min(600px, 90vw); 
+        max-height: 90vh; 
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .delete-window {
+        width: min(500px, 90vw);
+    }
+    .popup-header{ 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        padding: 16px 20px; 
+        border-bottom: 1px solid var(--border);
+    }
+    .create-header {
+        background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(20,184,166,.08));
+    }
+    .password-header {
+        background: linear-gradient(135deg, rgba(245,158,11,.1), rgba(251,191,36,.08));
+    }
+    .delete-header {
+        background: linear-gradient(135deg, rgba(239,68,68,.1), rgba(248,113,113,.08));
+    }
+    .popup-header h3{ 
+        margin: 0; 
+        font-size: 18px; 
+        font-weight: 700; 
+        color: var(--text); 
+    }
+    .close-btn{ 
+        background: none; 
+        border: none; 
+        color: var(--text); 
+        font-size: 24px; 
+        cursor: pointer; 
+        width: 32px; 
+        height: 32px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        border-radius: 6px;
+        transition: background-color 0.2s;
+    }
+    .close-btn:hover{ 
+        background: rgba(255,255,255,0.1); 
+    }
+    .popup-content{ 
+        padding: 20px; 
+    }
+    .popup-footer{ 
+        padding: 16px 20px; 
+        border-top: 1px solid var(--border); 
+        display: flex; 
+        gap: 12px; 
+        justify-content: flex-end; 
+        background: rgba(255,255,255,0.02);
+    }
+    
+    /* 경고 박스 */
+    .warning-box {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        background: rgba(239,68,68,.08);
+        border: 1px solid rgba(239,68,68,.2);
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .warning-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .warning-text strong {
+        color: #fca5a5;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .warning-text p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+    }
+    
+    /* 대상 정보 */
+    .target-info {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .info-label {
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .info-value {
+        font-size: 16px;
+        color: var(--text);
+        font-weight: 600;
+    }
+    
+    /* 새 계정 생성 폼 스타일 */
+    .create-form, .password-form, .delete-form { display:grid; gap:16px; }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field label{ font-size:12px; color:var(--muted); font-weight:600; }
+    .input, select{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; background:#0b1220; color:var(--text); }
+    .input:focus{ border-color:var(--brand); outline:none; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .hint{ font-size:12px; color:var(--muted); }
+    .hint.match { color: var(--success); }
+    .hint.nomatch { color: var(--danger); }
+    .strength{ height:8px; background:#0f172a; border-radius:999px; overflow:hidden; border:1px solid var(--border); margin-top:4px; }
+    .strength > div{ height:100%; width:0%; background:#ef4444; transition:width .2s ease, background .2s ease; }
+    .strength.good > div{ background:#10b981; }
+    .alert{ padding:12px 16px; border-radius:10px; margin-bottom:16px; font-size:14px; }
+    .alert.success{ background:rgba(16,185,129,.12); color:#a7f3d0; border:1px solid rgba(16,185,129,.35); }
+    .alert.error{ background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.35); }
+    .section-title{ font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px; }
+</style>
+
+<div id="permBanner" class="perm-banner" style="display: none;">
+    현재 계정은 <b>일반 관리자</b>입니다. 계정 생성, 삭제, 비밀번호 변경 권한이 없습니다.
+</div>
+
+<!-- 계정 생성 팝업 -->
+<div id="createPopup" class="popup-overlay" style="display: none;">
+    <div class="popup-window">
+        <div class="popup-header create-header">
+            <h3>새 관리자 계정 생성</h3>
+            <button id="closeCreatePopup" class="close-btn">&times;</button>
+        </div>
+        <div class="popup-content">
+            <div id="createAlertContainer"></div>
+            <form class="create-form" id="createForm">
+                <div class="field">
+                    <label>사번 *</label>
+                    <input id="c_emp" class="input" type="text" placeholder="사번을 입력하세요" required>
+                    <div class="hint">고유한 사번을 입력하세요</div>
+                </div>
+                <div class="field">
+                    <label>이메일 *</label>
+                    <input id="c_email" class="input" type="email" placeholder="이메일을 입력하세요" required>
+                    <div class="hint">유효한 이메일 주소를 입력하세요</div>
+                </div>
+                <div class="field">
+                    <label>이름 *</label>
+                    <input id="c_name" class="input" type="text" placeholder="이름을 입력하세요" required>
+                    <div class="hint">관리자의 실명을 입력하세요</div>
+                </div>
+                <div class="field">
+                    <label>비밀번호 *</label>
+                    <input id="c_pwd" class="input" type="password" placeholder="비밀번호 (8자 이상)" required>
+                    <div class="hint">영문, 숫자, 특수문자를 조합하여 8자 이상</div>
+                    <div id="c_strength" class="strength"><div></div></div>
+                </div>
+            </form>
+        </div>
+        <div class="popup-footer">
+            <button type="button" id="clearForm" class="btn">초기화</button>
+            <button type="button" id="cancelCreate" class="btn">취소</button>
+            <button type="submit" id="createSubmit" class="btn success">계정 생성</button>
+        </div>
+    </div>
+</div>
+
+<!-- 비밀번호 변경 팝업 -->
+<div id="passwordPopup" class="popup-overlay" style="display: none;">
+    <div class="popup-window">
+        <div class="popup-header password-header">
+            <h3>비밀번호 변경</h3>
+            <button id="closePasswordPopup" class="close-btn">&times;</button>
+        </div>
+        <div class="popup-content">
+            <div id="passwordAlertContainer"></div>
+            <div class="target-info">
+                <div class="info-label">대상 계정</div>
+                <div id="targetUserInfo" class="info-value"></div>
+            </div>
+            <form class="password-form" id="passwordForm">
+                <input id="p_emp" type="hidden">
+                <div class="field">
+                    <label>새 비밀번호 *</label>
+                    <input id="p_pwd" class="input" type="password" placeholder="새 비밀번호 (8자 이상)" required>
+                    <div class="hint">영문, 숫자, 특수문자를 조합하여 8자 이상</div>
+                    <div id="p_strength" class="strength"><div></div></div>
+                </div>
+                <div class="field">
+                    <label>비밀번호 확인 *</label>
+                    <input id="p_pwd_confirm" class="input" type="password" placeholder="비밀번호를 다시 입력하세요" required>
+                    <div id="confirmHint" class="hint"></div>
+                </div>
+            </form>
+        </div>
+        <div class="popup-footer">
+            <button type="button" id="cancelPassword" class="btn">취소</button>
+            <button type="submit" id="passwordSubmit" class="btn primary">비밀번호 변경</button>
+        </div>
+    </div>
+</div>
+
+<!-- 계정 삭제 팝업 -->
+<div id="deletePopup" class="popup-overlay" style="display: none;">
+    <div class="popup-window delete-window">
+        <div class="popup-header delete-header">
+            <h3>계정 삭제</h3>
+            <button id="closeDeletePopup" class="close-btn">&times;</button>
+        </div>
+        <div class="popup-content">
+            <div id="deleteAlertContainer"></div>
+            <div class="warning-box">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-text">
+                    <strong>주의: 이 작업은 되돌릴 수 없습니다!</strong>
+                    <p>계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다.</p>
+                </div>
+            </div>
+            <div class="target-info">
+                <div class="info-label">삭제할 계정</div>
+                <div id="deleteTargetInfo" class="info-value"></div>
+            </div>
+            <form class="delete-form" id="deleteForm">
+                <input id="d_emp" type="hidden">
+                <div class="field">
+                    <label>확인을 위해 <strong>DELETE</strong>를 입력하세요</label>
+                    <input id="deleteConfirm" class="input" type="text" placeholder="DELETE 입력" required>
+                    <div class="hint">대문자로 정확히 입력해야 합니다</div>
+                </div>
+            </form>
+        </div>
+        <div class="popup-footer">
+            <button type="button" id="cancelDelete" class="btn">취소</button>
+            <button type="submit" id="deleteSubmit" class="btn danger" disabled>계정 삭제</button>
+        </div>
+    </div>
+</div>
+
+<!-- 계정 목록 섹션 -->
+<section class="card">
+    <div class="topbar">
+        <div class="section-title">관리자 계정 목록</div>
+        <div class="tools">
+            <input id="q" class="search" placeholder="사번/이름/이메일로 검색…"/>
+            <button id="openCreatePopup" class="btn primary">계정 생성</button>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>사번</th><th>이메일</th><th>이름</th><th>역할</th><th>최근 로그인</th><th>생성일</th><th>작업</th></tr></thead>
+            <tbody id="rows"></tbody>
+        </table>
+    </div>
+    <div id="empty" class="empty" style="display: none;">검색 결과가 없습니다.</div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const allUsers = {{ users|tojson|safe }};
+    const CURRENT_USER_ROLE = {{ current_user.privilege|tojson|safe }};
+    const CURRENT_USER_ID = {{ current_user.employee_id|tojson|safe }};
+
+    const $ = (sel) => document.querySelector(sel);
+    const rowsEl = $('#rows');
+    const emptyEl = $('#empty');
+    const createPopup = $('#createPopup');
+    const passwordPopup = $('#passwordPopup');
+    const deletePopup = $('#deletePopup');
+
+    function openCreatePopup() {
+        createPopup.style.display = 'flex';
+        // 폼 초기화
+        $('#c_emp').value = '';
+        $('#c_email').value = '';
+        $('#c_name').value = '';
+        $('#c_pwd').value = '';
+        $('#c_strength').firstElementChild.style.width = '0%';
+        $('#c_strength').classList.remove('good');
+        $('#createAlertContainer').innerHTML = '';
+        // 첫 번째 입력 필드에 포커스
+        setTimeout(() => $('#c_emp').focus(), 100);
+    }
+
+    function openPasswordPopup(empId, userName) {
+        passwordPopup.style.display = 'flex';
+        // 폼 초기화
+        $('#p_emp').value = empId;
+        $('#p_pwd').value = '';
+        $('#p_pwd_confirm').value = '';
+        $('#p_strength').firstElementChild.style.width = '0%';
+        $('#p_strength').classList.remove('good');
+        $('#confirmHint').innerHTML = '';
+        $('#passwordAlertContainer').innerHTML = '';
+        $('#targetUserInfo').textContent = `${empId} (${userName})`;
+        // 첫 번째 입력 필드에 포커스
+        setTimeout(() => $('#p_pwd').focus(), 100);
+    }
+
+    function openDeletePopup(empId, userName) {
+        deletePopup.style.display = 'flex';
+        // 폼 초기화
+        $('#d_emp').value = empId;
+        $('#deleteConfirm').value = '';
+        $('#deleteSubmit').disabled = true;
+        $('#deleteAlertContainer').innerHTML = '';
+        $('#deleteTargetInfo').textContent = `${empId} (${userName})`;
+        // 첫 번째 입력 필드에 포커스
+        setTimeout(() => $('#deleteConfirm').focus(), 100);
+    }
+
+    function closeAllPopups() {
+        createPopup.style.display = 'none';
+        passwordPopup.style.display = 'none';
+        deletePopup.style.display = 'none';
+    }
+
+    function showAlert(containerId, message, type = 'success') {
+        const container = $(containerId);
+        container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+        if (type === 'success') {
+            setTimeout(() => {
+                closeAllPopups();
+                window.location.reload();
+            }, 1500);
+        } else {
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+    }
+
+    function applyPermissionUI() {
+        const isSuper = CURRENT_USER_ROLE === 'super';
+        $('#permBanner').style.display = isSuper ? 'none' : 'block';
+        $('#openCreatePopup').style.display = isSuper ? 'inline-block' : 'none';
+        
+        // 테이블의 작업 버튼들 비활성화
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            if (!isSuper) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            }
+        });
+    }
+
+    function renderTable(list) {
+        rowsEl.innerHTML = '';
+        if (!list || !list.length) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+        emptyEl.style.display = 'none';
+        list.forEach(u => {
+            const tr = document.createElement('tr');
+            const roleBadge = `<span class="badge role ${u.privilege === 'super' ? 'super' : 'admin'}">${u.privilege === 'super' ? '최고 관리자' : '일반 관리자'}</span>`;
+            
+            const lastLogin = u.last_login ? new Date(u.last_login).toLocaleString('ko-KR') : '-';
+            const createdAt = u.created_at ? new Date(u.created_at).toLocaleDateString('ko-KR') : '-';
+            
+            tr.innerHTML = `
+                <td>${u.employee_id}</td>
+                <td>${u.email || '-'}</td>
+                <td>${u.name || '-'}</td>
+                <td>${roleBadge}</td>
+                <td class="text-gray-400">${lastLogin}</td>
+                <td class="text-gray-400">${createdAt}</td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn" data-action="pw" data-emp="${u.employee_id}">비밀번호 변경</button>
+                        <button class="btn danger" data-action="del" data-emp="${u.employee_id}">삭제</button>
+                    </div>
+                </td>
+            `;
+            rowsEl.appendChild(tr);
+        });
+        applyPermissionUI();
+    }
+    
+    function searchList(q) {
+        q = q.trim().toLowerCase();
+        if(!q) return allUsers.slice();
+        return allUsers.filter(u => [u.employee_id, u.email, u.name].join(' ').toLowerCase().includes(q));
+    }
+    
+    function bindStrength(inputId, barId) {
+        const input = document.getElementById(inputId);
+        const bar = document.getElementById(barId);
+        if (!input || !bar) return; // 요소가 없으면 리턴
+        
+        input.addEventListener('input', () => {
+            const v = input.value;
+            let score = 0;
+            if (v.length >= 8) score++;
+            if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+            if (/[0-9]/.test(v)) score++;
+            if (/[^A-Za-z0-9]/.test(v)) score++;
+            const pct = Math.min(100, score * 25);
+            const barDiv = bar.firstElementChild;
+            if (barDiv) {
+                barDiv.style.width = pct + '%';
+                bar.classList.toggle('good', score >= 3);
+            }
+        });
+    }
+
+    async function apiCall(endpoint, body) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || '요청 실패');
+            showAlert(result.message, 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            showAlert('#createAlertContainer', error.message, 'error');
+        }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        $('#openCreatePopup').addEventListener('click', () => {
+            console.log('Create button clicked'); // 디버그용
+            if (CURRENT_USER_ROLE !== 'super') {
+                alert('권한이 없습니다.');
+                return;
+            }
+            openCreatePopup();
+        });
+
+        // 계정 생성 팝업 이벤트
+        $('#closeCreatePopup').addEventListener('click', () => createPopup.style.display = 'none');
+        $('#cancelCreate').addEventListener('click', () => createPopup.style.display = 'none');
+
+        // 비밀번호 변경 팝업 이벤트
+        $('#closePasswordPopup').addEventListener('click', () => passwordPopup.style.display = 'none');
+        $('#cancelPassword').addEventListener('click', () => passwordPopup.style.display = 'none');
+
+        // 계정 삭제 팝업 이벤트
+        $('#closeDeletePopup').addEventListener('click', () => deletePopup.style.display = 'none');
+        $('#cancelDelete').addEventListener('click', () => deletePopup.style.display = 'none');
+
+        // 팝업 외부 클릭 시 닫기
+        [createPopup, passwordPopup, deletePopup].forEach(popup => {
+            popup.addEventListener('click', (e) => {
+                if (e.target === popup) {
+                    popup.style.display = 'none';
+                }
+            });
+        });
+
+        // ESC 키로 팝업 닫기
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeAllPopups();
+            }
+        });
+    });
+
+    $('#createForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        console.log('Create form submitted'); // 디버그용
+    });
+
+    $('#createSubmit').addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Create submit clicked'); // 디버그용
+        
+        if (CURRENT_USER_ROLE !== 'super') {
+            showAlert('#createAlertContainer', '권한이 없습니다.', 'error');
+            return;
+        }
+        
+        const emp = $('#c_emp').value.trim();
+        const email = $('#c_email').value.trim();
+        const name = $('#c_name').value.trim();
+        const pwd = $('#c_pwd').value;
+        
+        console.log('Form data:', {emp, email, name, pwd}); // 디버그용
+        
+        if (!emp || !email || !name || pwd.length < 8) {
+            showAlert('#createAlertContainer', '모든 필드를 올바르게 입력해주세요. 비밀번호는 8자 이상이어야 합니다.', 'error');
+            return;
+        }
+        
+        apiCall('/api/admin/create', { emp, email, name, pwd });
+    });
+
+    $('#clearForm').addEventListener('click', () => {
+        $('#c_emp').value = '';
+        $('#c_email').value = '';
+        $('#c_name').value = '';
+        $('#c_pwd').value = '';
+        $('#c_strength').firstElementChild.style.width = '0%';
+        $('#c_strength').classList.remove('good');
+        $('#createAlertContainer').innerHTML = '';
+    });
+
+    // 비밀번호 변경 폼 이벤트
+    $('#passwordSubmit').addEventListener('click', () => {
+        if (CURRENT_USER_ROLE !== 'super') {
+            showAlert('#passwordAlertContainer', '권한이 없습니다.', 'error');
+            return;
+        }
+        
+        const emp = $('#p_emp').value;
+        const pwd = $('#p_pwd').value;
+        const confirmPwd = $('#p_pwd_confirm').value;
+        
+        if (pwd.length < 8) {
+            showAlert('#passwordAlertContainer', '비밀번호는 8자 이상이어야 합니다.', 'error');
+            return;
+        }
+        
+        if (pwd !== confirmPwd) {
+            showAlert('#passwordAlertContainer', '비밀번호가 일치하지 않습니다.', 'error');
+            return;
+        }
+        
+        apiCallPassword('/api/admin/change_password', { emp, pwd });
+    });
+
+    // 계정 삭제 폼 이벤트
+    $('#deleteSubmit').addEventListener('click', () => {
+        if (CURRENT_USER_ROLE !== 'super') {
+            showAlert('#deleteAlertContainer', '권한이 없습니다.', 'error');
+            return;
+        }
+        
+        const emp = $('#d_emp').value;
+        const confirm = $('#deleteConfirm').value;
+        
+        if (confirm !== 'DELETE') {
+            showAlert('#deleteAlertContainer', 'DELETE를 정확히 입력해주세요.', 'error');
+            return;
+        }
+        
+        apiCallDelete('/api/admin/delete', { emp });
+    });
+
+    document.addEventListener('click', (e) => {
+        const action = e.target.getAttribute('data-action');
+        const empId = e.target.getAttribute('data-emp');
+        
+        if (action === 'pw') {
+            if (CURRENT_USER_ROLE !== 'super') {
+                alert('권한이 없습니다.');
+                return;
+            }
+            const user = allUsers.find(u => u.employee_id === empId);
+            const userName = user ? user.name : '알 수 없음';
+            openPasswordPopup(empId, userName);
+        }
+        
+        if (action === 'del') {
+            if (CURRENT_USER_ROLE !== 'super') {
+                alert('권한이 없습니다.');
+                return;
+            }
+            if (empId === CURRENT_USER_ID) {
+                alert('자기 자신을 삭제할 수 없습니다.');
+                return;
+            }
+            const user = allUsers.find(u => u.employee_id === empId);
+            const userName = user ? user.name : '알 수 없음';
+            openDeletePopup(empId, userName);
+        }
+    });
+
+    // 비밀번호 확인 검증
+    $('#p_pwd_confirm').addEventListener('input', () => {
+        const pwd = $('#p_pwd').value;
+        const confirmPwd = $('#p_pwd_confirm').value;
+        const hint = $('#confirmHint');
+        
+        if (confirmPwd === '') {
+            hint.textContent = '';
+            hint.className = 'hint';
+        } else if (pwd === confirmPwd) {
+            hint.textContent = '✓ 비밀번호가 일치합니다';
+            hint.className = 'hint match';
+        } else {
+            hint.textContent = '✗ 비밀번호가 일치하지 않습니다';
+            hint.className = 'hint nomatch';
+        }
+    });
+
+    // 삭제 확인 입력 검증
+    $('#deleteConfirm').addEventListener('input', () => {
+        const value = $('#deleteConfirm').value;
+        $('#deleteSubmit').disabled = value !== 'DELETE';
+    });
+    
+    $('#q').addEventListener('input', () => {
+        renderTable(searchList($('#q').value));
+    });
+
+    // 초기화
+    console.log('Initializing...'); // 디버그용
+    console.log('Current user role:', CURRENT_USER_ROLE); // 디버그용
+    console.log('All users:', allUsers); // 디버그용
+    
+    renderTable(allUsers);
+    bindStrength('c_pwd', 'c_strength');
+    bindStrength('p_pwd', 'p_strength');
+
+    async function apiCall(endpoint, body) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || '요청 실패');
+            showAlert('#createAlertContainer', result.message, 'success');
+        } catch (error) {
+            showAlert('#createAlertContainer', error.message, 'error');
+        }
+    }
+
+    async function apiCallPassword(endpoint, body) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || '요청 실패');
+            showAlert('#passwordAlertContainer', result.message, 'success');
+        } catch (error) {
+            showAlert('#passwordAlertContainer', error.message, 'error');
+        }
+    }
+
+    async function apiCallDelete(endpoint, body) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || '요청 실패');
+            showAlert('#deleteAlertContainer', result.message, 'success');
+        } catch (error) {
+            showAlert('#deleteAlertContainer', error.message, 'error');
+        }
+    }
+
+    applyPermissionUI();
+    
+    
+    console.log('Initialization complete'); // 디버그용
+
+
+</script>
+{% endblock %}
