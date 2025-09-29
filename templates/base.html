@@ -30,7 +30,7 @@
     <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
     <div class="user-box">
         {% if current_user.is_authenticated %}
-            <span class="emp-id"><strong>{{ current_user.employee_id }}</strong> ({{ current_user.privilege }})</span>
+            <span class="emp-id"><strong>{{ current_user.ip_address }}</strong> ({{ current_user.privilege }})</span>
             {% if current_user.privilege == 'super' %}
                 <a href="{{ url_for('admin_manage') }}">계정 관리</a>
             {% endif %}

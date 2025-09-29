@@ -3,28 +3,204 @@
 {% block title %}일간/주간/월간 탐지 현황{% endblock %}
 
 {% block page_title %}
-<div style="font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0;">탐지 현황 상세</div>
+<div style="font-size:32px; font-weight:900; text-align:center; margin: 12px 0 16px 0; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">탐지 현황 상세</div>
 {% endblock %}
 
 {% block content %}
 <style>
-    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; border:1px solid transparent; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.25); overflow:hidden; }
-    .pill-nav{ display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid var(--border); }
-    .pill{ padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:#0b1220; font-size:13px; text-decoration: none; color:var(--text); }
-    .pill.active{ background:var(--brand); border-color:var(--brand); color:#fff; }
-    .stat-card { padding: 1.25rem; }
-    .stat-card-title { font-size: 0.875rem; color: var(--muted); }
-    .stat-card-value { font-size: 2.25rem; font-weight: 800; line-height: 1; margin-top: 0.5rem;}
-    .table-wrap{overflow:auto}
-    table{width:100%;border-collapse:collapse}
-    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);text-align:left;padding:10px}
-    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:top}
-    .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}
-    .status.ok{background:rgba(16,185,129,.15);color:#10b981}
-    .status.fail{background:rgba(239,68,68,.15);color:#ef4444}
-    .chips{display:flex;gap:6px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18212f;font-size:12px;color:#c7d2fe}
-    .empty{padding:28px;text-align:center;color:var(--muted)}
+    .card {
+        background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(139,92,246,.08) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3), 0 0 1px rgba(255,255,255,.1) inset;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 25px 70px rgba(0,0,0,.4), 0 0 1px rgba(255,255,255,.15) inset;
+    }
+    
+    .pill-nav {
+        display: flex;
+        gap: 10px;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(148,163,184,.15);
+        background: linear-gradient(180deg, rgba(255,255,255,.02) 0%, transparent 100%);
+    }
+    
+    .pill {
+        padding: 10px 20px;
+        border-radius: 999px;
+        border: 1px solid rgba(148,163,184,.2);
+        background: rgba(15,23,42,.8);
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        color: #cbd5e1;
+        transition: all 0.2s ease;
+    }
+    
+    .pill:hover {
+        background: rgba(15,23,42,.95);
+        transform: translateY(-1px);
+    }
+    
+    .pill.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(59,130,246,.3);
+    }
+    
+    .stat-card {
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+    
+    .stat-card-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }
+    
+    .stat-card-value {
+        font-size: 2.5rem;
+        font-weight: 900;
+        line-height: 1;
+        margin-top: 12px;
+        background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .table-wrap {
+        overflow: auto;
+        max-height: 600px;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    thead th {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+        border-bottom: 2px solid rgba(59,130,246,.3);
+        font-size: 13px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-align: left;
+        padding: 16px 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        z-index: 10;
+    }
+    
+    tbody td {
+        border-bottom: 1px solid rgba(148,163,184,.1);
+        padding: 16px 14px;
+        font-size: 14px;
+        vertical-align: top;
+        color: #cbd5e1;
+    }
+    
+    tbody tr {
+        transition: background 0.2s ease;
+    }
+    
+    tbody tr:hover {
+        background: rgba(59,130,246,.05);
+    }
+    
+    .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+    }
+    
+    .status.ok {
+        background: rgba(16,185,129,.2);
+        color: #10b981;
+        box-shadow: 0 0 0 1px rgba(16,185,129,.3) inset;
+    }
+    
+    .status.fail {
+        background: rgba(239,68,68,.2);
+        color: #ef4444;
+        box-shadow: 0 0 0 1px rgba(239,68,68,.3) inset;
+    }
+    
+    .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(99,102,241,.2) 0%, rgba(139,92,246,.2) 100%);
+        font-size: 12px;
+        font-weight: 600;
+        color: #c7d2fe;
+        border: 1px solid rgba(139,92,246,.3);
+    }
+    
+    .empty {
+        padding: 48px;
+        text-align: center;
+        color: #64748b;
+        font-size: 15px;
+    }
+    
+    .section-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid rgba(148,163,184,.15);
+        background: linear-gradient(180deg, rgba(255,255,255,.02) 0%, transparent 100%);
+    }
+    
+    .section-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #e2e8f0;
+    }
+    
+    @media (max-width: 768px) {
+        .stat-card-value {
+            font-size: 2rem;
+        }
+    }
 </style>
 
 <div class="card mb-4">
@@ -36,31 +212,33 @@
 </div>
 
 <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="card stat-card col-span-2 md:col-span-4 bg-blue-900/20">
+    <div class="card stat-card col-span-2 md:col-span-4">
         <div class="stat-card-title">
             {% if active_period == 'daily' %}오늘{% elif active_period == 'weekly' %}이번 주{% else %}이번 달{% endif %}
             전체 탐지 건수
         </div>
-        <div class="stat-card-value text-blue-400">{{ total_count }}</div>
+        <div class="stat-card-value">{{ total_count }}</div>
     </div>
     {% set pii_types = ['이메일', '휴대폰번호', '주민등록번호', '신용카드번호'] %}
     {% for pii_type in pii_types %}
     <div class="card stat-card">
         <div class="stat-card-title">{{ pii_type }}</div>
-        <div class="stat-card-value">{{ detection_stats.get(pii_type, 0) }}</div>
+        <div class="stat-card-value" style="font-size: 2rem;">{{ detection_stats.get(pii_type, 0) }}</div>
     </div>
     {% endfor %}
 </section>
 
 <section class="card mt-4" aria-label="최근 로그 목록">
-    <div class="p-4"><h2 class="font-semibold">최근 로그</h2></div>
+    <div class="section-header">
+        <h2>최근 로그</h2>
+    </div>
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
                     <th style="width:100px">상태</th>
                     <th style="width:150px">일시</th>
-                    <th style="width:110px">사용자</th>
+                    <th style="width:120px">IP 주소</th>
                     <th style="width:220px">개인정보 유형</th>
                     <th style="width:140px">소스 유형</th>
                     <th>파일명</th>
@@ -71,7 +249,7 @@
                 <tr>
                     <td><span class="status {{ 'ok' if log.status == '성공' else 'fail' }}">{{ log.status }}</span></td>
                     <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td>{{ log.employee_id }}</td>
+                    <td>{{ log.ip_address or '-' }}</td>
                     <td>
                         <div class="chips">
                         {% for pii in log.pii_types %}

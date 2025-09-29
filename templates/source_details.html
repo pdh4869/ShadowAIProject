@@ -3,29 +3,220 @@
 {% block title %}소스별 현황 상세{% endblock %}
 
 {% block page_title %}
-<div style="font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0;">소스별 현황 상세</div>
+<div style="font-size:32px; font-weight:900; text-align:center; margin: 12px 0 16px 0; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">소스별 현황 상세</div>
 {% endblock %}
 
 {% block content %}
 <style>
-    .card{ background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box, linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box; border:1px solid transparent; border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.25); overflow:hidden; }
-    .filters{display:grid;grid-template-columns:repeat(12,1fr);gap:12px; padding:16px}
-    .field{grid-column:span 4;display:flex;flex-direction:column;gap:6px}
-    .field label{font-size:12px;color:var(--muted)}
-    .field input,.field select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#0b1220;font-size:14px;color:var(--text)}
-    .toolbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
-    .btn{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#0b1220;font-weight:700;cursor:pointer;color:var(--text)}
-    .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-    .table-wrap{overflow:auto}
-    table{width:100%;border-collapse:collapse}
-    thead th{position:sticky;top:0;background:#0b1220;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted);text-align:left;padding:10px}
-    tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:top;color:var(--text)}
-    .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800}
-    .status.ok{background:rgba(16,185,129,.15);color:#10b981}
-    .status.fail{background:rgba(239,68,68,.15);color:#ef4444}
-    .chips{display:flex;gap:6px;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#18212f;font-size:12px;color:#c7d2fe}
-    .empty{padding:28px;text-align:center;color:var(--muted)}
+    /* personal_information_type.html의 새로운 디자인을 적용 */
+    .card {
+        background: linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(139,92,246,.08) 100%);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3), 0 0 1px rgba(255,255,255,.1) inset;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        box-shadow: 0 25px 70px rgba(0,0,0,.4), 0 0 1px rgba(255,255,255,.15) inset;
+    }
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+        padding: 24px;
+        background: linear-gradient(180deg, rgba(255,255,255,.02) 0%, transparent 100%);
+    }
+    .field {
+        grid-column: span 4;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .field.search {
+        grid-column: span 4;
+    }
+    .field label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.3px;
+    }
+    .field input, .field select {
+        padding: 12px 16px;
+        border: 1px solid rgba(148,163,184,.2);
+        border-radius: 12px;
+        background: rgba(15,23,42,.8);
+        font-size: 14px;
+        color: #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    .field input:focus, .field select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        background: rgba(15,23,42,.95);
+        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+    }
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        border-top: 1px solid rgba(148,163,184,.15);
+        background: rgba(0,0,0,.2);
+    }
+    .btn {
+        padding: 11px 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(148,163,184,.2);
+        background: rgba(15,23,42,.8);
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        color: #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    .btn:hover {
+        background: rgba(15,23,42,.95);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+    .btn.primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(59,130,246,.3);
+    }
+    .btn.primary:hover {
+        box-shadow: 0 6px 20px rgba(59,130,246,.4);
+    }
+    .actions {
+        display: flex;
+        gap: 12px;
+    }
+    .section-header {
+        padding: 20px 24px;
+        background: linear-gradient(180deg, rgba(255,255,255,.02) 0%, transparent 100%);
+    }
+    .section-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 4px;
+    }
+    .chart-container {
+        padding: 24px;
+        max-height: 320px;
+        position: relative;
+    }
+    .table-wrap {
+        overflow: auto;
+        max-height: 600px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    thead th {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+        border-bottom: 2px solid rgba(59,130,246,.3);
+        font-size: 13px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-align: left;
+        padding: 16px 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        z-index: 10;
+    }
+    tbody td {
+        border-bottom: 1px solid rgba(148,163,184,.1);
+        padding: 16px 14px;
+        font-size: 14px;
+        vertical-align: top;
+        color: #cbd5e1;
+    }
+    tbody tr {
+        transition: background 0.2s ease;
+    }
+    tbody tr:hover {
+        background: rgba(59,130,246,.05);
+    }
+    .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.3px;
+    }
+    .status.ok {
+        background: rgba(16,185,129,.2);
+        color: #10b981;
+        box-shadow: 0 0 0 1px rgba(16,185,129,.3) inset;
+    }
+    .status.fail {
+        background: rgba(239,68,68,.2);
+        color: #ef4444;
+        box-shadow: 0 0 0 1px rgba(239,68,68,.3) inset;
+    }
+    .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, rgba(99,102,241,.2) 0%, rgba(139,92,246,.2) 100%);
+        font-size: 12px;
+        font-weight: 600;
+        color: #c7d2fe;
+        border: 1px solid rgba(139,92,246,.3);
+    }
+    .empty {
+        padding: 48px;
+        text-align: center;
+        color: #64748b;
+        font-size: 15px;
+    }
+    #summary {
+        font-size: 14px;
+        font-weight: 600;
+        color: #94a3b8;
+    }
+    @media (max-width: 920px) {
+        .field {
+            grid-column: span 6;
+        }
+    }
+    @media (max-width: 640px) {
+        .field {
+            grid-column: span 12;
+        }
+        .filters {
+            gap: 12px;
+            padding: 16px;
+        }
+        .toolbar {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch;
+        }
+        .actions {
+            width: 100%;
+        }
+        .btn {
+            flex: 1;
+        }
+    }
 </style>
 
 <section class="card" aria-label="필터">
@@ -39,16 +230,17 @@
                 {% for file_type in file_types %}<option>{{ file_type.type_name }}</option>{% endfor %}
             </select>
         </div>
-        <div class="field"><label for="status">상태</label>
+        <div class="field">
+            <label for="status">상태</label>
             <select id="status">
                 <option value="">전체</option><option>성공</option><option>실패</option>
             </select>
         </div>
-        <div class="field"><label for="emp">사용자(사번)</label><input id="emp" placeholder="예: A1023" /></div>
-        <div class="field"><label for="q">검색(파일명)</label><input id="q" placeholder="예: report.pdf" /></div>
+        <div class="field"><label for="emp">IP 주소</label><input id="emp" placeholder="192.168.1.1" /></div>
+        <div class="field"><label for="q">검색(파일명/URL)</label><input id="q" placeholder="파일 또는 URL을 입력하세요" /></div>
     </div>
     <div class="toolbar">
-        <div class="muted" id="summary"></div>
+        <div id="summary"></div>
         <div class="actions">
             <button class="btn" id="resetBtn">초기화</button>
             <button class="btn primary" id="applyBtn">적용</button>
@@ -56,9 +248,11 @@
     </div>
 </section>
 
-<section class="card mt-4 p-4" aria-label="소스별 그래프">
-    <h2 class="font-semibold text-base">소스별 분포 (막대)</h2>
-    <div class="py-3" style="position: relative; height: 250px;">
+<section class="card mt-4">
+    <div class="section-header">
+        <h2>소스별 분포</h2>
+    </div>
+    <div class="chart-container">
         <canvas id="barChart"></canvas>
     </div>
 </section>
@@ -68,8 +262,13 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:100px">상태</th><th style="width:120px">일자</th><th style="width:110px">사용자</th>
-                    <th style="width:220px">개인정보 유형</th><th style="width:140px">소스 유형</th><th>파일명</th><th>실패 사유</th>
+                    <th style="width:100px">상태</th>
+                    <th style="width:120px">일자</th>
+                    <th style="width:120px">IP 주소</th>
+                    <th style="width:220px">개인정보 유형</th>
+                    <th style="width:140px">소스 유형</th>
+                    <th>파일명</th>
+                    <th>실패 사유</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,7 +276,7 @@
                 <tr>
                     <td><span class="status {{ 'ok' if log.status == '성공' else 'fail' }}">{{ log.status }}</span></td>
                     <td>{{ log.timestamp.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ log.employee_id }}</td>
+                    <td>{{ log.ip_address or '-' }}</td>
                     <td><div class="chips">{% for pii in log.pii_types %}<span class="chip">{{ pii.type_name }}</span>{% endfor %}</div></td>
                     <td>{{ log.file_type.type_name }}</td>
                     <td>{{ log.filename or '-' }}</td>
@@ -94,10 +293,12 @@
 
 {% block scripts %}
 <script>
-    const barChartData = {{ bar_chart_data|tojson|safe }};
+    const barChartData = JSON.parse('{{ bar_chart_data|tojson }}');
 
-    // --- ▼▼▼ (핵심 수정) 수동 차트 그리기를 Chart.js 라이브러리 사용으로 변경 ▼▼▼ ---
     if (barChartData && barChartData.length > 0) {
+        Chart.defaults.color = '#cbd5e1';
+        Chart.defaults.font.family = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        
         new Chart(document.getElementById('barChart'), {
             type: 'bar',
             data: {
@@ -113,6 +314,14 @@
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30,41,59,0.9)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#cbd5e1',
+                        borderColor: 'rgba(148,163,184,0.2)',
+                        borderWidth: 1,
+                        cornerRadius: 8
                     }
                 },
                 scales: {
@@ -120,17 +329,23 @@
                         beginAtZero: true,
                         ticks: { 
                             color: '#94a3b8',
-                            stepSize: 1 // y축 눈금을 정수로 표시
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: 'rgba(148,163,184,0.1)',
+                            drawBorder: false
                         }
                     },
                     x: {
-                        ticks: { color: '#94a3b8' }
+                        ticks: { color: '#94a3b8' },
+                        grid: {
+                            display: false
+                        }
                     }
                 }
             }
         });
     }
-    // --- ▲▲▲ ---
     
     function applyFilters() {
         const params = new URLSearchParams();

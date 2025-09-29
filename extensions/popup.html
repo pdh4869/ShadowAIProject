@@ -3,35 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { width: 250px; text-align: center; font-family: sans-serif; }
-        #logged-in-view { display: none; }
-        input { width: 90%; padding: 8px; margin-bottom: 10px; }
-        button { padding: 8px 15px; margin-top: 5px;}
-        #error-message, #log-status { font-size: 12px; height: 15px; }
-        #error-message { color: red; }
-        #log-status { color: green; }
+        body { width: 300px; text-align: center; font-family: sans-serif; padding: 10px; }
+        input, select { width: 90%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 8px 15px; margin-top: 5px; }
+        #log-status-message { font-size: 12px; height: 15px; color: green; }
+        #log-form h4 { margin-top: 20px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h3>Extension Login</h3>
+    <h3>로그 기록</h3>
     <hr>
-
-    <div id="logged-out-view">
-        <form id="login-form">
+    
+    <div id="log-view">
+        <form id="log-form">
             <input type="text" id="employee_id" placeholder="Employee ID" required>
-            <p id="error-message"></p>
-            <button type="submit">Login</button>
-        </form>
-    </div>
+            <input type="text" id="log-filename" placeholder="파일명 (예: report.pdf)">
+            <input type="text" id="log-pii-types" placeholder="개인정보 유형 (콤마로 구분)">
+            
+            <select id="log-file-type">
+                <option value="">소스 유형 선택</option>
+                <option value="텍스트">텍스트</option>
+                <option value="pdf">pdf</option>
+                <option value="docx">docx</option>
+                <option value="xlsx">xlsx</option>
+                <option value="txt">txt</option>
+            </select>
+            
+            <select id="log-status">
+                <option value="성공">성공</option>
+                <option value="실패">실패</option>
+            </select>
+            
+            <input type="text" id="log-reason" placeholder="실패 사유">
 
-    <div id="logged-in-view">
-        <p id="welcome-message">로그인 되었습니다.</p>
-        
-        <button id="send-data-btn">로그 기록하기</button>
-        
-        <p id="log-status"></p>
-        
-        <button id="logout-btn">Logout</button>
+            <p id="log-status-message"></p>
+            
+            <button type="submit">로그 기록</button>
+        </form>
     </div>
 
     <script src="popup.js"></script>

@@ -1,111 +1,113 @@
-    {% extends "base.html" %}
+{% extends "base.html" %}
 
-    {% block title %}탐지 현황 대시보드{% endblock %}
+{% block title %}탐지 현황 대시보드{% endblock %}
 
-    {% block head %}
-    <style>
-        .page-title { font-size: 28px; font-weight: 800; text-align: center; margin: 8px 0 10px 0; color: var(--text); }
-        .card {
-            background-color: var(--card);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            padding: 0.75rem; /* p-3 */
-            color: var(--text);
-            text-decoration: none;
-            display: block;
-        }
-        .card-flex { display: flex; flex-direction: column; align-items: center; }
-        .card-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; color: var(--text); }
-        .card-subtitle { font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--muted); }
-        .card-subtitle strong { color: var(--text); }
-        .card-list { margin-top: 0.25rem; font-size: 0.75rem; list-style: none; padding-left: 0; }
-        .card-list li { margin-top: 0.25rem; }
-        .card-table { width: 100%; font-size: 0.75rem; }
-        .card-table thead th { text-align: left; padding: 0.25rem 0; color: var(--muted); border-bottom: 1px solid var(--border); }
-        .card-table tbody tr { border-top: 1px solid rgba(255, 255, 255, 0.08); }
-        .card-table tbody td { padding: 0.25rem 0; }
-        .card-table tbody tr:first-child { border-top: none; }
-    </style>
-    {% endblock %}
+{% block head %}
+<style>
+    .page-title { font-size: 28px; font-weight: 800; text-align: center; margin: 8px 0 10px 0; color: var(--text); }
+    .card {
+        background-color: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        padding: 0.75rem; /* p-3 */
+        color: var(--text);
+        text-decoration: none;
+        display: block;
+    }
+    .card-flex { display: flex; flex-direction: column; align-items: center; }
+    .card-title { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.875rem; color: var(--text); }
+    .card-subtitle { font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--muted); }
+    .card-subtitle strong { color: var(--text); }
+    .card-list { margin-top: 0.25rem; font-size: 0.75rem; list-style: none; padding-left: 0; }
+    .card-list li { margin-top: 0.25rem; }
+    .card-table { width: 100%; font-size: 0.75rem; }
+    .card-table thead th { text-align: left; padding: 0.25rem 0; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .card-table tbody tr { border-top: 1px solid rgba(255, 255, 255, 0.08); }
+    .card-table tbody td { padding: 0.25rem 0; }
+    .card-table tbody tr:first-child { border-top: none; }
+</style>
+{% endblock %}
 
-    {% block page_title %}
-    <div class="page-title">개인정보 탐지 대시보드</div>
-    {% endblock %}
+{% block page_title %}
+<div class="page-title">개인정보 탐지 대시보드</div>
+{% endblock %}
 
-    {% block content %}
-    <section class="grid md:grid-cols-2 gap-3 mb-3">
-        <div class="card">
-            <h2 class="card-title">탐지 건수 (최근 7일)</h2>
-            <canvas id="chartDetectionsOverTime" height="80"></canvas>
-        </div>
-        
-        <a href="/detection_status?period=daily" class="card">
-            <h3 class="card-title">금일 탐지 유형</h3>
-            <p class="card-subtitle">총 건수: <strong><span>{{ today_stats.total }}</span></strong></p>
-            <table class="card-table">
-                <thead><tr><th>유형</th><th>건수</th></tr></thead>
-                <tbody>
-                    {% for item in today_stats.types %}
-                    <tr><td>{{ item.type }}</td><td>{{ item.count }}</td></tr>
-                    {% else %}
-                    <tr><td colspan="2" class="text-center py-2">금일 탐지된 내용이 없습니다.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </a>
-    </section>
-
-    <section class="grid md:grid-cols-2 gap-3 mb-3">
-        <div class="card">
-            <h2 class="card-title">사용자별 탐지 빈도 (TOP 5)</h2>
-            <canvas id="chartAccountCounts" height="140"></canvas>
-        </div>
-        <a href="/source_details" class="card card-flex">
-            <h3 class="card-title">소스별 분포</h3>
-            <div class="w-52 h-52"><canvas id="chartSourcePie" height="130"></canvas></div>
-        </a>
-    </section>
-
-    <section class="grid md:grid-cols-2 gap-3 mb-3">
-        <div class="card">
-            <h3 class="card-title">탐지 유형별 통계</h3>
-            <table class="card-table">
-                <thead><tr><th>유형</th><th>건수</th><th>비율</th></tr></thead>
-                <tbody>
-                    {% for item in pii_type_overall_stats %}
-                    <tr><td>{{ item.type }}</td><td>{{ item.count }}</td><td>{{ "%.1f"|format(item.percentage) }}%</td></tr>
-                    {% else %}
-                    <tr><td colspan="3" class="text-center py-2">데이터가 없습니다.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="card">
-            <h2 class="card-title">최근 탐지 실패</h2>
-            <ul class="card-list">
-                {% for failure in recent_failures %}
-                <li>• {{ failure.timestamp.strftime('%Y-%m-%d %H:%M') }} — 사번: {{ failure.employee_id }} / {{ failure.filename or '-' }} ({{ failure.reason or '사유 없음' }})</li>
+{% block content %}
+<section class="grid md:grid-cols-2 gap-3 mb-3">
+    <div class="card">
+        <h2 class="card-title">탐지 건수 (최근 7일)</h2>
+        <canvas id="chartDetectionsOverTime" height="80"></canvas>
+    </div>
+    
+    <a href="/detection_status?period=daily" class="card">
+        <h3 class="card-title">금일 탐지 유형</h3>
+        <p class="card-subtitle">총 건수: <strong><span>{{ today_stats.total }}</span></strong></p>
+        <table class="card-table">
+            <thead><tr><th>유형</th><th>건수</th></tr></thead>
+            <tbody>
+                {% for item in today_stats.types %}
+                <tr><td>{{ item.type }}</td><td>{{ item.count }}</td></tr>
                 {% else %}
-                <li>최근 실패 기록이 없습니다.</li>
+                <tr><td colspan="2" class="text-center py-2">금일 탐지된 내용이 없습니다.</td></tr>
                 {% endfor %}
-            </ul>
-        </div>
-    </section>
-    {% endblock %}
+            </tbody>
+        </table>
+    </a>
+</section>
 
-    {% block scripts %}
-    <script>
-        const detectionsOverTime = {{ detections_over_time|tojson|safe }};
-        const accountCounts = {{ top_users|tojson|safe }};
-        const sourceStats = {{ source_stats|tojson|safe }};
-        const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
+<section class="grid md:grid-cols-2 gap-3 mb-3">
+    <div class="card">
+        <h2 class="card-title">IP 주소별 탐지 빈도 (TOP 5)</h2>
+        <canvas id="chartAccountCounts" height="140"></canvas>
+    </div>
+    <a href="/source_details" class="card card-flex">
+        <h3 class="card-title">소스별 분포</h3>
+        <div class="w-52 h-52"><canvas id="chartSourcePie" height="130"></canvas></div>
+    </a>
+</section>
 
-        Chart.defaults.color = '#cbd5e1';
-        Chart.defaults.font.family = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+<section class="grid md:grid-cols-2 gap-3 mb-3">
+    <div class="card">
+        <h3 class="card-title">탐지 유형별 통계</h3>
+        <table class="card-table">
+            <thead><tr><th>유형</th><th>건수</th><th>비율</th></tr></thead>
+            <tbody>
+                {% for item in pii_type_overall_stats %}
+                <tr><td>{{ item.type }}</td><td>{{ item.count }}</td><td>{{ "%.1f"|format(item.percentage) }}%</td></tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center py-2">데이터가 없습니다.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card">
+        <h2 class="card-title">최근 탐지 실패</h2>
+        <ul class="card-list">
+            {% for failure in recent_failures %}
+            <li>• {{ failure.timestamp.strftime('%Y-%m-%d %H:%M') }} — IP: {{ failure.ip_address or 'Unknown IP' }} / {{ failure.filename or '-' }} ({{ failure.reason or '사유 없음' }})</li>
+            {% else %}
+            <li>최근 실패 기록이 없습니다.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+{% endblock %}
 
-        new Chart(document.getElementById("chartDetectionsOverTime"), { type: "line", data: { labels: detectionsOverTime.map(d => d.date), datasets: [{ data: detectionsOverTime.map(d => d.count), fill: true, tension: 0.3, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }] }, options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } } } });
-        new Chart(document.getElementById("chartAccountCounts"), { type: "bar", data: { labels: accountCounts.map(a => a.account), datasets: [{ data: accountCounts.map(a => a.count), backgroundColor: '#3b82f6' }] }, options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } } } });
-        new Chart(document.getElementById("chartSourcePie"), { type: "pie", data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count), backgroundColor: ['#3b82f6', '#14b8a6', '#8b5cf6', '#f59e0b', '#ef4444'] }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: '#cbd5e1' } }, datalabels: { color: '#fff', formatter: (v) => totalSources > 0 ? ((v/totalSources)*100).toFixed(1)+'%' : '0%' } } }, plugins: [ChartDataLabels] });
-    </script>
-    {% endblock %}
+{% block scripts %}
+<script>
+    // JSON 데이터 전달 오류를 방지하기 위해 JSON.parse를 사용하여 명시적으로 파싱합니다.
+    const detectionsOverTime = JSON.parse('{{ detections_over_time|tojson }}');
+    const accountCounts = JSON.parse('{{ top_users|tojson }}');
+    const sourceStats = JSON.parse('{{ source_stats|tojson }}');
+
+    const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
+
+    Chart.defaults.color = '#cbd5e1';
+    Chart.defaults.font.family = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+
+    new Chart(document.getElementById("chartDetectionsOverTime"), { type: "line", data: { labels: detectionsOverTime.map(d => d.date), datasets: [{ data: detectionsOverTime.map(d => d.count), fill: true, tension: 0.3, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)' }] }, options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } } } });
+    new Chart(document.getElementById("chartAccountCounts"), { type: "bar", data: { labels: accountCounts.map(a => a.account), datasets: [{ data: accountCounts.map(a => a.count), backgroundColor: '#3b82f6' }] }, options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.08)' } } } } });
+    new Chart(document.getElementById("chartSourcePie"), { type: "pie", data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count), backgroundColor: ['#3b82f6', '#14b8a6', '#8b5cf6', '#f59e0b', '#ef4444'] }] }, options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: '#cbd5e1' } }, datalabels: { color: '#fff', formatter: (v) => totalSources > 0 ? ((v/totalSources)*100).toFixed(1)+'%' : '0%' } } }, plugins: [ChartDataLabels] });
+</script>
+{% endblock %}

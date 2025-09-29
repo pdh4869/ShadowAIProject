@@ -5,20 +5,22 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_cors import CORS # CORS 추가
 
 # 1. Flask 앱 초기화 및 설정
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:mysql@localhost/shadowai'
-app.config['SECRET_KEY'] = 'your-very-secret-key-for-dashboard' # 로그인 세션 관리를 위한 시크릿 키
+app.config['SECRET_KEY'] = 'your-very-secret-key-for-dashboard'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.ensure_ascii = False
+CORS(app) # 개발 환경용 CORS 설정
 
 db = SQLAlchemy(app)
 
 # 2. Flask-Login 설정
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'dashboard_login_page' # 로그인 페이지 함수의 이름
+login_manager.login_view = 'dashboard_login_page'
 
 # =====================================================================
 # 데이터베이스 모델 전체 정의
@@ -40,6 +42,15 @@ class DashboardAdmin(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+class DashboardLog(db.Model):
+    __tablename__ = 'dashboard_log'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.now(datetime.timezone.utc))
+    admin_id = db.Column(db.Integer, db.ForeignKey('dashboard_admin.id'), nullable=False)
+    action = db.Column(db.String(50), nullable=False)
+
+    admin = db.relationship('DashboardAdmin', backref='dashboard_logs')
 
 pii_log_pii_type_links = db.Table('pii_log_pii_type_links',
     db.Column('pii_log_id', db.Integer, db.ForeignKey('pii_log.id'), primary_key=True),
@@ -49,13 +60,20 @@ pii_log_pii_type_links = db.Table('pii_log_pii_type_links',
 class PiiLog(db.Model):
     __tablename__ = 'pii_log'
     id = db.Column(db.Integer, primary_key=True)
-    process_type = db.Column(db.String(50), nullable=False)
+    # process_type 필드 제거됨
     timestamp = db.Column(db.DateTime, default=datetime.datetime.now(datetime.timezone.utc))
-    employee_id = db.Column(db.String(80), nullable=False, index=True)
+    # employee_id 필드 제거됨
     filename = db.Column(db.String(255), nullable=True)
     file_type_id = db.Column(db.Integer, db.ForeignKey('file_type.id'), nullable=False)
+    
+    # PII_LOG 확장 필드
     status = db.Column(db.String(20), nullable=False, default='성공')
     reason = db.Column(db.String(255), nullable=True)
+    # session_start_time, session_end_time, input_text_snippet 필드 제거됨
+    session_url = db.Column(db.String(255), nullable=True)
+    user_agent = db.Column(db.String(255), nullable=True)
+    ip_address = db.Column(db.String(50), nullable=True) # 추적 소스로 사용
+    os_info = db.Column(db.String(100), nullable=True)
     
     file_type = db.relationship('FileType', backref='pii_logs')
     pii_types = db.relationship('PiiType', secondary=pii_log_pii_type_links, backref='pii_logs', lazy='subquery')
@@ -75,8 +93,70 @@ def load_user(user_id):
     return DashboardAdmin.query.get(int(user_id))
 
 # =====================================================================
+# API 엔드포인트: PII 로그 수신 (클라이언트용)
+# =====================================================================
+
+@app.route('/api/log-pii', methods=['POST'])
+def log_pii():
+    data = request.get_json()
+    required_fields = ['file_type_name'] 
+    
+    if not all(field in data for field in required_fields):
+        return jsonify({'status': 'error', 'message': f'필수 필드({", ".join(required_fields)})가 누락되었습니다.'}), 400
+    
+    try:
+        # FileType 처리
+        file_type_name = data.get('file_type_name')
+        file_type_obj = FileType.query.filter_by(type_name=file_type_name).first()
+        if not file_type_obj:
+            file_type_obj = FileType(type_name=file_type_name)
+            db.session.add(file_type_obj)
+            db.session.flush()
+
+        # PiiLog 객체 생성
+        new_pii_log = PiiLog(
+            filename=data.get('filename'),
+            file_type=file_type_obj,
+            status=data.get('status', '성공'),
+            reason=data.get('reason'),
+            
+            # 클라이언트로부터 받은 환경 데이터
+            session_url=data.get('session_url'),
+            user_agent=data.get('user_agent'),
+            ip_address=data.get('ip_address'),
+            os_info=data.get('os_info')
+        )
+        
+        # PiiType 처리 및 연결
+        pii_type_names = data.get('pii_types', [])
+        for type_name in pii_type_names:
+            pii_type_obj = PiiType.query.filter_by(type_name=type_name).first()
+            if not pii_type_obj:
+                pii_type_obj = PiiType(type_name=type_name)
+                db.session.add(pii_type_obj)
+            new_pii_log.pii_types.append(pii_type_obj)
+            
+        db.session.add(new_pii_log)
+        db.session.commit()
+        
+        print(f"✅ [PII 로그 저장 성공] PII 로그가 저장되었습니다. IP: {data.get('ip_address')}")
+        return jsonify({'status': 'success', 'message': 'PII 로그가 성공적으로 저장되었습니다.'})
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ [PII 로그 저장 오류] {e}")
+        return jsonify({'status': 'error', 'message': f'PII 로그 저장 중 오류 발생: {e}'}), 500
+
+# =====================================================================
 # 로그인/로그아웃 및 관리자 기능 라우트
 # =====================================================================
+
+def log_dashboard_action(action_type):
+    """대시보드 관리자 행동을 기록하는 헬퍼 함수"""
+    if not current_user.is_authenticated: return 
+    new_log = DashboardLog(admin_id=current_user.id, action=action_type)
+    db.session.add(new_log)
+    db.session.commit()
 
 @app.route('/login')
 def dashboard_login_page():
@@ -92,12 +172,14 @@ def dashboard_login_api():
         login_user(user)
         user.last_login = datetime.datetime.now(datetime.timezone.utc)
         db.session.commit()
+        log_dashboard_action('login')
         return jsonify({'status': 'success', 'message': '로그인 성공'})
     return jsonify({'status': 'error', 'message': 'ID 또는 비밀번호가 잘못되었습니다.'}), 401
 
 @app.route('/logout')
 @login_required
 def dashboard_logout():
+    log_dashboard_action('logout')
     logout_user()
     return redirect(url_for('dashboard_login_page'))
 
@@ -107,26 +189,19 @@ def admin_manage():
     if current_user.privilege != 'super':
         abort(403)
     
-    # 1. 데이터베이스에서 DashboardAdmin 객체 리스트를 가져옵니다.
     users_from_db = DashboardAdmin.query.order_by(DashboardAdmin.created_at.desc()).all()
-
-    # --- ▼▼▼ (핵심 수정) 객체 리스트를 딕셔너리 리스트로 변환 ▼▼▼ ---
-    # JavaScript가 이해할 수 있는 단순한 형태로 데이터를 가공합니다.
     users_for_template = [
         {
             "employee_id": u.employee_id,
             "name": u.name,
             "email": u.email,
             "privilege": u.privilege,
-            # 날짜/시간 객체는 tojson이 처리할 수 있도록 문자열(ISO 형식)으로 변환합니다.
             "last_login": u.last_login.isoformat() if u.last_login else None,
             "created_at": u.created_at.isoformat() if u.created_at else None
         }
         for u in users_from_db
     ]
-    # --- ▲▲▲ ---
     
-    # 2. 이제 객체가 아닌, 가공된 딕셔너리 리스트를 템플릿으로 전달합니다.
     return render_template('admin_manage.html', users=users_for_template)
 
 @app.route('/api/admin/create', methods=['POST'])
@@ -148,6 +223,8 @@ def api_admin_create():
     new_user.set_password(data['pwd'])
     db.session.add(new_user)
     db.session.commit()
+    
+    log_dashboard_action(f"create_admin:{data['emp']}")
     return jsonify({'status': 'success', 'message': '새 관리자 계정이 생성되었습니다.'})
 
 @app.route('/api/admin/change_password', methods=['POST'])
@@ -158,6 +235,8 @@ def api_admin_change_password():
     user_to_edit = DashboardAdmin.query.filter_by(employee_id=data['emp']).first_or_404()
     user_to_edit.set_password(data['pwd'])
     db.session.commit()
+    
+    log_dashboard_action(f"change_password:{data['emp']}")
     return jsonify({'status': 'success', 'message': '비밀번호가 변경되었습니다.'})
 
 @app.route('/api/admin/delete', methods=['POST'])
@@ -172,6 +251,8 @@ def api_admin_delete():
         return jsonify({'status': 'error', 'message': '자기 자신을 삭제할 수 없습니다.'}), 403
     db.session.delete(user_to_delete)
     db.session.commit()
+    
+    log_dashboard_action(f"delete_admin:{user_to_delete.employee_id}")
     return jsonify({'status': 'success', 'message': '계정이 삭제되었습니다.'})
 
 # =====================================================================
@@ -204,11 +285,12 @@ def show_dashboard():
         ).group_by(PiiType.type_name).order_by(func.count(PiiLog.id).desc()).limit(5).all()
         today_stats = {'types': [{'type': r.type_name, 'count': r.count} for r in top_5_today_query], 'total': total_today_count}
         
-        # 3. 사용자별 탐지 빈도 (TOP 5)
-        top_users_query = db.session.query(
-            PiiLog.employee_id, func.count(PiiLog.id).label('count')
-        ).filter(PiiLog.status == '성공').group_by(PiiLog.employee_id).order_by(func.count(PiiLog.id).desc()).limit(5).all()
-        top_users = [{'account': r.employee_id, 'count': r.count} for r in top_users_query]
+        # 3. IP 주소별 탐지 빈도 (TOP 5) - employee_id를 IP로 대체
+        top_ip_query = db.session.query(
+            PiiLog.ip_address.label('source_id'), func.count(PiiLog.id).label('count')
+        ).filter(PiiLog.status == '성공').group_by(PiiLog.ip_address).order_by(func.count(PiiLog.id).desc()).limit(5).all()
+        # IP 주소가 없을 경우 'Unknown IP'로 표시
+        top_users = [{'account': r.source_id if r.source_id else 'Unknown IP', 'count': r.count} for r in top_ip_query]
 
         # 4. 소스별 분포
         source_dist_query = db.session.query(
@@ -268,7 +350,7 @@ def show_detection_status():
 
         detection_stats = {r.type_name: r.count for r in detection_counts_query}
         total_count = sum(detection_stats.values())
-        logs = PiiLog.query.order_by(PiiLog.timestamp.desc()).limit(100).all()
+        logs = PiiLog.query.options(db.joinedload(PiiLog.file_type)).order_by(PiiLog.timestamp.desc()).limit(100).all() 
         return render_template(
             'detection_status.html', active_page='detection_status', active_period=period,
             detection_stats=detection_stats, total_count=total_count, logs=logs
@@ -285,7 +367,7 @@ def show_personal_information_type():
         to_date = request.args.get('to')
         pii_type_name = request.args.get('type')
         source_type_name = request.args.get('source')
-        employee_id = request.args.get('emp')
+        ip_filter = request.args.get('emp') # 'emp' 파라미터를 IP 주소 필터링에 사용
         search_query = request.args.get('q')
 
         query = PiiLog.query
@@ -295,8 +377,16 @@ def show_personal_information_type():
             query = query.filter(PiiLog.timestamp < to_date_end)
         if pii_type_name: query = query.join(PiiLog.pii_types).filter(PiiType.type_name == pii_type_name)
         if source_type_name: query = query.join(PiiLog.file_type).filter(FileType.type_name == source_type_name)
-        if employee_id: query = query.filter(PiiLog.employee_id.ilike(f"%{employee_id}%"))
-        if search_query: query = query.filter(PiiLog.filename.ilike(f"%{search_query}%"))
+        
+        # employee_id 필터링 대신 IP 주소 필터링 사용
+        if ip_filter: query = query.filter(PiiLog.ip_address.ilike(f"%{ip_filter}%"))
+        
+        # 검색 필드를 filename, session_url 등으로 확장 
+        if search_query: 
+            query = query.filter(or_(
+                PiiLog.filename.ilike(f"%{search_query}%"),
+                PiiLog.session_url.ilike(f"%{search_query}%")
+            ))
             
         logs = query.order_by(PiiLog.timestamp.desc()).all()
         
@@ -328,7 +418,7 @@ def show_source_details():
         to_date = request.args.get('to')
         source_type_name = request.args.get('source')
         status = request.args.get('status')
-        employee_id = request.args.get('emp')
+        ip_filter = request.args.get('emp') # 'emp' 파라미터를 IP 주소 필터링에 사용
         search_query = request.args.get('q')
 
         query = PiiLog.query
@@ -338,8 +428,15 @@ def show_source_details():
             query = query.filter(PiiLog.timestamp < to_date_end)
         if source_type_name: query = query.join(PiiLog.file_type).filter(FileType.type_name == source_type_name)
         if status: query = query.filter(PiiLog.status == status)
-        if employee_id: query = query.filter(PiiLog.employee_id.ilike(f"%{employee_id}%"))
-        if search_query: query = query.filter(PiiLog.filename.ilike(f"%{search_query}%"))
+        
+        # employee_id 필터링 대신 IP 주소 필터링 사용
+        if ip_filter: query = query.filter(PiiLog.ip_address.ilike(f"%{ip_filter}%"))
+        
+        if search_query: 
+            query = query.filter(or_(
+                PiiLog.filename.ilike(f"%{search_query}%"),
+                PiiLog.session_url.ilike(f"%{search_query}%")
+            ))
             
         logs = query.order_by(PiiLog.timestamp.desc()).all()
         
@@ -366,7 +463,7 @@ def show_alerts():
     try:
         from_date = request.args.get('from')
         to_date = request.args.get('to')
-        employee_id = request.args.get('emp')
+        ip_filter = request.args.get('emp') # 'emp' 파라미터를 IP 주소 필터링에 사용
         search_query = request.args.get('q')
 
         query = PiiLog.query.filter_by(status='실패')
@@ -374,11 +471,15 @@ def show_alerts():
         if to_date:
             to_date_end = datetime.datetime.strptime(to_date, '%Y-%m-%d').date() + datetime.timedelta(days=1)
             query = query.filter(PiiLog.timestamp < to_date_end)
-        if employee_id: query = query.filter(PiiLog.employee_id.ilike(f"%{employee_id}%"))
+            
+        # employee_id 필터링 대신 IP 주소 필터링 사용
+        if ip_filter: query = query.filter(PiiLog.ip_address.ilike(f"%{ip_filter}%"))
+        
         if search_query:
             query = query.filter(or_(
                 PiiLog.filename.ilike(f"%{search_query}%"),
-                PiiLog.reason.ilike(f"%{search_query}%")
+                PiiLog.reason.ilike(f"%{search_query}%"),
+                PiiLog.session_url.ilike(f"%{search_query}%")
             ))
             
         failed_logs = query.order_by(PiiLog.timestamp.desc()).all()
