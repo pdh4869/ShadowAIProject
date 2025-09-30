@@ -1,9 +1,0 @@
-{
-  "name": "com.example.pii_host",
-  "description": "PII Agent Native Host",
-  "type": "stdio",
-  "path": "C:\\Users\\KSH\\Desktop\\k-shield 주니어 기초 자료\\민감 데이터 탐지 시스템\\네트워크 탐지(수정)\\네트워크 탐지\\native_host\\dist\\host.exe",
-  "allowed_origins": [
-    "chrome-extension://cdcccknodkbjbkophdlahmpbilcjgoca/"
-  ]
-}
