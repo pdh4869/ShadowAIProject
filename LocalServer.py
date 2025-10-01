@@ -1,17 +1,40 @@
 import uvicorn # ASGI 서버 실행용
 import LocalServer
+import json 
+import os
+import shutil
+from contextlib import asynccontextmanager
 from typing import List
 from fastapi import FastAPI, UploadFile, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
 from fastapi.responses import JSONResponse # JSONResponse = 텍스트의 경우, 결과물을 JSON 형식으로 반환할 때 사용
-from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend, apply_masking
+from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend # apply_masking
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 class TextInput(BaseModel):
     text: str
 
 Key = b"1234567890abcdef"
-app = FastAPI() # FastAPI 앱 객체를 생성. 아래에서 이 객체에 엔드 포인트를 붙이게 됨.
+imgae_folder = "processed_faces"
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 서버 시작 시
+    if os.path.exists(imgae_folder):
+        shutil.rmtree(imgae_folder)
+    print("[INFO] processed_faces 초기화 완료")
+
+    yield  # 여기서 애플리케이션 실행
+
+    # 서버 종료 시
+    if os.path.exists(imgae_folder):
+        shutil.rmtree(imgae_folder)
+    print("[INFO] processed_faces 삭제 완료")
+
+# app = FastAPI() # FastAPI 앱 객체를 생성. 아래에서 이 객체에 엔드 포인트를 붙이게 됨.
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 실제 적용시에는 ["chrome-extension://<확장ID>"], 그러니까 ["chrome-extension://abcdefghijklmno"] 형식
@@ -19,6 +42,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+os.makedirs(imgae_folder, exist_ok=True)
+app.mount("/processed_faces", StaticFiles(directory="processed_faces"), name="faces")
 
 @app.get("/") # 브라우저에서 http://127.0.0.1:8000으로 접속하면 기본적으로 GET 요청을 보낸다.
 def root(): # 근데 우린 POST만 정의했지, 우리가 쓸 API 서버는 GET이 아니라 POST를 받아야 한다.
@@ -36,19 +61,18 @@ async def mask_multiple_files(Files: List[UploadFile] = File(...)):
         extension = filename.split('.')[-1].lower()
         try:
             content = await uploaded_file.read()
-            detected, masked_text, backend_status, = handle_input_raw(content, extension)
-            if detected:
+            detected, parsed_Text, backend_status, face_path = handle_input_raw(content, extension)
+            if detected:  # 여기서는 handle_input_raw가 리턴한 Detected 전체
                 results[filename] = {
                     "status": "처리 완료",
-                    "detected": detected,
-                    "masked_text": masked_text,
+                    "detected": detected,   # 얼굴도 포함됨
+                    "parsed_Text": parsed_Text,
                     "backend_transmission": "성공" if backend_status else "실패"
-                }
+                }   
             else:
                 results[filename] = {
                     "status": "탐지된 민감정보 없음"
                 }
-
         except ValueError as ve:
             results[filename] = {
                 "status": "에러",
@@ -84,16 +108,14 @@ async def mask_text(input: TextInput):
                 }},
                 status_code=200
             )
-
-        masked_text = apply_masking(text, detected)
-        encrypted = encrypt_data(masked_text.encode("utf-8"), Key)
+        encrypted = encrypt_data(json.dumps(detected, ensure_ascii=False).encode("utf-8"), Key)
         ok = send_to_backend(encrypted)
 
         result_summary = {
             "입력 텍스트": {
                 "status": "처리 완료",
                 "detected": detected,
-                "masked_text": masked_text,
+                "text": text,
                 "backend_transmission": "성공" if ok else "실패"
             }
         }
@@ -113,7 +135,7 @@ async def mask_text(input: TextInput):
 
 if __name__ == "__main__":
     uvicorn.run(LocalServer.app, host="127.0.0.1", port=8000, reload=False)
-    LocalServer.py
+    # LocalServer.py
     # 파일 안의 app 객체를 실행
     # 로컬호스트 기준으로만 열림 (외부 노출 X)
     # 포트 8000 사용

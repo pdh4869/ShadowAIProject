@@ -6,6 +6,10 @@ import numpy as np
 import fitz
 import easyocr
 import zipfile
+import datetime
+import cv2
+import os
+import face_recognition
 from PIL import Image
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from Crypto.Cipher import AES
@@ -19,32 +23,43 @@ ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME)
 ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME)
 ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, grouped_entities=True)
 reader = easyocr.Reader(['ko', 'en'])
+IMAGE_EXTENSIONS = ("png", "jpg", "jpeg", "bmp", "webp", "tiff", "tif")
 
 def parse_file(File_Bytes: bytes, File_Ext: str) -> str:
     File_Ext = File_Ext.lower()
-
     if File_Ext == "txt":
         try:
             return File_Bytes.decode("utf-8"), None
         except UnicodeDecodeError:
             return File_Bytes.decode("cp949"), None
-
+    
     elif File_Ext == "docx":
         try:
             file_stream = io.BytesIO(File_Bytes)
+            try:
+                with zipfile.ZipFile(file_stream) as zf:
+                    if "word/document.xml" not in zf.namelist():
+                        raise ValueError("[ERROR] DOCX 파싱 실패: 암호로 보호된 문서입니다.")
+            except zipfile.BadZipFile:
+                raise ValueError("[ERROR] DOCX 파싱 실패: 파일이 손상되었거나 암호로 보호된 문서입니다.")
+            except RuntimeError as e:
+                if "password" in str(e).lower():
+                    raise ValueError("[ERROR] DOCX 파싱 실패: 암호로 보호된 문서입니다.")
+                else:
+                    raise
+            file_stream.seek(0)
             doc = Document(file_stream)
-        except Exception:
-            raise ValueError("[ERROR] DOCX 파싱 실패: Document 객체 생성 불가")
-        try:
             text = "\n".join([para.text or "" for para in doc.paragraphs])
             if not text.strip():
                 print("[INFO] 텍스트 없음 → OCR 실행")
                 text = run_ocr_on_docx_images(File_Bytes)
                 if not text.strip():
-                    raise ValueError("[ERROR] OCR 텍스트 추출 실패, 빈 문자열 반환")
+                    print("[WARN] OCR 결과 없음 → 빈 문자열 반환 (얼굴 탐지 여부는 별도 처리)")
+                    return "", None   # 여기서 예외를 던지지 않음
             return text, None
         except Exception as e:
-            raise ValueError(f"[ERROR] DOCX 파싱 실패 (내용 추출 중 오류): {e}")
+            # raise ValueError("f[ERROR] DOCX 파싱 실패: {e}")
+            raise e
 
     elif File_Ext == "pdf":
         try:
@@ -57,12 +72,73 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> str:
                 text = run_ocr_on_pdf_images(File_Bytes)
                 if not text.strip():
                     print("[ERROR] OCR 텍스트 추출 실패, 빈 문자열 반환")
-                    return ""
+                    return "", None
             return text, None
         except Exception as e:
             if any(keyword in str(e).lower() for keyword in ["암호", "cannot open broken document", "not a pdf", "password"]):
                 raise ValueError(str(e))
             raise ValueError("[ERROR] PDF 파싱 실패")
+    
+    elif File_Ext in ["png", "jpg", "jpeg", "bmp", "webp", "tif", "tiff"]:
+        try:
+            image = Image.open(io.BytesIO(File_Bytes))
+            result = reader.readtext(np.array(image))
+            ocr_text = " ".join([box[1] for box in result])
+            return ocr_text, None
+        except Exception as e:
+            raise ValueError(f"[ERROR] 이미지 OCR 실패: {e}")
+        
+def detect_faces(image_bytes: bytes, save_dir="processed_faces", filename_prefix="face_detected"):
+    try:
+        os.makedirs(save_dir, exist_ok=True)
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        np_img = np.array(image)
+
+        face_locations = face_recognition.face_locations(np_img)
+        print(f"[DEBUG] face_locations={face_locations}", flush=True)
+
+        if len(face_locations) > 0:
+            # for (top, right, bottom, left) in face_locations:
+            #     face_region = np_img[top:bottom, left:right]
+            #     small = cv2.resize(face_region, (10, 10), interpolation=cv2.INTER_LINEAR)
+            #     mosaic = cv2.resize(small, (right - left, bottom - top), interpolation=cv2.INTER_NEAREST)
+            #     np_img[top:bottom, left:right] = mosaic
+            # -> 모자이크 로직, 그냥 주석 처리.
+            filename = f"{filename_prefix}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            save_path = os.path.join(save_dir, filename)
+            cv2.imwrite(save_path, cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR))
+            return True, save_path
+        return False, None
+
+    except Exception as e:
+        print(f"[ERROR] 얼굴 탐지 실패 (face_recognition): {e}")
+        return False, None
+    
+def extract_images_from_document(file_bytes: bytes, file_ext: str) -> list:
+    images = []
+    file_ext = file_ext.lower()
+
+    if file_ext == "docx":
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as docx_zip:
+                image_files = [f for f in docx_zip.namelist() if f.startswith("word/media/")]
+                for image_name in image_files:
+                    with docx_zip.open(image_name) as image_file:
+                        images.append(image_file.read())
+        except Exception as e:
+            print(f"[ERROR] DOCX 이미지 추출 실패: {e}")
+
+    elif file_ext == "pdf":
+        try:
+            with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                for page in doc:
+                    pix = page.get_pixmap()
+                    img_bytes = pix.tobytes("ppm")
+                    images.append(img_bytes)
+        except Exception as e:
+            print(f"[ERROR] PDF 이미지 추출 실패: {e}")
+
+    return images
 
 def run_ocr_on_docx_images(file_bytes):
     ocr_text = ""
@@ -93,24 +169,91 @@ def run_ocr_on_pdf_images(pdf_bytes: bytes) -> str:
                 print(f"[ERROR] EasyOCR 실패 (페이지 {idx}): {e}")
     return ocr_text.replace("\n", " ").replace(":", "").replace(",", "").strip()
 
+def validate_luhn(card_number: str) -> bool:
+    digits = [int(d) for d in re.sub(r"\D", "", card_number)]
+    checksum = 0
+    reverse = digits[::-1]
+    for i, digit in enumerate(reverse):
+        if i % 2 == 1:
+            doubled = digit * 2
+            checksum += doubled - 9 if doubled > 9 else doubled
+        else:
+            checksum += digit
+    return checksum % 10 == 0
+
+def validate_ssn(ssn: str) -> bool:
+    ssn = re.sub(r"\D", "", ssn)
+    if len(ssn) != 13:
+        return False
+
+    yy = int(ssn[0:2])
+    mm = int(ssn[2:4])
+    dd = int(ssn[4:6])
+    gender_digit = int(ssn[6])
+
+    # 성별 코드 유효성
+    if gender_digit not in [1,2,3,4,5,6,7,8]:
+        return False
+
+    # 세기 구분
+    if gender_digit in [1,2,5,6]:
+        full_year = 1900 + yy
+    elif gender_digit in [3,4,7,8]:
+        full_year = 2000 + yy
+    else:
+        return False
+
+    # 날짜 유효성
+    try:
+        datetime.date(full_year, mm, dd)
+    except ValueError:
+        return False
+
+    # 2020년 이후 출생자는 체크섬 패스
+    if full_year >= 2020:
+        return True
+
+    # 체크섬 검증 (2020년 이전 출생자만)
+    weights = [2,3,4,5,6,7,8,9,2,3,4,5]
+    sum_val = sum(int(ssn[i]) * weights[i] for i in range(12))
+    check_digit = (11 - (sum_val % 11)) % 10
+    return check_digit == int(ssn[-1])
+
 def detect_by_regex(Text: str) -> list:
     Patterns = {
-        "phone": re.compile(r"\b01[016789]-?\d{3,4}-?\d{4}\b"),
+        "phone": re.compile(r"\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b"),
         "email": re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"),
-        "birth": re.compile(r"\b(19|20)\d{2}[년./\\\- ]+(0?[1-9]|1[0-2])[월./\\\- ]+(0?[1-9]|[12][0-9]|3[01])[일]?\b"),
-        "ssn": re.compile(r"\b\d{6}[-]?[[1-4]\d{6}\b"),
-        "alien_reg": re.compile(r"\b\d{6}[-]?[5-8]\d{6}\b"),
-        "driver_license": re.compile(r"\d{2}-\d{2}-\d{6}-\d{2}"),
-        "passport": re.compile(r"[A-Z]\d{2,3}[A-Z]?\d{4,5}"),
-        "account": re.compile(r"\b\d{6}[- ]?\d{2}[- ]?\d{6}\b"),
-        "card": re.compile(r"\b(?:\d{4}[- ]?){3}\d{4}\b"),
-        "zipcode": re.compile(r"\b\d{5}\b"),
-        "ip": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b|\b([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}\b")
+        "birth": re.compile(r"\b(19|20)\d{2}[년./\- ]+(0?[1-9]|1[0-2])[월./\- ]+(0?[1-9]|[12][0-9]|3[01])[일]?\b"),
+        "ssn": re.compile(r"\b\d{6}[-\s]?[1-4]\d{6}\b"),
+        "alien_reg": re.compile(r"\b\d{6}[-\s]?[5-8]\d{6}\b"),
+        "driver_license": re.compile(r"\b\d{2}[-\s]?\d{2}[-\s]?\d{6}[-\s]?\d{2}\b"),  # [-\s]? = 하이픈/띄어쓰기 선택적
+        "passport": re.compile(r"\b[A-Z]\d{2,3}[A-Z]?\d{4,5}\b"),
+        "account": re.compile(r"\b\d{6}[-\s]?\d{2}[-\s]?\d{6}\b"),
+        "card": re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
+        "ip": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
     }
+
     detected = []
-    for label, pattern in Patterns.items():
+    for p_type, pattern in Patterns.items():
         for match in pattern.finditer(Text):
-            detected.append({"type": label, "value": match.group(), "span": match.span()})
+            raw_value = match.group()
+            start, end = match.span()
+            result = {
+                "type": p_type,
+                "value": raw_value,
+                "span": (start, end)
+            }
+            if p_type == "card":
+                if not validate_luhn(raw_value):
+                    result["status"] = "invalid (Luhn check failed)"
+                else:
+                    result["status"] = "valid"
+            elif p_type == "ssn":
+                if not validate_ssn(raw_value):
+                    result["status"] = "invalid (SSN check failed)"
+                else:
+                    result["status"] = "valid"
+            detected.append(result)
     return detected
 
 def detect_by_ner(Text: str) -> list:
@@ -127,27 +270,28 @@ def detect_by_ner(Text: str) -> list:
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
     return Detected
 
-def apply_masking(original_text: str, detected: list) -> str:
-    masked_text = list(original_text)
-    length = len(masked_text)
+# def apply_masking(original_text: str, detected: list) -> str:
+#     masked_text = list(original_text)
+#     length = len(masked_text)
 
-    for item in detected:
-        start, end = item.get("span", (None, None))
-        if start is None or end is None:
-            continue
-        if not isinstance(start, int) or not isinstance(end, int):
-            continue
-        if start < 0 or end > length or start >= end:
-            continue
-        if end > len(masked_text):
-            continue
-        try:
-            masked_text[start:end] = "*" * (end - start)
-        except IndexError as e:
-            print(f"[WARNING] 마스킹 실패 (index error): {e} | span=({start}, {end})")
-            continue
+#     for item in detected:
+#         start, end = item.get("span", (None, None))
+#         if start is None or end is None:
+#             continue
+#         if not isinstance(start, int) or not isinstance(end, int):
+#             continue
+#         if start < 0 or end > length or start >= end:
+#             continue
+#         if end > len(masked_text):
+#             continue
+#         try:
+#             masked_text[start:end] = "*" * (end - start)
+#         except IndexError as e:
+#             print(f"[WARNING] 마스킹 실패 (index error): {e} | span=({start}, {end})")
+#             continue
 
-    return ''.join(masked_text)
+#     return ''.join(masked_text)
+# -> 마스킹 로직, 그냥 주석 처리
 
 def encrypt_data(data: bytes, Key: bytes) -> bytes:
     try:
@@ -158,7 +302,7 @@ def encrypt_data(data: bytes, Key: bytes) -> bytes:
         logging.error(f"암호화 실패: {e}", exc_info=True)
         return b''
 
-def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info.txt") -> bool:
+def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info") -> bool:
     url = "http://your-backend-api/upload"
     try:
         response = requests.post(url, files={"File": (filename, encrypted_data)})
@@ -167,18 +311,37 @@ def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info.txt") 
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] 백엔드 전송 실패: {e}")
         return False
-
+    
 def handle_input_raw(Input_Data, Original_Format=None):
     if isinstance(Input_Data, bytes):
         print("[INFO] 파일 입력으로 감지됨")
         Parsed_Text, _ = parse_file(Input_Data, Original_Format)
-        Parsed_Text = Parsed_Text.strip()
-        Detected = detect_by_regex(Parsed_Text) + detect_by_ner(Parsed_Text)
-        if not Detected:
-            return Detected, "", False
-        masked_text = apply_masking(Parsed_Text, Detected)
-        encrypted = encrypt_data(masked_text.encode("utf-8"), Key)
-        backend_status = send_to_backend(encrypted, filename="Masked_Info.txt")
-        return Detected, masked_text, backend_status
+    elif isinstance(Input_Data, str):
+        print("[INFO] 텍스트 입력으로 감지됨")
+        Parsed_Text = Input_Data
     else:
         raise ValueError("지원하지 않는 입력 형식입니다.")
+    Parsed_Text = Parsed_Text.strip()
+    face_detected = False
+    face_path = None
+    if Original_Format in IMAGE_EXTENSIONS:
+        face_detected, face_path = detect_faces(Input_Data)
+        if face_detected: # 얼굴 탐지 결과를 Detected에 추가
+            return [{"type": "face", "value": "image", "file": face_path}], "", False, face_path
+    elif Original_Format in ["pdf", "docx"]: # 내부 이미지 추출 후 하나씩 face 분석
+        for img in extract_images_from_document(Input_Data, Original_Format):
+            face_detected, face_path = detect_faces(img)
+            if face_detected:
+                break
+    if not Parsed_Text.strip():
+        print("[INFO] OCR 실패 또는 빈 문자열 → 전송 생략")
+        if face_detected:
+            return [{"type": "face", "value": "image", "file": face_path}], "", False, face_path
+        else:
+            return [], "", False, None
+    Detected = detect_by_regex(Parsed_Text) + detect_by_ner(Parsed_Text)
+    if not Detected:
+        return Detected, "", False
+    encrypted = encrypt_data(Parsed_Text.encode("utf-8"), Key)
+    backend_status = send_to_backend(encrypted, filename="Detected_Info")
+    return Detected, Parsed_Text, backend_status, face_path
