@@ -31,7 +31,7 @@
 ```
 Integrated-Hooking-Agent/
 ├── native_host/            # Python Native Host (시스템/네트워크 정보 수집)
-│   ├── host.py             # Native Host 메인 스크립트 (sys import 오류 수정됨)
+│   ├── host.py             # Native Host 메인 스크립트
 │   └── ...                 # Native Messaging 설정 파일
 ├── server/                 # Python FastAPI 백엔드 서버
 │   ├── app.py              # 메인 서버 (CORS 설정 및 파일 저장 기능 통합됨)
