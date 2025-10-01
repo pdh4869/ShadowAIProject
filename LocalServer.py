@@ -3,7 +3,7 @@ import LocalServer
 from typing import List
 from fastapi import FastAPI, UploadFile, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
 from fastapi.responses import JSONResponse # JSONResponse = 텍스트의 경우, 결과물을 JSON 형식으로 반환할 때 사용
-from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend, apply_masking, apply_face_mosaic
+from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend, apply_masking
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -11,9 +11,7 @@ class TextInput(BaseModel):
     text: str
 
 Key = b"1234567890abcdef"
-IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "bmp", "webp", "tif", "tiff"]
 app = FastAPI() # FastAPI 앱 객체를 생성. 아래에서 이 객체에 엔드 포인트를 붙이게 됨.
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 실제 적용시에는 ["chrome-extension://<확장ID>"], 그러니까 ["chrome-extension://abcdefghijklmno"] 형식
@@ -38,10 +36,7 @@ async def mask_multiple_files(Files: List[UploadFile] = File(...)):
         extension = filename.split('.')[-1].lower()
         try:
             content = await uploaded_file.read()
-            if extension in IMAGE_EXTENSIONS:
-                content = apply_face_mosaic(content)
-            detected, file_bytes, media_type, masked_text, backend_status = handle_input_raw(content, extension)
-
+            detected, masked_text, backend_status, = handle_input_raw(content, extension)
             if detected:
                 results[filename] = {
                     "status": "처리 완료",
