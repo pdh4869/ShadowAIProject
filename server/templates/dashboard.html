@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>개인정보 탐지 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">🔒 개인정보 탐지 시스템</h1>
+            <p class="text-gray-600">파일 내 얼굴, 텍스트, 개인정보를 자동 탐지</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg mb-6">
+            <div class="flex border-b">
+                <button id="fileTab" class="flex-1 py-3 px-4 font-semibold border-b-2 border-blue-500 text-blue-600">
+                    📁 파일 업로드
+                </button>
+                <button id="textTab" class="flex-1 py-3 px-4 font-semibold text-gray-500">
+                    📝 텍스트 입력
+                </button>
+            </div>
+
+            <div id="filePanel" class="p-6">
+                <input type="file" id="fileInput" multiple accept=".txt,.pdf,.docx,.png,.jpg,.jpeg" 
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <div id="fileList" class="mt-4 space-y-2"></div>
+                <button id="uploadBtn" class="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400">
+                    분석 시작
+                </button>
+            </div>
+
+            <div id="textPanel" class="p-6 hidden">
+                <textarea id="textInput" placeholder="개인정보가 포함된 텍스트를 입력하세요&#10;예: 이름: 김철수&#10;전화: 010-1234-5678&#10;이메일: test@example.com&#10;운전면허: 11-22-123456-78" 
+                    class="w-full h-48 p-3 border rounded-lg resize-none"></textarea>
+                <button id="textBtn" class="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                    분석 시작
+                </button>
+            </div>
+        </div>
+
+        <div id="results" class="hidden"></div>
+
+        <div id="info" class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="font-semibold text-gray-800 mb-3">💡 탐지 가능 항목</h3>
+            <div class="grid grid-cols-2 gap-3 text-sm text-gray-700">
+                <div>📱 전화번호</div>
+                <div>📧 이메일</div>
+                <div>🎂 생년월일</div>
+                <div>🪪 주민번호</div>
+                <div>🪪 외국인등록번호</div>
+                <div>🚗 운전면허</div>
+                <div>✈️ 여권번호</div>
+                <div>🏦 계좌번호</div>
+                <div>💳 카드번호</div>
+                <div>📮 우편번호</div>
+                <div>🌐 IP주소</div>
+                <div>👤 인명</div>
+                <div>🏢 조직명</div>
+                <div>📍 장소</div>
+                <div>👤 얼굴 (이미지)</div>
+            </div>
+            <div class="mt-4 p-4 bg-blue-50 rounded">
+                <p class="font-semibold text-blue-800">서버 상태</p>
+                <p class="text-sm text-blue-700 mt-2">서버: <span id="serverStatus" class="font-bold">확인 중...</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileTab = document.getElementById('fileTab');
+        const textTab = document.getElementById('textTab');
+        const filePanel = document.getElementById('filePanel');
+        const textPanel = document.getElementById('textPanel');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const textInput = document.getElementById('textInput');
+        const textBtn = document.getElementById('textBtn');
+        const results = document.getElementById('results');
+        const info = document.getElementById('info');
+        const serverStatus = document.getElementById('serverStatus');
+
+        fileTab.addEventListener('click', () => {
+            fileTab.className = 'flex-1 py-3 px-4 font-semibold border-b-2 border-blue-500 text-blue-600';
+            textTab.className = 'flex-1 py-3 px-4 font-semibold text-gray-500';
+            filePanel.classList.remove('hidden');
+            textPanel.classList.add('hidden');
+        });
+
+        textTab.addEventListener('click', () => {
+            textTab.className = 'flex-1 py-3 px-4 font-semibold border-b-2 border-blue-500 text-blue-600';
+            fileTab.className = 'flex-1 py-3 px-4 font-semibold text-gray-500';
+            textPanel.classList.remove('hidden');
+            filePanel.classList.add('hidden');
+        });
+
+        fetch('http://127.0.0.1:9000/')
+            .then(res => res.json())
+            .then(() => {
+                serverStatus.textContent = '✅ 정상 작동 중';
+                serverStatus.className = 'font-bold text-green-600';
+            })
+            .catch(() => {
+                serverStatus.textContent = '❌ 연결 실패';
+                serverStatus.className = 'font-bold text-red-600';
+            });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) {
+                fileList.innerHTML = '';
+                return;
+            }
+            fileList.innerHTML = files.map(f => `
+                <div class="text-sm text-gray-700 bg-gray-50 p-2 rounded">
+                    ${f.name} (${(f.size / 1024).toFixed(1)} KB)
+                </div>
+            `).join('');
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            const files = fileInput.files;
+            if (files.length === 0) {
+                alert('파일을 선택해주세요');
+                return;
+            }
+
+            uploadBtn.textContent = '분석 중...';
+            uploadBtn.disabled = true;
+
+            const formData = new FormData();
+            Array.from(files).forEach(file => formData.append('Files', file));
+
+            try {
+                const response = await fetch('http://127.0.0.1:9000/mask-files/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                console.log('서버 응답:', data);
+                displayResults(data.result_summary);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('서버 연결 실패. 서버가 실행 중인지 확인하세요.');
+            }
+
+            uploadBtn.textContent = '분석 시작';
+            uploadBtn.disabled = false;
+        });
+
+        textBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            if (!text) {
+                alert('텍스트를 입력해주세요');
+                return;
+            }
+
+            textBtn.textContent = '분석 중...';
+            textBtn.disabled = true;
+
+            try {
+                const response = await fetch('http://127.0.0.1:9000/mask-text/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await response.json();
+                console.log('서버 응답:', data);
+                displayResults(data.result_summary);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('서버 연결 실패. 서버가 실행 중인지 확인하세요.');
+            }
+
+            textBtn.textContent = '분석 시작';
+            textBtn.disabled = false;
+        });
+
+        function displayResults(data) {
+            info.classList.add('hidden');
+            results.classList.remove('hidden');
+            
+            results.innerHTML = '<h2 class="text-2xl font-bold text-gray-800 mb-4">📊 분석 결과</h2>';
+            
+            const typeLabels = {
+                'phone': '📱 전화번호',
+                'email': '📧 이메일',
+                'birth': '🎂 생년월일',
+                'ssn': '🪪 주민번호',
+                'alien_reg': '🪪 외국인등록번호',
+                'driver_license': '🚗 운전면허',
+                'passport': '✈️ 여권',
+                'account': '🏦 계좌번호',
+                'card': '💳 카드번호',
+                'zipcode': '📮 우편번호',
+                'ip': '🌐 IP주소',
+                'PER': '👤 인명',
+                'ORG': '🏢 조직',
+                'LOC': '📍 장소',
+                'MISC': '🔖 기타',
+                'image_face': '👤 얼굴'
+            };
+            
+            const categoryColors = {
+                'phone': 'border-blue-500 bg-blue-50',
+                'email': 'border-green-500 bg-green-50',
+                'birth': 'border-purple-500 bg-purple-50',
+                'ssn': 'border-red-500 bg-red-50',
+                'alien_reg': 'border-red-500 bg-red-50',
+                'driver_license': 'border-orange-500 bg-orange-50',
+                'passport': 'border-indigo-500 bg-indigo-50',
+                'account': 'border-teal-500 bg-teal-50',
+                'card': 'border-pink-500 bg-pink-50',
+                'zipcode': 'border-gray-500 bg-gray-50',
+                'ip': 'border-cyan-500 bg-cyan-50',
+                'PER': 'border-yellow-500 bg-yellow-50',
+                'ORG': 'border-emerald-500 bg-emerald-50',
+                'LOC': 'border-rose-500 bg-rose-50',
+                'MISC': 'border-slate-500 bg-slate-50',
+                'image_face': 'border-violet-500 bg-violet-50'
+            };
+            
+            Object.entries(data).forEach(([filename, result]) => {
+                const statusIcon = result.status === '처리 완료' ? '✅' : result.status === '에러' ? '❌' : '⚠️';
+                
+                let html = `
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-4">
+                        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between">
+                            <h3 class="font-semibold text-lg">${filename}</h3>
+                            <span class="text-sm">${statusIcon} ${result.status}</span>
+                        </div>
+                        <div class="p-6">
+                `;
+
+                if (result.summary) {
+                    html += `
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg text-center border border-blue-200">
+                                <div class="text-4xl font-bold text-blue-600">${result.summary.total_detections || 0}</div>
+                                <div class="text-sm text-gray-600 mt-1 font-semibold">총 탐지</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg text-center border border-green-200">
+                                <div class="text-4xl font-bold text-green-600">${result.summary.text_personal_info || 0}</div>
+                                <div class="text-sm text-gray-600 mt-1 font-semibold">텍스트 정보</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg text-center border border-purple-200">
+                                <div class="text-4xl font-bold text-purple-600">${result.summary.face_detections || 0}</div>
+                                <div class="text-sm text-gray-600 mt-1 font-semibold">얼굴 탐지</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (result.detected && result.detected.length > 0) {
+                    html += '<div class="mb-6"><h4 class="font-bold text-lg mb-3 text-gray-800">🔍 탐지된 항목 상세</h4>';
+                    html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">';
+                    
+                    result.detected.forEach((item, index) => {
+                        const label = typeLabels[item.type] || item.type;
+                        const colorClass = categoryColors[item.type] || 'border-gray-500 bg-gray-50';
+                        
+                        html += `
+                            <div class="p-4 rounded-lg border-l-4 ${colorClass} shadow-sm hover:shadow-md transition-shadow">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="font-bold text-sm text-gray-800 mb-1">${label}</div>
+                                        <div class="text-gray-700 font-mono text-sm break-all">${item.value}</div>
+                                    </div>
+                                    <span class="ml-2 bg-white px-2 py-1 rounded text-xs font-semibold text-gray-600">#${index + 1}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                }
+
+                if (result.image_details && result.image_details.length > 0) {
+                    html += '<div class="mb-4"><h4 class="font-bold text-lg mb-3 text-gray-800">🖼️ 이미지 상세</h4>';
+                    result.image_details.forEach(img => {
+                        html += `
+                            <div class="bg-purple-50 p-4 rounded-lg mb-2 flex justify-between items-center border border-purple-200">
+                                <span class="font-semibold text-gray-700">${img.image_name || '페이지 ' + img.page}</span>
+                                <span class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-bold">얼굴 ${img.faces_found}개</span>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                if (result.message) {
+                    html += `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                            <p class="text-red-700 font-semibold">${result.message}</p>
+                        </div>
+                    `;
+                }
+
+                html += '</div></div>';
+                results.innerHTML += html;
+            });
+        }
+    </script>
+</body>
+</html>

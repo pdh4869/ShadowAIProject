@@ -1,0 +1,9 @@
+{
+  "name": "com.example.pii_host",
+  "description": "PII Agent Native Host",
+  "type": "stdio",
+  "path": "C:/Users/USER/Desktop/Py_server/Py_server/native_host/dist/host.exe",
+  "allowed_origins": [
+    "chrome-extension://hblalecgjndcjeaineacembpdfmmjaoa/"
+  ]
+}
