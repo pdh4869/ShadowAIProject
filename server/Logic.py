@@ -247,11 +247,13 @@ def detect_by_ner(Text: str) -> list:
             continue
         
         # 2글자 이하 단어 필터링
-        if len(Word.strip()) <= 2:
-            continue
+        # if len(Word.strip()) <= 2:
+            # continue
         
         # 인명(PER)만 탐지 - 개인정보에 해당
-        if Label.upper() == "PER":
+        # if Label.upper() == "PER":
+            # Detected.append({"type": Label, "value": Word, "span": (Start, End)})
+        if Label.upper() in ["PER", "ORG", "LOC", "MISC"]:
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
     
     return Detected
