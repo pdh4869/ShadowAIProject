@@ -31,7 +31,7 @@ def root():
 def favicon():
     return JSONResponse(content={}, status_code=204)
 
-@app.get("/dashboard")
+@app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard():
     """대시보드 페이지"""
     html_content = """
@@ -156,6 +156,17 @@ async def dashboard():
             }
         </style>
         <script>
+            function parseUA(ua) {
+                let browser = 'Unknown', os = 'Unknown';
+                if (ua.includes('Chrome')) browser = 'Chrome ' + (ua.match(/Chrome\/(\d+)/) || [])[1];
+                else if (ua.includes('Firefox')) browser = 'Firefox ' + (ua.match(/Firefox\/(\d+)/) || [])[1];
+                else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+                if (ua.includes('Windows NT 10.0')) os = 'Windows 10';
+                else if (ua.includes('Windows NT 11.0')) os = 'Windows 11';
+                else if (ua.includes('Mac OS X')) os = 'macOS';
+                else if (ua.includes('Linux')) os = 'Linux';
+                return { browser, os };
+            }
             async function fetchDetections() {
                 try {
                     const response = await fetch('/api/detections');
@@ -178,7 +189,7 @@ async def dashboard():
                                     `).join('')}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
-                                    ${d.tab && d.tab.ua ? `<div class="netinfo">Browser: ${d.tab.ua}</div>` : ''}
+                                    ${d.tab && d.tab.ua ? (() => { const i = parseUA(d.tab.ua); return `<div class="netinfo">Browser: ${i.browser}</div><div class="netinfo">OS: ${i.os}</div>`; })() : ''}
                                 </div>
                                 `;
                             } else {
@@ -191,7 +202,7 @@ async def dashboard():
                                     </div>
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
-                                    ${d.tab && d.tab.ua ? `<div class="netinfo">Browser: ${d.tab.ua}</div>` : ''}
+                                    ${d.tab && d.tab.ua ? (() => { const i = parseUA(d.tab.ua); return `<div class="netinfo">Browser: ${i.browser}</div><div class="netinfo">OS: ${i.os}</div>`; })() : ''}
                                 </div>
                                 `;
                             }
@@ -255,7 +266,7 @@ async def dashboard():
     </body>
     </html>
     """
-    return Response(content=html_content, media_type="text/html; charset=utf-8")
+    return HTMLResponse(content=html_content)
 
 @app.post("/api/file_collect")
 async def handle_file_collect(request: Request):

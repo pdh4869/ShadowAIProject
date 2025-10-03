@@ -38,3 +38,15 @@ Sending IP: {'reqId': 1759483447747, 'ok': True, 'data': {'ip': '192.168.0.64'}}
 === Host started at 2025-10-03 18:34:48.425113 ===
 Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759484088301}
 Sending IP: {'reqId': 1759484088301, 'ok': True, 'data': {'ip': '192.168.0.64'}}
+
+=== Host started at 2025-10-03 18:43:29.876499 ===
+Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759484609753}
+Sending IP: {'reqId': 1759484609753, 'ok': True, 'data': {'ip': '192.168.0.64'}}
+
+=== Host started at 2025-10-03 18:46:21.724618 ===
+Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759484781591}
+Sending IP: {'reqId': 1759484781591, 'ok': True, 'data': {'ip': '192.168.0.64'}}
+
+=== Host started at 2025-10-03 18:57:40.011879 ===
+Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759485459887}
+Sending IP: {'reqId': 1759485459887, 'ok': True, 'data': {'ip': '192.168.0.64'}}
