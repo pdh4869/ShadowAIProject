@@ -53,7 +53,7 @@ function callNative(cmd, args = {}) {
   });
 }
 
-async function fetchWithTimeoutAndRetry(url, options, timeoutMs = 5000, fallbackUrl = null) {
+async function fetchWithTimeoutAndRetry(url, options, timeoutMs = 30000, fallbackUrl = null) {
   const doFetch = (u) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -80,18 +80,18 @@ async function handlePayload(t, payload, senderUrl) {
   }
 
   if (t === "COMBINED_EVENT") {
-    let networkInfo = {};
-    console.log(`[bg] 네트워크 정보 수집 시도...`);
+    let networkInfo = { ip: "unknown" };
+    console.log(`[bg] IP 정보 수집 시도...`);
     try {
-      const nativeResp = await callNative("get_info", {});
-      if (nativeResp?.ok && nativeResp.data?.network) {
-        networkInfo = nativeResp.data.network;
-        console.log(`[bg] ✓ 네트워크 정보 수집 완료:`, networkInfo);
+      const nativeResp = await callNative("get_ip", {});
+      if (nativeResp?.ok && nativeResp.data?.ip) {
+        networkInfo.ip = nativeResp.data.ip;
+        console.log(`[bg] ✓ IP 정보 수집 완료:`, networkInfo.ip);
       } else {
-        console.warn(`[bg] Native Host 응답 없음`);
+        console.warn(`[bg] Native Host IP 응답 없음`);
       }
     } catch (e) {
-      console.warn(`[bg] Native Host 실패:`, e.message);
+      console.warn(`[bg] Native Host IP 수집 실패:`, e.message);
     }
 
     const combinedPayload = {
@@ -109,27 +109,31 @@ async function handlePayload(t, payload, senderUrl) {
       body: JSON.stringify(combinedPayload)
     };
 
-    console.log(`[bg] 통합 전송: ${SERVER_EVENT_ENDPOINT.replace('/event', '/combined')}`);
-    const res = await fetchWithTimeoutAndRetry(
-      "http://127.0.0.1:9000/api/combined", options, 10000, "http://localhost:9000/api/combined"
-    );
-    const result = await res.json().catch(() => null);
-    console.log(`[bg] ✓ 통합 전송 완료`);
-    return { ok: true, result };
+    console.log(`[bg] 통합 전송: http://127.0.0.1:9000/api/combined`);
+    
+    fetch("http://127.0.0.1:9000/api/combined", options)
+      .then(res => res.json())
+      .then(() => console.log(`[bg] ✓ 서버 응답 완료`))
+      .catch(e => console.log(`[bg] 서버 에러 (무시): ${e.message}`));
+    
+    console.log(`[bg] ✓ 전송 요청 완료 (백그라운드 처리)`);
+    return { ok: true };
   }
 
   const forText = (t === "PII_EVENT");
-  let networkInfo = {};
+  let networkInfo = { ip: "unknown" };
   
-  console.log(`[bg] 네트워크 정보 수집 중...`);
+  console.log(`[bg] IP 정보 수집 중...`);
   try {
-    const nativeResp = await callNative("get_info", {});
-    if (nativeResp?.ok && nativeResp.data?.network) {
-      networkInfo = nativeResp.data.network;
-      console.log(`[bg] ✓ 네트워크 정보 수집 완료:`, networkInfo);
+    const nativeResp = await callNative("get_ip", {});
+    if (nativeResp?.ok && nativeResp.data?.ip) {
+      networkInfo.ip = nativeResp.data.ip;
+      console.log(`[bg] ✓ IP 정보 수집 완료:`, networkInfo.ip);
+    } else {
+      console.warn(`[bg] Native Host IP 응답 없음`);
     }
   } catch (e) {
-    console.error(`[bg] 네트워크 정보 수집 실패:`, e);
+    console.error(`[bg] Native Host IP 수집 실패:`, e);
   }
 
   if (forText) {

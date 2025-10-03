@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0host.py"
+"C:\Users\USER\AppData\Local\Programs\Python\Python311\python.exe" "%~dp0host.py"

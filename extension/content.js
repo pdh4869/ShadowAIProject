@@ -6,18 +6,23 @@
 
   function nextReqId(){ return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
   function connectPort() {
-    port = chrome.runtime.connect({ name: PORT_NAME });
-    port.onMessage.addListener((msg) => {
-      const { reqId } = msg || {};
-      if (reqId && pending.has(reqId)) {
-        pending.get(reqId).resolve(msg);
-        pending.delete(reqId);
-      }
-    });
-    port.onDisconnect.addListener(() => {
+    try {
+      if (!chrome?.runtime?.id) return;
+      port = chrome.runtime.connect({ name: PORT_NAME });
+      port.onMessage.addListener((msg) => {
+        const { reqId } = msg || {};
+        if (reqId && pending.has(reqId)) {
+          pending.get(reqId).resolve(msg);
+          pending.delete(reqId);
+        }
+      });
+      port.onDisconnect.addListener(() => {
+        port = null;
+      });
+    } catch (e) {
+      console.log("[content] 확장 프로그램 컨텍스트 무효화됨, 페이지 새로고침 필요");
       port = null;
-      setTimeout(connectPort, 1000);
-    });
+    }
   }
   if (chrome?.runtime?.id) connectPort();
 
@@ -42,6 +47,7 @@
   const filesMap = new Map();
   const pendingFiles = [];
   let isProcessing = false;
+  let isSending = false;
 
   function arrayBufferToBase64(buffer){
     let b="";
@@ -116,10 +122,18 @@
 
   // 1. input[type=file] 감지
   document.addEventListener("change",(e)=>{
-    if(e.target.tagName==="INPUT"&&e.target.type==="file"&&e.target.files?.length){
-      console.log(`[content] input[type=file] 감지: ${e.target.files.length}개`);
-      for(const f of e.target.files) {
-        storeFileForLater(f, location.href);
+    if(e.target.tagName==="INPUT"&&e.target.type==="file"){
+      if(e.target.files?.length){
+        console.log(`[content] input[type=file] 감지: ${e.target.files.length}개`);
+        pendingFiles.length = 0;
+        filesMap.clear();
+        for(const f of e.target.files) {
+          storeFileForLater(f, location.href);
+        }
+      } else {
+        console.log(`[content] 파일 선택 취소됨, 저장된 파일 초기화`);
+        pendingFiles.length = 0;
+        filesMap.clear();
       }
     }
   }, true);
@@ -131,6 +145,8 @@
     if (e.dataTransfer?.files?.length) {
       dropHandled = true;
       console.log(`[content] 드롭 이벤트 감지: ${e.dataTransfer.files.length}개 파일`);
+      pendingFiles.length = 0;
+      filesMap.clear();
       for(const f of e.dataTransfer.files) {
         await storeFileForLater(f, location.href);
       }
@@ -168,82 +184,71 @@
     };
   }
 
-  // 메시지 전송 핸들러
-  async function handleMessageSend(source) {
-    console.log(`[content] ========== 메시지 전송 감지 (${source}) ==========`);
-    
-    const text=(getFocusedText()||"").trim();
-    const hasFiles = pendingFiles.length > 0;
-    
-    if (!text && !hasFiles) {
-      console.log(`[content] 전송할 내용 없음`);
-      return;
-    }
-    
-    // 파일과 텍스트를 하나의 페이로드로 전송
-    const payload = {
-      source_url: location.href,
-      page_title: document.title,
-      raw_text: text,
-      files_data: pendingFiles,
-      tab: { ua: navigator.userAgent }
-    };
-    
-    console.log(`[content] 통합 전송: 텍스트 ${text.length}글자, 파일 ${pendingFiles.length}개`);
-    await sendViaPort("COMBINED_EVENT", payload);
-    
-    pendingFiles.length = 0;
-    filesMap.clear();
-  }
+
 
   // Enter 키 이벤트
   document.addEventListener("keydown", async (e)=>{
-    console.log(`[content] 키 입력: ${e.key}, Shift: ${e.shiftKey}`);
-    
     if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      console.log("[content] ✓ Enter 키 감지 (전송)");
-      await handleMessageSend("Enter키");
+      console.log("[content] ✓ Enter 키 전송");
+      const text = getFocusedText().trim();
+      if (text || pendingFiles.length > 0) {
+        console.log(`[content] 전송: 텍스트 ${text.length}글자, 파일 ${pendingFiles.length}개`);
+        await sendViaPort("COMBINED_EVENT", {
+          source_url: location.href,
+          page_title: document.title,
+          raw_text: text,
+          files_data: pendingFiles,
+          tab: { ua: navigator.userAgent }
+        });
+        pendingFiles.length = 0;
+        filesMap.clear();
+      }
     }
   }, true);
 
-  // 클릭 이벤트
+  // 클릭 이벤트 (텍스트 미리 캡처)
+  let lastCapturedText = "";
+  document.addEventListener("mousedown", (e)=>{
+    lastCapturedText = getFocusedText().trim();
+    console.log(`[content] mousedown - 텍스트 캡처: ${lastCapturedText.length}글자`);
+  }, true);
+
   document.addEventListener("click", async (e)=>{
-    console.log("[content] 클릭 이벤트:", e.target);
+    if (isSending) return;
     
     let el=e.target;
     for (let i=0;i<8&&el;i++,el=el.parentElement){
       const t=(el.innerText||"").toLowerCase();
       const ariaLabel = (el.getAttribute?.("aria-label")||"").toLowerCase();
-      const role = (el.getAttribute?.("role")||"").toLowerCase();
       const tagName = el.tagName?.toLowerCase();
       const className = el.className?.toString().toLowerCase() || "";
       
-      console.log(`[content] 체크 중 (depth ${i}): tag=${tagName}, role=${role}, text="${t.substring(0,20)}", aria="${ariaLabel}"`);
-      
       const isSendButton = 
         tagName === "button" ||
-        role === "button" ||
         t.includes("send") || 
         t.includes("전송") || 
-        t.includes("보내기") ||
         ariaLabel.includes("send") || 
         ariaLabel.includes("submit") ||
-        className.includes("send") ||
-        el.id?.includes("send");
+        className.includes("send");
       
-      if (isSendButton) {
-        console.log(`[content] ✓✓✓ 전송 버튼 후보 발견! depth=${i}`);
+      if (isSendButton && (pendingFiles.length > 0 || lastCapturedText)) {
+        isSending = true;
+        console.log(`[content] 전송: 텍스트 ${lastCapturedText.length}글자, 파일 ${pendingFiles.length}개`);
         
-        const text = getFocusedText().trim();
+        await sendViaPort("COMBINED_EVENT", {
+          source_url: location.href,
+          page_title: document.title,
+          raw_text: lastCapturedText,
+          files_data: pendingFiles,
+          tab: { ua: navigator.userAgent }
+        });
         
-        // 파일이 있거나 텍스트가 있으면 전송
-        if (pendingFiles.length > 0 || text) {
-          console.log(`[content] 파일 ${pendingFiles.length}개 또는 텍스트 있음 → 전송 실행`);
-          await handleMessageSend("클릭");
-          break;
-        } else {
-          console.log("[content] 파일/텍스트 없음 → 전송 스킵");
-        }
+        pendingFiles.length = 0;
+        filesMap.clear();
+        lastCapturedText = "";
+        
+        setTimeout(() => { isSending = false; }, 2000);
+        break;
       }
     }
   }, true);

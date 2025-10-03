@@ -27,6 +27,10 @@ app.add_middleware(
 def root():
     return {"message": "로컬 서버 정상 작동 중. GET /dashboard 접속"}
 
+@app.get("/favicon.ico")
+def favicon():
+    return JSONResponse(content={}, status_code=204)
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard():
     """대시보드 페이지"""
@@ -161,26 +165,35 @@ async def dashboard():
                     
                     const logContainer = document.getElementById('detection-logs');
                     if (data.detections && data.detections.length > 0) {
-                        logContainer.innerHTML = data.detections.map(d => `
-                            <div class="log-entry ${d.type === 'image_face' ? 'face' : ''}">
-                                <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')}</div>
-                                <div>
-                                    <span class="type-badge">${d.type}</span>
-                                    <strong>${d.value || d.file_name || '(파일 이벤트)'}</strong>
+                        logContainer.innerHTML = data.detections.map(d => {
+                            if (d.type === 'group' && d.items) {
+                                return `
+                                <div class="log-entry">
+                                    <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')} - ${d.items.length}개 탐지</div>
+                                    ${d.items.map(item => `
+                                        <div style="margin: 5px 0;">
+                                            <span class="type-badge">${item.type}</span>
+                                            <strong>${item.value}</strong>
+                                        </div>
+                                    `).join('')}
+                                    ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
+                                    ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
                                 </div>
-                                ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
-
-                                ${d.network_info ? `
-                                  <div class="netinfo">IPs: ${
-                                    (d.network_info.interfaces || [])
-                                      .map(i => (i.ips || []).join(", "))
-                                      .join(" | ") || '없음'
-                                  }</div>
-                                  <div class="netinfo">Gateway: ${d.network_info.gateway ? d.network_info.gateway.join(", ") : '없음'}</div>
-                                  <div class="netinfo">DNS: ${d.network_info.dns ? d.network_info.dns.join(", ") : '없음'}</div>
-                                ` : ''}
-                            </div>
-                        `).join('');
+                                `;
+                            } else {
+                                return `
+                                <div class="log-entry ${d.type === 'image_face' ? 'face' : ''}">
+                                    <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')}</div>
+                                    <div>
+                                        <span class="type-badge">${d.type}</span>
+                                        <strong>${d.value || d.file_name || '(파일)'}</strong>
+                                    </div>
+                                    ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
+                                    ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
+                                </div>
+                                `;
+                            }
+                        }).join('');
                     } else {
                         logContainer.innerHTML = '<div class="empty">아직 탐지된 내역이 없습니다.<br><br>ChatGPT나 Claude에서<br>개인정보를 입력하거나 파일을 업로드해보세요.</div>';
                     }
@@ -347,15 +360,16 @@ async def handle_combined(request: Request):
         # 텍스트 탐지
         if text.strip():
             detected = detect_by_regex(text) + detect_by_ner(text)
-            for item in detected:
+            if detected:
                 detection_history.append({
                     "timestamp": processed_at,
-                    "type": item["type"],
-                    "value": item["value"],
+                    "type": "group",
+                    "items": detected,
                     "url": url,
                     "network_info": network_info
                 })
-                print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}")
+                for item in detected:
+                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}")
 
         # 파일 탐지
         for file_info in files_data:

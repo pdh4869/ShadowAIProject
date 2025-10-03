@@ -78,15 +78,34 @@ def gather_network_info():
     }
 
 if __name__ == "__main__":
+    import datetime
+    log_file = open("C:\\Users\\USER\\Desktop\\Py_server\\Py_server\\native_host\\host_log.txt", "a", encoding="utf-8")
+    log_file.write(f"\n=== Host started at {datetime.datetime.now()} ===\n")
+    log_file.flush()
+    
     while True:
         msg = read_message()
         if msg is None:
             continue
+        log_file.write(f"Received: {msg}\n")
+        log_file.flush()
+        
         req_id = msg.get("reqId", 0)
         cmd = msg.get("cmd", "")
         if cmd == "get_info":
             network_data = gather_network_info()
             response = {"reqId": req_id, "ok": True, "data": {"network": network_data}}
+            log_file.write(f"Sending: {response}\n")
+            log_file.flush()
+            send_message(response)
+        elif cmd == "get_ip":
+            ip = get_local_ip()
+            response = {"reqId": req_id, "ok": True, "data": {"ip": ip}}
+            log_file.write(f"Sending IP: {response}\n")
+            log_file.flush()
             send_message(response)
         else:
-            send_message({"reqId": req_id, "ok": False, "error": "Unknown command"})
+            response = {"reqId": req_id, "ok": False, "error": "Unknown command"}
+            log_file.write(f"Unknown command: {response}\n")
+            log_file.flush()
+            send_message(response)
