@@ -5,7 +5,7 @@ import os
 import shutil
 from contextlib import asynccontextmanager
 from typing import List
-from fastapi import FastAPI, UploadFile, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
+from fastapi import FastAPI, UploadFile, Form, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
 from fastapi.responses import JSONResponse # JSONResponse = 텍스트의 경우, 결과물을 JSON 형식으로 반환할 때 사용
 from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend # apply_masking
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +14,9 @@ from pydantic import BaseModel
 
 class TextInput(BaseModel):
     text: str
+    tab: dict | None = None
+    agent_id: str | None = None
+    source_url: str | None = None
 
 Key = b"1234567890abcdef"
 imgae_folder = "processed_faces"
@@ -37,9 +40,9 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 실제 적용시에는 ["chrome-extension://<확장ID>"], 그러니까 ["chrome-extension://abcdefghijklmno"] 형식
+    allow_origins=["chrome-extension://noladakejgehkjpjfgbimihbmipjkink"],  # 실제 적용시에는 ["chrome-extension://<확장ID>"], 그러니까 ["chrome-extension://abcdefghijklmno"] 형식
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST"],
     allow_headers=["*"],
 )
 os.makedirs(imgae_folder, exist_ok=True)
@@ -52,7 +55,11 @@ def root(): # 근데 우린 POST만 정의했지, 우리가 쓸 API 서버는 GE
     # 본격적인 기능은 POST에 있으므로 이건 “서버 살아있냐” 체크 용도
 
 @app.post("/mask-files/")
-async def mask_multiple_files(Files: List[UploadFile] = File(...)):
+async def mask_multiple_files(Files: List[UploadFile] = File(...),
+                              tab: str | None = Form(None),
+                              agent_id: str | None = Form(None),
+                              source_url: str | None = Form(None)
+):
     results = {}
     password_protected = False
 
@@ -86,15 +93,26 @@ async def mask_multiple_files(Files: List[UploadFile] = File(...)):
                 "message": f"처리 실패: {str(e)}"
             }
 
+    tab_info = json.loads(tab) if tab else {}
+    results["_meta"] = {
+        "agent_id": agent_id,
+        "source_url": source_url,
+        "tab": tab_info
+    }
+
     return JSONResponse(
         content={"result_summary": results},
         status_code=200 if not password_protected else 400
     )
 
 @app.post("/mask-text/")
-async def mask_text(input: TextInput):
+async def mask_text(text: str = Form(...),
+                    tab: str | None = Form(None),
+                    agent_id: str | None = Form(None),
+                    source_url: str | None = Form(None)):
     try:
-        text = input.text
+        tab_info = json.loads(tab) if tab else {}
+        ua = tab_info.get("ua") if tab_info else None
         print("[INFO] 텍스트 입력으로 감지됨")
 
         detected = detect_by_regex(text) + detect_by_ner(text)
@@ -102,12 +120,11 @@ async def mask_text(input: TextInput):
         if not detected:
             return JSONResponse(
                 content={"result_summary": {
-                    "입력 텍스트": {
-                        "status": "탐지된 민감정보 없음"
-                    }
+                    "입력 텍스트": {"status": "탐지된 민감정보 없음"}
                 }},
                 status_code=200
             )
+
         encrypted = encrypt_data(json.dumps(detected, ensure_ascii=False).encode("utf-8"), Key)
         ok = send_to_backend(encrypted)
 
@@ -116,8 +133,16 @@ async def mask_text(input: TextInput):
                 "status": "처리 완료",
                 "detected": detected,
                 "text": text,
+                "user_agent": ua,
+                "agent_id": agent_id,
+                "source_url": source_url,
                 "backend_transmission": "성공" if ok else "실패"
             }
+        }
+        result_summary["_meta"] = {
+            "agent_id": agent_id,
+            "source_url": source_url,
+            "tab": tab_info
         }
 
         return JSONResponse(content={"result_summary": result_summary}, status_code=200)
@@ -125,10 +150,7 @@ async def mask_text(input: TextInput):
     except Exception as e:
         return JSONResponse(
             content={"result_summary": {
-                "입력 텍스트": {
-                    "status": "에러",
-                    "message": str(e)
-                }
+                "입력 텍스트": {"status": "에러", "message": str(e)}
             }},
             status_code=500
         )
