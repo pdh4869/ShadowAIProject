@@ -5,7 +5,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import uvicorn
 import base64
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, Response
 from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,7 +31,7 @@ def root():
 def favicon():
     return JSONResponse(content={}, status_code=204)
 
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.get("/dashboard")
 async def dashboard():
     """대시보드 페이지"""
     html_content = """
@@ -178,6 +178,7 @@ async def dashboard():
                                     `).join('')}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
+                                    ${d.tab && d.tab.ua ? `<div class="netinfo">Browser: ${d.tab.ua}</div>` : ''}
                                 </div>
                                 `;
                             } else {
@@ -190,6 +191,7 @@ async def dashboard():
                                     </div>
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
+                                    ${d.tab && d.tab.ua ? `<div class="netinfo">Browser: ${d.tab.ua}</div>` : ''}
                                 </div>
                                 `;
                             }
@@ -253,7 +255,7 @@ async def dashboard():
     </body>
     </html>
     """
-    return html_content
+    return Response(content=html_content, media_type="text/html; charset=utf-8")
 
 @app.post("/api/file_collect")
 async def handle_file_collect(request: Request):
