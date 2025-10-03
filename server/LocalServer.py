@@ -333,7 +333,8 @@ async def handle_text_event(request: Request):
                 "type": item["type"],
                 "value": item["value"],
                 "url": url,
-                "network_info": network_info
+                "network_info": network_info,
+                "tab": data.get("tab", {})
             })
             print(f"[INFO] ✓ 탐지: {item['type']} = {item['value']}")
 
@@ -368,7 +369,8 @@ async def handle_combined(request: Request):
                     "type": "group",
                     "items": detected,
                     "url": url,
-                    "network_info": network_info
+                    "network_info": network_info,
+                    "tab": data.get("tab", {})
                 })
                 for item in detected:
                     print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}")
@@ -388,7 +390,8 @@ async def handle_combined(request: Request):
                         "value": item["value"],
                         "url": url,
                         "network_info": network_info,
-                        "file_name": file_name
+                        "file_name": file_name,
+                        "tab": data.get("tab", {})
                     })
                     print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}")
 
