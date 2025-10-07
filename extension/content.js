@@ -186,8 +186,15 @@
 
 
 
+  // 허용된 URL 확인
+  function isAllowedUrl(url) {
+    return url.match(/^https:\/\/chatgpt\.com\/?$/i) || url.match(/^https:\/\/chatgpt\.com\/(c|g)\//i) || url.match(/^https:\/\/gemini\.google\.com\//i);
+  }
+  let isActive = isAllowedUrl(location.href);
+
   // Enter 키 이벤트
   document.addEventListener("keydown", async (e)=>{
+    if (!isActive) return;
     if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
       console.log("[content] ✓ Enter 키 전송");
       const text = getFocusedText().trim();
@@ -214,7 +221,7 @@
   }, true);
 
   document.addEventListener("click", async (e)=>{
-    if (isSending) return;
+    if (!isActive || isSending) return;
     
     let el=e.target;
     for (let i=0;i<8&&el;i++,el=el.parentElement){
@@ -258,7 +265,33 @@
     await sendAllPendingFiles();
   };
 
+  // URL 변경 감지 (SPA 대응)
+  let lastUrl = location.href;
+  const urlObserver = new MutationObserver(() => {
+    if (location.href !== lastUrl) {
+      const wasActive = isActive;
+      isActive = isAllowedUrl(location.href);
+      console.log(`[content] URL 변경 감지: ${lastUrl} → ${location.href}`);
+      console.log(`[content] 탐지 상태: ${wasActive ? '활성' : '비활성'} → ${isActive ? '활성' : '비활성'}`);
+      
+      // 비활성에서 활성으로 전환 시 포트 재연결
+      if (!wasActive && isActive) {
+        console.log(`[content] 활성화 됨 - 포트 재연결 시도`);
+        if (!port) {
+          connectPort();
+        }
+      }
+      
+      lastUrl = location.href;
+      pendingFiles.length = 0;
+      filesMap.clear();
+      lastCapturedText = "";
+    }
+  });
+  urlObserver.observe(document, { subtree: true, childList: true });
+
   console.log("[content] ========== PII Agent 활성화 ==========");
   console.log("[content] URL:", location.href);
+  console.log(`[content] 탐지 상태: ${isActive ? '활성' : '비활성'}`);
   console.log("[content] 디버깅: window.forceSendFiles() 호출하여 강제 전송 가능");
 })();

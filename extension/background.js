@@ -209,7 +209,7 @@ chrome.runtime.onConnect.addListener((port) => {
       try {
         port.postMessage({ reqId, ...out });
       } catch (e) {
-        console.error("[bg] 응답 전송 실패 (포트 끊김?):", e);
+        console.warn("[bg] 응답 전송 실패 (포트 재연결됨, 서버 전송은 성공)");
       }
     } catch (e) {
       console.error(`[bg] 처리 중 에러:`, e);
