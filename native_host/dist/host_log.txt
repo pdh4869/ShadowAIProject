@@ -1,0 +1,15 @@
+
+=== Host started at 2025-10-07 18:03:27.789686 ===
+Received: {'cmd': 'get_full_info', 'args': {}, 'reqId': 1759827806755}
+Sending Full Info: {'reqId': 1759827806755, 'ok': True, 'data': {'platform': 'Windows', 'hostname': 'sehyeon', 'interfaces': [{'name': 'local', 'ips': ['192.168.0.23']}], 'gateway': [], 'dns': []}}
+=== Host finished ===
+
+=== Host started at 2025-10-07 18:03:27.821643 ===
+Received: {'cmd': 'get_full_info', 'args': {}, 'reqId': 1759827806756}
+Sending Full Info: {'reqId': 1759827806756, 'ok': True, 'data': {'platform': 'Windows', 'hostname': 'sehyeon', 'interfaces': [{'name': 'local', 'ips': ['192.168.0.23']}], 'gateway': [], 'dns': []}}
+=== Host finished ===
+
+=== Host started at 2025-10-07 18:03:45.637487 ===
+Received: {'cmd': 'get_full_info', 'args': {}, 'reqId': 1759827825049}
+Sending Full Info: {'reqId': 1759827825049, 'ok': True, 'data': {'platform': 'Windows', 'hostname': 'sehyeon', 'interfaces': [{'name': 'local', 'ips': ['192.168.0.23']}], 'gateway': [], 'dns': []}}
+=== Host finished ===
