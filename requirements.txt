@@ -1,0 +1,12 @@
+Flask
+requests
+numpy
+PyMuPDF
+easyocr
+python-docx
+Pillow
+transformers
+torch
+pycryptodome
+mtcnn
+opencv-python
