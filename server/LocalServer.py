@@ -31,7 +31,7 @@ def root():
 def favicon():
     return JSONResponse(content={}, status_code=204)
 
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.get("/dashboard")
 async def dashboard():
     """대시보드 페이지"""
     html_content = """
@@ -198,8 +198,9 @@ async def dashboard():
                                     <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')}</div>
                                     <div>
                                         <span class="type-badge">${d.type}</span>
-                                        <strong>${d.value || d.file_name || '(파일)'}</strong>
+                                        <strong>${d.value || '(파일)'}</strong>
                                     </div>
+                                    ${d.file_name ? `<div class="netinfo">파일명: ${d.file_name}</div>` : ''}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
                                     ${d.tab && d.tab.ua ? (() => { const i = parseUA(d.tab.ua); return `<div class="netinfo">Browser: ${i.browser}</div><div class="netinfo">OS: ${i.os}</div>`; })() : ''}
@@ -414,11 +415,12 @@ async def handle_combined(request: Request):
 
 @app.get("/api/detections")
 async def get_detections():
-    return {
+    data = {
         "status": "success",
         "total_detections": len(detection_history),
         "detections": list(reversed(detection_history[-50:]))
     }
+    return JSONResponse(content=data)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=9000, reload=False)
