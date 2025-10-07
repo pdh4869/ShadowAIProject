@@ -70,3 +70,7 @@ Sending IP: {'reqId': 1759803877170, 'ok': True, 'data': {'ip': '192.168.0.64'}}
 === Host started at 2025-10-07 11:26:21.388311 ===
 Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759803981253}
 Sending IP: {'reqId': 1759803981253, 'ok': True, 'data': {'ip': '192.168.0.64'}}
+
+=== Host started at 2025-10-07 14:15:41.092863 ===
+Received: {'cmd': 'get_ip', 'args': {}, 'reqId': 1759814140779}
+Sending IP: {'reqId': 1759814140779, 'ok': True, 'data': {'ip': '192.168.0.64'}}
