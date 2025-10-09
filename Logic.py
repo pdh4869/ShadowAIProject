@@ -425,7 +425,7 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         }
     payload = {
         "timestamp": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
-        "source_format": Original_Format,
+        # "source_format": Original_Format,
         "has_face": face_detected,
         "detected_summary": dict(type_counts), # "detected": [], <- 원래 이걸 쓰던 상황
         "validation_summary": validation_summary,
@@ -435,6 +435,7 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         #     for d in Detected
         # ]
     }
+    payload["filename"] = meta_info.get("filename") if meta_info else None
     # for d in Detected:
     #     if d.get("type") != "face":  # 얼굴 항목은 제외
     #         payload["detected"].append({

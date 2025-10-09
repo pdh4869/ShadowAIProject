@@ -209,6 +209,7 @@ async def mask_multiple_files(
         "os_info": os_info,
         "ai_service": ai_service,
         "timestamp": current_time,
+        "filename": filename,
         "detected_summary": dict(detected_type_counts), # detected_types
         "validation_summary": validation_summary 
     }
