@@ -18,11 +18,13 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad # unpad
 from Crypto.Random import get_random_bytes
 from docx import Document
+from collections import Counter
 
 Key = b"1234567890abcdef"
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 # NER_MODEL_NAME = "Leo97/KoELECTRA-small-v3-modu-ner"
 NER_MODEL_NAME = "soddokayo/klue-roberta-base-ner"
+# NER_MODEL_NAME = "amoeba04/koelectra-small-v3-privacy-ner"
 # NER_MODEL_NAME = "Davlan/xlm-roberta-base-ner-hrl"
 os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "180"
 os.environ["HF_HUB_ETAG_TIMEOUT"] = "180"
@@ -399,24 +401,26 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         print("[INFO] 민감정보 미탐지 → 백엔드 전송 생략")
         # return Detected, "", False, face_path
         return [], "", "no_detection", face_path
+    type_counts = Counter([d.get("type") for d in Detected if d.get("type")])
     payload = {
         "timestamp": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         "source_format": Original_Format,
         "has_face": face_detected,
-        "detected": [],
+        "detected_summary": dict(type_counts),
+        # "detected": [], <- 원래 이걸 쓰던 상황
         "_meta": meta_info
         # "detected": [
         #     {"type": d.get("type"), "value": d.get("value"), "span": d.get("span")}
         #     for d in Detected
         # ]
     }
-    for d in Detected:
-        if d.get("type") != "face":  # 얼굴 항목은 제외
-            payload["detected"].append({
-                "type": d.get("type"),
-                "value": d.get("value"),
-                "span": d.get("span")
-                })
+    # for d in Detected:
+    #     if d.get("type") != "face":  # 얼굴 항목은 제외
+    #         payload["detected"].append({
+    #             "type": d.get("type"),
+    #             "value": d.get("value"),
+    #             "span": d.get("span")
+    #             })
     encrypted = encrypt_data(json.dumps(payload, ensure_ascii=False).encode("utf-8"), Key)
     ok = send_to_backend(encrypted, filename="Detected_Items.json")
     return Detected, Parsed_Text, "sent_ok" if ok else "send_fail", face_path

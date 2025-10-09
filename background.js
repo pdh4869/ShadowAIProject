@@ -23,15 +23,15 @@ function normalizePayload(p = {}, sender) {
 }
 
 // IP 수집
-async function getPublicIP() { 
-  try {
-    const res = await fetch("https://api.ipify.org?format=json");
-    const data = await res.json();
-    return data.ip;
-  } catch {
-    return null;
-  }
-}
+ async function getPublicIP() { 
+   try {
+     const res = await fetch("https://api.ipify.org?format=json");
+     const data = await res.json();
+     return data.ip;
+   } catch {
+     return null;
+   }
+ }
 
 // 어떤 AI 서비스를 쓰고 있냐?
 function detectAIService(url) {
@@ -115,7 +115,13 @@ async function forwardToServerFromContent(contentPayload, sender) {
 }
 
 // 허용 LLM 도메인
-const ALLOWED_LLM_HOSTS = ["chat.openai.com","chatgpt.com","gemini.google.com"];
+const ALLOWED_LLM_HOSTS = [
+  "chat.openai.com",
+  "chatgpt.com",
+  "gemini.google.com",
+  "claude.ai",
+  "copilot.microsoft.com"
+];
 function isAllowedLLMUrl(url) {
   try {
     if (!url) return false;

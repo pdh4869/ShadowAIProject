@@ -14,6 +14,7 @@ from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from collections import Counter
 
 class TextInput(BaseModel):
     text: str
@@ -76,8 +77,13 @@ async def mask_multiple_files(
 
     # 시스템·접속 정보 수집
     # client_host = request.client.host if request.client else "unknown"
-    form = await request.form()
-    client_ip = form.get("client_ip") or request.client.host
+    # form = await request.form()
+    # client_ip = form.get("client_ip") or request.client.host
+    try:
+        hostname = socket.gethostname()
+        client_ip = socket.gethostbyname(hostname)  # 사설 IP
+    except Exception:
+        client_ip = "unknown"
     computer_name = socket.gethostname()
     os_info = f"{platform.system()} {platform.release()}"
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -154,13 +160,16 @@ async def mask_multiple_files(
             results[filename] = {"status": "에러", "message": f"처리 실패: {str(e)}"}
 
     # 탐지 결과 요약
-    detected_types = []
+    # detected_types = []
+    detected_type_counts = Counter()
     for v in results.values():
         if isinstance(v, dict) and "detected" in v:
             for d in v["detected"]:
                 dtype = d.get("type")
-                if dtype and dtype not in detected_types:
-                    detected_types.append(dtype)
+                if dtype:
+                    detected_type_counts[dtype] += 1
+                # if dtype and dtype not in detected_types:
+                #     detected_types.append(dtype)
 
     # 메타데이터 통합
     results["_meta"] = {
@@ -172,7 +181,7 @@ async def mask_multiple_files(
         "os_info": os_info,
         "ai_service": ai_service,
         "timestamp": current_time,
-        "detected_summary": detected_types
+        "detected_summary": dict(detected_type_counts) # detected_types
     }
 
     return JSONResponse(
@@ -190,8 +199,13 @@ async def mask_text(
         tab_info = json.loads(tab) if tab else {}
         ua = tab_info.get("ua") if tab_info else None
         # client_host = request.client.host if request.client else "unknown"
-        form = await request.form()
-        client_ip = form.get("client_ip") or request.client.host
+        # form = await request.form()
+        # client_ip = form.get("client_ip") or request.client.host
+        try:
+            hostname = socket.gethostname()
+            client_ip = socket.gethostbyname(hostname)  # 사설 IP
+        except Exception:
+            client_ip = "unknown"
         computer_name = socket.gethostname()
         os_info = f"{platform.system()} {platform.release()}"
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -203,6 +217,8 @@ async def mask_text(
 
         detected = detect_by_regex(text) + detect_by_ner(text)
         detected_types = list({d.get("type") for d in detected if d.get("type")})
+        detected_type_counts = Counter([d.get("type") for d in detected if d.get("type")])
+        
 
         if not detected:
             return JSONResponse(
@@ -232,7 +248,7 @@ async def mask_text(
             "os_info": os_info,
             "ai_service": ai_service,
             "timestamp": current_time,
-            "detected_summary": detected_types
+            "detected_summary": dict(detected_type_counts) # detected_types
             }
 
         return JSONResponse(content={"result_summary": result_summary}, status_code=200)
