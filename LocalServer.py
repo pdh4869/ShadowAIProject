@@ -162,14 +162,42 @@ async def mask_multiple_files(
     # 탐지 결과 요약
     # detected_types = []
     detected_type_counts = Counter()
+    validation_card_total = validation_card_valid = validation_card_invalid = 0
+    validation_ssn_total = validation_ssn_valid = validation_ssn_invalid = 0
     for v in results.values():
         if isinstance(v, dict) and "detected" in v:
             for d in v["detected"]:
+                t = d.get("type")
+                st = d.get("status", "").lower()
+                if t == "card":
+                    validation_card_total += 1
+                    if st == "valid":
+                        validation_card_valid += 1
+                    else:
+                        validation_card_invalid += 1
+                elif t == "ssn":
+                    validation_ssn_total += 1
+                    if st == "valid":
+                        validation_ssn_valid += 1
+                    else:
+                        validation_ssn_invalid += 1
                 dtype = d.get("type")
                 if dtype:
                     detected_type_counts[dtype] += 1
                 # if dtype and dtype not in detected_types:
                 #     detected_types.append(dtype)
+    validation_summary = {
+        "card": {
+        "total": validation_card_total,
+        "valid": validation_card_valid,
+        "invalid": validation_card_invalid
+        },
+    "ssn": {
+        "total": validation_ssn_total,
+        "valid": validation_ssn_valid,
+        "invalid": validation_ssn_invalid
+        }
+    }
 
     # 메타데이터 통합
     results["_meta"] = {
@@ -181,7 +209,8 @@ async def mask_multiple_files(
         "os_info": os_info,
         "ai_service": ai_service,
         "timestamp": current_time,
-        "detected_summary": dict(detected_type_counts) # detected_types
+        "detected_summary": dict(detected_type_counts), # detected_types
+        "validation_summary": validation_summary 
     }
 
     return JSONResponse(
@@ -218,7 +247,28 @@ async def mask_text(
         detected = detect_by_regex(text) + detect_by_ner(text)
         detected_types = list({d.get("type") for d in detected if d.get("type")})
         detected_type_counts = Counter([d.get("type") for d in detected if d.get("type")])
+        card_total = card_valid = card_invalid = 0
+        ssn_total = ssn_valid = ssn_invalid = 0
+        for d in detected:
+            t = d.get("type")
+            st = d.get("status", "").lower()
+            if t == "card":
+                card_total += 1
+                if st == "valid":
+                    card_valid += 1
+                else:
+                    card_invalid += 1
+            elif t == "ssn":
+                ssn_total += 1
+                if st == "valid":
+                    ssn_valid += 1
+                else:
+                    ssn_invalid += 1
         
+        validation_summary = {
+            "card": {"total": card_total, "valid": card_valid, "invalid": card_invalid},
+            "ssn":  {"total": ssn_total,  "valid": ssn_valid,  "invalid": ssn_invalid}
+            }
 
         if not detected:
             return JSONResponse(
@@ -248,7 +298,8 @@ async def mask_text(
             "os_info": os_info,
             "ai_service": ai_service,
             "timestamp": current_time,
-            "detected_summary": dict(detected_type_counts) # detected_types
+            "detected_summary": dict(detected_type_counts), # detected_types
+            "validation_summary": validation_summary,
             }
 
         return JSONResponse(content={"result_summary": result_summary}, status_code=200)

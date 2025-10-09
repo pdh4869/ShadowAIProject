@@ -402,12 +402,33 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         # return Detected, "", False, face_path
         return [], "", "no_detection", face_path
     type_counts = Counter([d.get("type") for d in Detected if d.get("type")])
+    card_total = card_valid = card_invalid = 0
+    ssn_total = ssn_valid = ssn_invalid = 0
+    for d in Detected:
+        t = d.get("type")
+        st = d.get("status", "").lower()
+        if t == "card":
+            card_total += 1
+            if st == "valid":
+                card_valid += 1
+            else:
+                card_invalid += 1
+        elif t == "ssn":
+            ssn_total += 1
+            if st == "valid":
+                ssn_valid += 1
+            else:
+                ssn_invalid += 1
+    validation_summary = {
+        "card": {"total": card_total, "valid": card_valid, "invalid": card_invalid},
+        "ssn":  {"total": ssn_total,  "valid": ssn_valid,  "invalid": ssn_invalid}
+        }
     payload = {
         "timestamp": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         "source_format": Original_Format,
         "has_face": face_detected,
-        "detected_summary": dict(type_counts),
-        # "detected": [], <- 원래 이걸 쓰던 상황
+        "detected_summary": dict(type_counts), # "detected": [], <- 원래 이걸 쓰던 상황
+        "validation_summary": validation_summary,
         "_meta": meta_info
         # "detected": [
         #     {"type": d.get("type"), "value": d.get("value"), "span": d.get("span")}
