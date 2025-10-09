@@ -42,6 +42,19 @@
     return false;
   }
 
+  function detectAIService(url) {
+    if (!url) return "unknown";
+      const u = url.toLowerCase();
+    if (u.includes("chat.openai.com") || u.includes("chatgpt.com")) return "ChatGPT";
+    if (u.includes("bard.google.com") || u.includes("gemini.google.com")) return "Gemini";
+    if (u.includes("claude.ai")) return "Claude";
+    if (u.includes("copilot.microsoft.com")) return "Copilot";
+    if (u.includes("perplexity.ai")) return "Perplexity";
+    if (u.includes("poe.com")) return "Poe";
+    if (u.includes("huggingface.co")) return "HuggingChat";
+    return "unknown";
+  }
+
   // Base64 파일을 백그라운드로 전송 (새로운 메시지 타입: FILE_COLLECT)
   function postFileViaBackground(payload){
     return new Promise((resolve)=>{
@@ -82,7 +95,8 @@
         tab: {
 		ua: navigator.userAgent,
 		lang: navigator.language,
-		platform: navigator.platform
+		platform: navigator.platform,
+                service: detectAIService(location.href)
 	}
       });
     }catch(e){console.warn("[Collector] send file error:", e);}
@@ -187,7 +201,8 @@ function buildPIIPayload(text, files) {
     tab: { 
       ua: navigator.userAgent,
       lang: navigator.language,
-      platform: navigator.platform
+      platform: navigator.platform,
+      service: detectAIService(location.href)
     }
   };
 }

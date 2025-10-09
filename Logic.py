@@ -10,15 +10,22 @@ import datetime
 import cv2
 import os
 import face_recognition
+import json
+import base64
 from PIL import Image
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import pad # unpad
+from Crypto.Random import get_random_bytes
 from docx import Document
 
 Key = b"1234567890abcdef"
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-NER_MODEL_NAME = "xlm-roberta-large-finetuned-conll03-english"
+# NER_MODEL_NAME = "Leo97/KoELECTRA-small-v3-modu-ner"
+NER_MODEL_NAME = "soddokayo/klue-roberta-base-ner"
+# NER_MODEL_NAME = "Davlan/xlm-roberta-base-ner-hrl"
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "180"
+os.environ["HF_HUB_ETAG_TIMEOUT"] = "180"
 ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME)
 ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME)
 ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, grouped_entities=True)
@@ -93,7 +100,6 @@ def detect_faces(image_bytes: bytes, save_dir="processed_faces", filename_prefix
         os.makedirs(save_dir, exist_ok=True)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         np_img = np.array(image)
-
         face_locations = face_recognition.face_locations(np_img)
         print(f"[DEBUG] face_locations={face_locations}", flush=True)
 
@@ -104,7 +110,9 @@ def detect_faces(image_bytes: bytes, save_dir="processed_faces", filename_prefix
             #     mosaic = cv2.resize(small, (right - left, bottom - top), interpolation=cv2.INTER_NEAREST)
             #     np_img[top:bottom, left:right] = mosaic
             # -> 모자이크 로직, 그냥 주석 처리.
-            filename = f"{filename_prefix}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+            # filename = f"{filename_prefix}_{datetime.datetime.now(datetime.timezone.utc).isoformat()}.jpg"
+            timestamp = datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+            filename = f"{filename_prefix}_{timestamp.replace(':', '-')}.jpg"
             save_path = os.path.join(save_dir, filename)
             cv2.imwrite(save_path, cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR))
             return True, save_path
@@ -258,7 +266,7 @@ def detect_by_regex(Text: str) -> list:
 
 def detect_by_ner(Text: str) -> list:
     Results = ner_pipeline(Text)
-    Detected = []
+    detected = []
     for Entity in Results:
         Label = Entity['entity_group']
         Word = Entity['word']
@@ -266,9 +274,26 @@ def detect_by_ner(Text: str) -> list:
         End = Entity.get('end')
         if Start is None or End is None:
             continue
-        if Label.upper() in ["PER", "ORG", "LOC", "MISC"]:
-            Detected.append({"type": Label, "value": Word, "span": (Start, End)})
-    return Detected
+        if Label.upper() in [
+            # 인명 / 개인
+            "PER", "PERSON", "PS", "PEOPLE", "HUMAN", "NAME",
+            # 조직 / 단체 / 회사 / 기관
+            "ORG", "ORGANIZATION", "OG", "COMPANY", "CORP", "INSTITUTE", "UNIV",
+            # 장소 / 지역 / 국가
+            "LOC", "LC", "LOCATION", "PLACE", "CITY", "COUNTRY", "GPE", "ADDRESS", "REGION",
+            # 날짜 / 시간
+            "DATE", "DAT", "DT", "TIME", "TI", "DURATION", "EVENT",
+            # 기타 고유명사 / 제품명 / 문화 / 언어 / 작품
+            "MISC", "POH", "PRODUCT", "ART", "WORK_OF_ART", "LANGUAGE", "CULTURE",
+            # 숫자형 엔터티 (ID, 금액, 나이 등)
+            "NUM", "QUANTITY", "CARDINAL", "ORDINAL", "MONEY", "PERCENT",
+            # 연락처, 이메일, 웹주소 (일부 영어 모델 탐지)
+            "EMAIL", "URL", "PHONE", "CONTACT",
+            # 법률, 기관명, 문서명 (법률문서 기반 NER용)
+            "LAW", "STATUTE", "DOCUMENT", "CASE", "LEGAL"
+            ]:
+            detected.append({"type": Label, "value": Word, "span": (Start, End)})
+    return detected
 
 # def apply_masking(original_text: str, detected: list) -> str:
 #     masked_text = list(original_text)
@@ -295,24 +320,44 @@ def detect_by_ner(Text: str) -> list:
 
 def encrypt_data(data: bytes, Key: bytes) -> bytes:
     try:
-        Cipher = AES.new(Key, AES.MODE_CBC)
-        CT_Bytes = Cipher.encrypt(pad(data, AES.block_size))
-        return Cipher.iv + CT_Bytes
+        iv = get_random_bytes(16)  # 128-bit IV 생성
+        cipher = AES.new(Key, AES.MODE_CBC, iv)
+        ct_bytes = cipher.encrypt(pad(data, AES.block_size))
+
+        # IV + 암호문(Base64 인코딩)
+        payload = {
+            "iv": base64.b64encode(iv).decode("utf-8"),
+            "ciphertext": base64.b64encode(ct_bytes).decode("utf-8")
+        }
+        return json.dumps(payload).encode("utf-8")
     except Exception as e:
         logging.error(f"암호화 실패: {e}", exc_info=True)
         return b''
+    
+# def decrypt_data(encrypted_json: str, Key: bytes) -> bytes:
+#     payload = json.loads(encrypted_json)
+#     iv = base64.b64decode(payload["iv"])
+#     ct = base64.b64decode(payload["ciphertext"])
+#     cipher = AES.new(Key, AES.MODE_CBC, iv)
+#     return unpad(cipher.decrypt(ct), AES.block_size)
+# 이건 백엔드에 넣는 복호화 코드. 여기선 필요없으니 나중에 팀원 전달
 
-def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info") -> bool:
+def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info", meta: dict | None = None) -> bool:
     url = "http://your-backend-api/upload"
     try:
-        response = requests.post(url, files={"File": (filename, encrypted_data)})
+        files = {"File": (filename, encrypted_data)}
+        data = {}
+        if meta:
+            data["meta"] = json.dumps(meta, ensure_ascii=False)
+        # response = requests.post(url, files={"File": (filename, encrypted_data)})
+        response = requests.post(url, files=files, data=data)
         print(f"[INFO] 백엔드 응답 상태 코드: {response.status_code}")
         return response.status_code == 200
     except requests.exceptions.RequestException as e:
         print(f"[ERROR] 백엔드 전송 실패: {e}")
         return False
     
-def handle_input_raw(Input_Data, Original_Format=None):
+def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
     if isinstance(Input_Data, bytes):
         print("[INFO] 파일 입력으로 감지됨")
         Parsed_Text, _ = parse_file(Input_Data, Original_Format)
@@ -327,7 +372,7 @@ def handle_input_raw(Input_Data, Original_Format=None):
     if Original_Format in IMAGE_EXTENSIONS:
         face_detected, face_path = detect_faces(Input_Data)
         if face_detected: # 얼굴 탐지 결과를 Detected에 추가
-            return [{"type": "face", "value": "image", "file": face_path}], "", False, face_path
+            return [{"type": "face", "value": "image"}], "", "face_only", face_path
     elif Original_Format in ["pdf", "docx"]: # 내부 이미지 추출 후 하나씩 face 분석
         for img in extract_images_from_document(Input_Data, Original_Format):
             face_detected, face_path = detect_faces(img)
@@ -336,12 +381,45 @@ def handle_input_raw(Input_Data, Original_Format=None):
     if not Parsed_Text.strip():
         print("[INFO] OCR 실패 또는 빈 문자열 → 전송 생략")
         if face_detected:
-            return [{"type": "face", "value": "image", "file": face_path}], "", False, face_path
+            return [{"type": "face", "value": "image"}], "", "face_only", face_path
         else:
-            return [], "", False, None
+            return [], "", "no_text", None  
     Detected = detect_by_regex(Parsed_Text) + detect_by_ner(Parsed_Text)
+    unique_detected = []
+    seen_values = set()
+    for d in Detected:
+        value = d.get("value")
+        if value not in seen_values:
+            seen_values.add(value)
+            unique_detected.append(d)
+    Detected = unique_detected
+    if face_detected and face_path:
+        Detected.insert(0, {"type": "face", "value": "image"})
     if not Detected:
-        return Detected, "", False
-    encrypted = encrypt_data(Parsed_Text.encode("utf-8"), Key)
-    backend_status = send_to_backend(encrypted, filename="Detected_Info")
-    return Detected, Parsed_Text, backend_status, face_path
+        print("[INFO] 민감정보 미탐지 → 백엔드 전송 생략")
+        # return Detected, "", False, face_path
+        return [], "", "no_detection", face_path
+    payload = {
+        "timestamp": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "source_format": Original_Format,
+        "has_face": face_detected,
+        "detected": [],
+        "_meta": meta_info
+        # "detected": [
+        #     {"type": d.get("type"), "value": d.get("value"), "span": d.get("span")}
+        #     for d in Detected
+        # ]
+    }
+    for d in Detected:
+        if d.get("type") != "face":  # 얼굴 항목은 제외
+            payload["detected"].append({
+                "type": d.get("type"),
+                "value": d.get("value"),
+                "span": d.get("span")
+                })
+    encrypted = encrypt_data(json.dumps(payload, ensure_ascii=False).encode("utf-8"), Key)
+    ok = send_to_backend(encrypted, filename="Detected_Items.json")
+    return Detected, Parsed_Text, "sent_ok" if ok else "send_fail", face_path
+    # encrypted = encrypt_data(Parsed_Text.encode("utf-8"), Key)
+    # backend_status = send_to_backend(encrypted, filename="Detected_Info")
+    # return Detected, Parsed_Text, backend_status, face_path

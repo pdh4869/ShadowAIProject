@@ -3,9 +3,12 @@ import LocalServer
 import json 
 import os
 import shutil
+import platform
+import socket
+import datetime
 from contextlib import asynccontextmanager
 from typing import List
-from fastapi import FastAPI, UploadFile, Form, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
+from fastapi import FastAPI, UploadFile, Request, Form, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
 from fastapi.responses import JSONResponse # JSONResponse = 텍스트의 경우, 결과물을 JSON 형식으로 반환할 때 사용
 from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend # apply_masking
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,20 +22,20 @@ class TextInput(BaseModel):
     source_url: str | None = None
 
 Key = b"1234567890abcdef"
-imgae_folder = "processed_faces"
+image_folder = "processed_faces"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 서버 시작 시
-    if os.path.exists(imgae_folder):
-        shutil.rmtree(imgae_folder)
+    if os.path.exists(image_folder):
+        shutil.rmtree(image_folder)
     print("[INFO] processed_faces 초기화 완료")
 
     yield  # 여기서 애플리케이션 실행
 
     # 서버 종료 시
-    if os.path.exists(imgae_folder):
-        shutil.rmtree(imgae_folder)
+    if os.path.exists(image_folder):
+        shutil.rmtree(image_folder)
     print("[INFO] processed_faces 삭제 완료")
 
 # app = FastAPI() # FastAPI 앱 객체를 생성. 아래에서 이 객체에 엔드 포인트를 붙이게 됨.
@@ -45,7 +48,7 @@ app.add_middleware(
     allow_methods=["POST"],
     allow_headers=["*"],
 )
-os.makedirs(imgae_folder, exist_ok=True)
+os.makedirs(image_folder, exist_ok=True)
 app.mount("/processed_faces", StaticFiles(directory="processed_faces"), name="faces")
 
 @app.get("/") # 브라우저에서 http://127.0.0.1:8000으로 접속하면 기본적으로 GET 요청을 보낸다.
@@ -55,67 +58,151 @@ def root(): # 근데 우린 POST만 정의했지, 우리가 쓸 API 서버는 GE
     # 본격적인 기능은 POST에 있으므로 이건 “서버 살아있냐” 체크 용도
 
 @app.post("/mask-files/")
-async def mask_multiple_files(Files: List[UploadFile] = File(...),
-                              tab: str | None = Form(None),
-                              agent_id: str | None = Form(None),
-                              source_url: str | None = Form(None)
+async def mask_multiple_files(
+    request: Request,
+    Files: List[UploadFile] = File(...),
+    tab: str | None = Form(None),
+    agent_id: str | None = Form(None),
+    source_url: str | None = Form(None)
 ):
     results = {}
     password_protected = False
+
+    # 안전한 tab 파싱
+    try:
+        tab_info = json.loads(tab) if tab and tab.strip() not in ["", "null", "undefined"] else {}
+    except json.JSONDecodeError:
+        tab_info = {}
+
+    # 시스템·접속 정보 수집
+    # client_host = request.client.host if request.client else "unknown"
+    form = await request.form()
+    client_ip = form.get("client_ip") or request.client.host
+    computer_name = socket.gethostname()
+    os_info = f"{platform.system()} {platform.release()}"
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # AI 서비스 종류 추출 (예: ChatGPT, Claude 등)
+    ai_service = None
+    if isinstance(tab_info, dict):
+        ai_service = tab_info.get("service") or tab_info.get("site") or "unknown"
 
     for uploaded_file in Files:
         filename = uploaded_file.filename
         extension = filename.split('.')[-1].lower()
         try:
             content = await uploaded_file.read()
-            detected, parsed_Text, backend_status, face_path = handle_input_raw(content, extension)
-            if detected:  # 여기서는 handle_input_raw가 리턴한 Detected 전체
-                results[filename] = {
-                    "status": "처리 완료",
-                    "detected": detected,   # 얼굴도 포함됨
-                    "parsed_Text": parsed_Text,
-                    "backend_transmission": "성공" if backend_status else "실패"
-                }   
-            else:
-                results[filename] = {
-                    "status": "탐지된 민감정보 없음"
+            meta_info = {
+                "agent_id": agent_id,
+                "source_url": source_url,
+                "tab": tab_info,
+                "ip": client_ip,
+                "computer_name": computer_name,
+                "os_info": os_info,
+                "ai_service": ai_service,
+                "timestamp": current_time
                 }
+            detected, parsed_Text, backend_status, face_path = handle_input_raw(content, extension, meta_info)
+            if backend_status == "no_text":
+                results[filename] = {"status": "OCR 실패 또는 텍스트 없음"}
+            elif backend_status == "no_detection":
+                results[filename] = {"status": "탐지된 민감정보 없음"}
+            elif backend_status == "face_only":
+                results[filename] = {
+                    "status": "얼굴 탐지됨",
+                    "detected": detected,
+                    "face_image_path": face_path
+                    }
+            elif backend_status == "send_fail":
+                results[filename] = {
+                    "status": "탐지됨",
+                    "detected": detected,
+                    # "parsed_Text": parsed_Text,
+                    "backend_transmission": "실패"
+                    }
+                if face_path:  # 문서 내부 얼굴 감지 시에도 표시
+                    results[filename]["face_image_path"] = face_path
+            elif backend_status == "sent_ok":
+                results[filename] = {
+                    "status": "탐지됨",
+                    "detected": detected,
+                    # "parsed_Text": parsed_Text,
+                    "backend_transmission": "성공"
+                    }
+                if face_path:  # 문서 내부 얼굴 감지 시에도 표시
+                    results[filename]["face_image_path"] = face_path
+            else:
+                results[filename] = {"status": "처리 실패 또는 비정상 응답"} # 예외적 반환 형태(백엔드 로직 불일치) 방어
+            # if detected:
+            #     results[filename] = {
+            #         "status": "처리 완료",
+            #         "detected": detected,
+            #         "parsed_Text": parsed_Text,
+            #         "backend_transmission": "성공" if backend_status else "실패"
+            #     }
+            # else:
+            #     results[filename] = {"status": "탐지된 민감정보 없음"}
         except ValueError as ve:
-            results[filename] = {
-                "status": "에러",
-                "message": str(ve)
-            }
-            password_protected = True
-
+            # results[filename] = {"status": "에러", "message": str(ve)}
+            # password_protected = True
+                msg = str(ve)
+                if "암호" in msg or "password" in msg.lower():
+                    results[filename] = {"status": "에러", "message": "암호로 보호된 파일입니다."}
+                else:
+                    results[filename] = {"status": "에러", "message": msg}
         except Exception as e:
-            results[filename] = {
-                "status": "에러",
-                "message": f"처리 실패: {str(e)}"
-            }
+            results[filename] = {"status": "에러", "message": f"처리 실패: {str(e)}"}
 
-    tab_info = json.loads(tab) if tab else {}
+    # 탐지 결과 요약
+    detected_types = []
+    for v in results.values():
+        if isinstance(v, dict) and "detected" in v:
+            for d in v["detected"]:
+                dtype = d.get("type")
+                if dtype and dtype not in detected_types:
+                    detected_types.append(dtype)
+
+    # 메타데이터 통합
     results["_meta"] = {
         "agent_id": agent_id,
         "source_url": source_url,
-        "tab": tab_info
+        "tab": tab_info,
+        "ip": client_ip,
+        "computer_name": computer_name,
+        "os_info": os_info,
+        "ai_service": ai_service,
+        "timestamp": current_time,
+        "detected_summary": detected_types
     }
 
     return JSONResponse(
-        content={"result_summary": results},
-        status_code=200 if not password_protected else 400
-    )
+        content={"result_summary": results}, status_code=200)
 
 @app.post("/mask-text/")
-async def mask_text(text: str = Form(...),
-                    tab: str | None = Form(None),
-                    agent_id: str | None = Form(None),
-                    source_url: str | None = Form(None)):
+async def mask_text(
+    request: Request,
+    text: str = Form(...),
+    tab: str | None = Form(None),
+    agent_id: str | None = Form(None),
+    source_url: str | None = Form(None)
+    ):
     try:
         tab_info = json.loads(tab) if tab else {}
         ua = tab_info.get("ua") if tab_info else None
+        # client_host = request.client.host if request.client else "unknown"
+        form = await request.form()
+        client_ip = form.get("client_ip") or request.client.host
+        computer_name = socket.gethostname()
+        os_info = f"{platform.system()} {platform.release()}"
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ai_service = None
+        if isinstance(tab_info, dict):
+            ai_service = tab_info.get("service") or tab_info.get("site") or "unknown"
+
         print("[INFO] 텍스트 입력으로 감지됨")
 
         detected = detect_by_regex(text) + detect_by_ner(text)
+        detected_types = list({d.get("type") for d in detected if d.get("type")})
 
         if not detected:
             return JSONResponse(
@@ -132,18 +219,21 @@ async def mask_text(text: str = Form(...),
             "입력 텍스트": {
                 "status": "처리 완료",
                 "detected": detected,
-                "text": text,
-                "user_agent": ua,
-                "agent_id": agent_id,
-                "source_url": source_url,
+                # "text": text,
                 "backend_transmission": "성공" if ok else "실패"
             }
         }
         result_summary["_meta"] = {
             "agent_id": agent_id,
             "source_url": source_url,
-            "tab": tab_info
-        }
+            "tab": tab_info,
+            "ip": client_ip,
+            "computer_name": computer_name,
+            "os_info": os_info,
+            "ai_service": ai_service,
+            "timestamp": current_time,
+            "detected_summary": detected_types
+            }
 
         return JSONResponse(content={"result_summary": result_summary}, status_code=200)
 

