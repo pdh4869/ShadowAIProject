@@ -1,25 +1,50 @@
 import io
 import re
-import requests
 import logging
 import numpy as np
-import fitz
-import easyocr
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+try:
+    import easyocr
+except ImportError:
+    easyocr = None
 import zipfile
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad
-from docx import Document
-from mtcnn import MTCNN
-import cv2
+import os
+try:
+    from docx import Document
+except ImportError:
+    Document = None
+try:
+    from mtcnn import MTCNN
+except ImportError:
+    MTCNN = None
 
-Key = b"1234567890abcdef"
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-NER_MODEL_NAME = "xlm-roberta-large-finetuned-conll03-english"
-ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME)
-ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME)
+
+# 허깅페이스 토큰 설정 (환경 변수에서 읽기)
+HF_TOKEN = os.getenv("HF_TOKEN", None)
+
+NER_MODEL_NAME = "soddokayo/klue-roberta-base-ner"
+print(f"[INFO] NER 모델 로딩 중: {NER_MODEL_NAME}")
+
+if HF_TOKEN:
+    ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME, token=HF_TOKEN)
+    ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME, token=HF_TOKEN)
+    print("[INFO] ✓ 허깅페이스 토큰 인증 완료")
+else:
+    print("[WARN] HF_TOKEN 환경 변수 없음 - 공개 모델로 시도")
+    ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME)
+    ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME)
+
 ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, grouped_entities=True)
+print("[INFO] ✓ NER 모델 로딩 완료")
 
 try:
     reader = easyocr.Reader(['ko', 'en'], gpu=False)
@@ -235,7 +260,10 @@ def detect_by_ner(Text: str) -> list:
     if not Text.strip():
         return []
     
+    print(f"[DEBUG] NER 입력: {Text[:100]}")
     Results = ner_pipeline(Text)
+    print(f"[DEBUG] NER 결과: {Results}")
+    
     Detected = []
     for Entity in Results:
         Label = Entity['entity_group']
@@ -243,36 +271,16 @@ def detect_by_ner(Text: str) -> list:
         Start = Entity.get('start')
         End = Entity.get('end')
         
+        print(f"[DEBUG] 엔티티: Label={Label}, Word={Word}")
+        
         if Start is None or End is None:
             continue
         
-        # 2글자 이하 단어 필터링
-        # if len(Word.strip()) <= 2:
-            # continue
-        
-        # 인명(PER)만 탐지 - 개인정보에 해당
-        # if Label.upper() == "PER":
-            # Detected.append({"type": Label, "value": Word, "span": (Start, End)})
-        if Label.upper() in ["PER", "ORG", "LOC", "MISC"]:
+        if Label.upper() in ["PER", "PS", "ORG", "LOC", "MISC"]:
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
+            print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
     
     return Detected
-
-# ==========================
-# 암호화 / 전송
-# ==========================
-def encrypt_data(data: bytes, Key: bytes) -> bytes:
-    try:
-        Cipher = AES.new(Key, AES.MODE_CBC)
-        CT_Bytes = Cipher.encrypt(pad(data, AES.block_size))
-        return Cipher.iv + CT_Bytes
-    except Exception as e:
-        logging.error(f"암호화 실패: {e}", exc_info=True)
-        return b''
-
-def send_to_backend(data, filename=""):
-    # TODO: 실제 백엔드 붙일 때 수정
-    return True
 
 # ==========================
 # 얼굴 탐지 (MTCNN)
@@ -423,17 +431,10 @@ def handle_input_raw(Input_Data, Original_Format=None):
     if total_faces > 0:
         print(f"[INFO] ✓ 이미지 얼굴 총 {total_faces}개 탐지")
     
-    # 5단계: 탐지 결과가 없으면 종료
+    # 5단계: 처리 완료
     if not Detected:
         print("[INFO] ========== 탐지된 민감정보 없음 ==========\n")
-        return Detected, "", False, image_detections
+    else:
+        print(f"[INFO] ========== 처리 완료 - 민감정보: {len(Detected)}개 ==========\n")
     
-    # 6단계: 암호화 및 전송
-    backend_status = False
-    summary = f"탐지 항목 {len(Detected)}개"
-    encrypted = encrypt_data(summary.encode("utf-8"), Key)
-    backend_status = send_to_backend(encrypted, filename="Detection_Info.txt")
-    
-    print(f"[INFO] ========== 처리 완료 - 민감정보: {len(Detected)}개, 백엔드 전송: {'성공' if backend_status else '실패'} ==========\n")
-    
-    return Detected, "", backend_status, image_detections
+    return Detected, "", False, image_detections

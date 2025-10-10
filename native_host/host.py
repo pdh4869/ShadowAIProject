@@ -1,4 +1,3 @@
-# host.py (붙여넣기 후 기존 파일 덮어쓰기)
 import sys
 import json
 import struct
@@ -6,6 +5,9 @@ import socket
 import platform
 import subprocess
 import re
+import os
+
+MAX_MESSAGE_SIZE = 10 * 1024 * 1024  # 10MB
 
 def read_message():
     try:
@@ -13,6 +15,8 @@ def read_message():
         if not raw_length:
             return None
         message_length = struct.unpack("I", raw_length)[0]
+        if message_length > MAX_MESSAGE_SIZE:
+            return None
         message = sys.stdin.buffer.read(message_length).decode("utf-8", errors="ignore")
         return json.loads(message)
     except Exception:
@@ -43,16 +47,14 @@ def get_gateway_and_dns():
     dns = []
     try:
         if sysname == "Windows":
-            out = subprocess.check_output(["ipconfig", "/all"], universal_newlines=True, errors='ignore')
+            out = subprocess.check_output(["ipconfig", "/all"], universal_newlines=True, errors='ignore', timeout=5)
             gw = re.findall(r"Default Gateway[.\s:]*([\d\.]+)", out)
             dns = re.findall(r"DNS Servers[.\s:]*([\d\.\n\s]+)", out)
-            # flatten dns block
             if dns:
                 dns = re.findall(r"(\d+\.\d+\.\d+\.\d+)", dns[0])
         else:
-            # Linux / Mac
             try:
-                rt = subprocess.check_output(["ip", "route"], universal_newlines=True, errors='ignore')
+                rt = subprocess.check_output(["ip", "route"], universal_newlines=True, errors='ignore', timeout=5)
                 gw = re.findall(r"default via (\d+\.\d+\.\d+\.\d+)", rt)
             except Exception:
                 gw = []
@@ -77,9 +79,18 @@ def gather_network_info():
         "dns": gd.get("dns",[])
     }
 
+ALLOWED_COMMANDS = ["get_info", "get_ip"]
+
 if __name__ == "__main__":
     import datetime
-    log_file = open("C:\\Users\\USER\\Desktop\\Py_server\\Py_server\\native_host\\host_log.txt", "a", encoding="utf-8")
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    log_path = os.path.join(script_dir, "host_log.txt")
+    
+    if os.path.exists(log_path) and os.path.getsize(log_path) > 10 * 1024 * 1024:
+        os.remove(log_path)
+    
+    log_file = open(log_path, "a", encoding="utf-8")
     log_file.write(f"\n=== Host started at {datetime.datetime.now()} ===\n")
     log_file.flush()
     
@@ -92,6 +103,14 @@ if __name__ == "__main__":
         
         req_id = msg.get("reqId", 0)
         cmd = msg.get("cmd", "")
+        
+        if cmd not in ALLOWED_COMMANDS:
+            response = {"reqId": req_id, "ok": False, "error": "Unauthorized command"}
+            log_file.write(f"BLOCKED: {cmd}\n")
+            log_file.flush()
+            send_message(response)
+            continue
+        
         if cmd == "get_info":
             network_data = gather_network_info()
             response = {"reqId": req_id, "ok": True, "data": {"network": network_data}}

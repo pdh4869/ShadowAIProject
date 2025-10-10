@@ -4,36 +4,90 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import uvicorn
 import base64
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, Response
-from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend
+import secrets
+import hmac
+import hashlib
+import time
+from collections import deque
+
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from Logic import handle_input_raw, detect_by_ner, detect_by_regex
 from fastapi.middleware.cors import CORSMiddleware
 
-Key = b"1234567890abcdef"
+# 보안: Extension ID 화이트리스트
+ALLOWED_EXTENSION_ID = os.getenv("ALLOWED_EXTENSION_ID", "hblalecgjndcjeaineacembpdfmmjaoa")
+ALLOWED_ORIGINS = [
+    f"chrome-extension://{ALLOWED_EXTENSION_ID}"
+]
+
+# 보안: 인증 기본 비활성화 (간편 모드)
+REQUIRE_AUTH = os.getenv("PII_REQUIRE_AUTH", "false").lower() == "true"
+
+if REQUIRE_AUTH:
+    API_SECRET = os.getenv("PII_API_SECRET", secrets.token_hex(32))
+    print(f"[SECURITY] ✓ 인증 활성화")
+    print(f"[SECURITY] 개발자 도구 콘솔에서 setApiSecret() 함수로 Secret 설정")
+else:
+    API_SECRET = None
+    print("[SECURITY] ⚠ 인증 비활성화 (개발 모드)")
+
+# 파일 크기 제한 (바이트)
+SOFT_LIMIT = 20 * 1024 * 1024   # 20MB
+HARD_LIMIT = 100 * 1024 * 1024  # 100MB
+
 app = FastAPI()
 
-# 탐지 내역 저장
-detection_history = []
+# 메모리 누수 방지: deque로 최대 1000개만 유지
+detection_history = deque(maxlen=1000)
 
+# 보안: CORS 화이트리스트 적용
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-Auth-Token", "X-Timestamp"],
 )
+
+# 보안: 인증 검증 함수
+def verify_auth(request: Request) -> bool:
+    """HMAC 기반 요청 인증 검증 (선택적)"""
+    # 인증 비활성화 시 항상 통과
+    if not REQUIRE_AUTH:
+        return True
+    
+    token = request.headers.get("X-Auth-Token", "")
+    timestamp = request.headers.get("X-Timestamp", "")
+    
+    if not token or not timestamp:
+        return False
+    
+    # 타임스탬프 검증 (5분 이내, 밀리초 단위)
+    try:
+        req_time = int(timestamp)
+        current_time = int(time.time() * 1000)
+        if abs(current_time - req_time) > 300000:  # 5분 (밀리초)
+            print(f"[SECURITY] 타임스탬프 만료: {abs(current_time - req_time)}ms 차이")
+            return False
+    except:
+        return False
+    
+    # HMAC 검증
+    expected = hmac.new(
+        API_SECRET.encode(),
+        timestamp.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    return secrets.compare_digest(token, expected)
 
 @app.get("/")
 def root():
-    return {"message": "로컬 서버 정상 작동 중. GET /dashboard 접속"}
-
-@app.get("/favicon.ico")
-def favicon():
-    return JSONResponse(content={}, status_code=204)
+    return {"message": "PII Detection Server Running", "status": "ok"}
 
 @app.get("/dashboard")
 async def dashboard():
-    """대시보드 페이지"""
     html_content = """
     <!DOCTYPE html>
     <html lang="ko">
@@ -156,6 +210,11 @@ async def dashboard():
             }
         </style>
         <script>
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
             function parseUA(ua) {
                 let browser = 'Unknown', os = 'Unknown';
                 if (ua.includes('Chrome')) browser = 'Chrome ' + (ua.match(/Chrome\/(\d+)/) || [])[1];
@@ -183,8 +242,8 @@ async def dashboard():
                                     <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')} - ${d.items.length}개 탐지</div>
                                     ${d.items.map(item => `
                                         <div style="margin: 5px 0;">
-                                            <span class="type-badge">${item.type}</span>
-                                            <strong>${item.value}</strong>
+                                            <span class="type-badge">${escapeHtml(item.type)}</span>
+                                            <strong>${escapeHtml(item.value)}</strong>
                                         </div>
                                     `).join('')}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
@@ -197,8 +256,8 @@ async def dashboard():
                                 <div class="log-entry ${d.type === 'image_face' ? 'face' : ''}">
                                     <div class="log-time">${new Date(d.timestamp).toLocaleString('ko-KR')}</div>
                                     <div>
-                                        <span class="type-badge">${d.type}</span>
-                                        <strong>${d.value || '(파일)'}</strong>
+                                        <span class="type-badge">${escapeHtml(d.type)}</span>
+                                        <strong>${escapeHtml(d.value || '(파일)')}</strong>
                                     </div>
                                     ${d.file_name ? `<div class="netinfo">파일명: ${d.file_name}</div>` : ''}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
@@ -272,6 +331,10 @@ async def dashboard():
 @app.post("/api/file_collect")
 async def handle_file_collect(request: Request):
     """Extension에서 파일 데이터를 받아 처리"""
+    # 보안: 인증 검증
+    if not verify_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
         data = await request.json()
         
@@ -281,22 +344,29 @@ async def handle_file_collect(request: Request):
         origin_url = data.get("origin_url", "")
         processed_at = data.get("processed_at", "")
         
-        print(f"[INFO] 파일 수신: {file_name}")
-        print(f"[INFO] 출처 URL: {origin_url}")
-        print(f"[INFO] 네트워크 정보: {network_info}")
-        
         if not file_b64:
             return JSONResponse(content={"status": "에러", "message": "파일 데이터 없음"}, status_code=400)
         
-        try:
-            file_bytes = base64.b64decode(file_b64)
-        except Exception as e:
-            return JSONResponse(content={"status": "에러", "message": f"Base64 디코딩 실패: {str(e)}"}, status_code=400)
+        # 파일 크기 체크 (Base64 디코딩 전)
+        estimated_size = len(file_b64) * 3 // 4
         
+        if estimated_size > HARD_LIMIT:
+            return JSONResponse(
+                content={"status": "에러", "message": f"파일이 너무 큽니다 (최대 100MB)"},
+                status_code=413
+            )
+        
+        if estimated_size > SOFT_LIMIT:
+            print(f"[WARN] 큰 파일 처리 중: {estimated_size / 1024 / 1024:.1f}MB - {file_name}")
+        
+        print(f"[INFO] 파일 수신: {file_name} ({estimated_size / 1024:.1f}KB)")
+        print(f"[INFO] 출처 URL: {origin_url}")
+        
+        file_bytes = base64.b64decode(file_b64)
         extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
         
         try:
-            detected, _, backend_status, image_detections = handle_input_raw(file_bytes, extension)
+            detected, _, _, _ = handle_input_raw(file_bytes, extension)
             
             for item in detected:
                 detection_history.append({
@@ -319,6 +389,10 @@ async def handle_file_collect(request: Request):
 @app.post("/api/event")
 async def handle_text_event(request: Request):
     """Extension에서 텍스트 이벤트"""
+    # 보안: 인증 검증
+    if not verify_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
         data = await request.json()
         text = data.get("text", "")
@@ -359,6 +433,10 @@ async def handle_text_event(request: Request):
 @app.post("/api/combined")
 async def handle_combined(request: Request):
     """파일+텍스트 통합 처리"""
+    # 보안: 인증 검증
+    if not verify_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
     try:
         data = await request.json()
         text = data.get("text", "")
@@ -394,7 +472,7 @@ async def handle_combined(request: Request):
             if file_b64:
                 file_bytes = base64.b64decode(file_b64)
                 extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
-                detected, _, _, image_detections = handle_input_raw(file_bytes, extension)
+                detected, _, _, _ = handle_input_raw(file_bytes, extension)
                 for item in detected:
                     detection_history.append({
                         "timestamp": processed_at,
@@ -415,10 +493,11 @@ async def handle_combined(request: Request):
 
 @app.get("/api/detections")
 async def get_detections():
+    history_list = list(detection_history)
     data = {
         "status": "success",
-        "total_detections": len(detection_history),
-        "detections": list(reversed(detection_history[-50:]))
+        "total_detections": len(history_list),
+        "detections": list(reversed(history_list[-50:]))
     }
     return JSONResponse(content=data)
 

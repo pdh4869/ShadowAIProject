@@ -5,6 +5,56 @@ const SERVER_EVENT_ENDPOINT = "http://127.0.0.1:9000/api/event";
 const SERVER_FILE_ENDPOINT  = "http://127.0.0.1:9000/api/file_collect";
 const MARK_HEADER = "X-From-Extension";
 
+// 보안: API Secret 관리 (chrome.storage 사용)
+let API_SECRET = null;
+
+// Secret 초기화
+async function initSecret() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['pii_api_secret'], (result) => {
+      if (result.pii_api_secret) {
+        API_SECRET = result.pii_api_secret;
+        console.log("[bg] ✓ API Secret 로드 완료");
+      } else {
+        console.warn("[bg] ⚠ API Secret 미설정 - 인증 비활성화 모드");
+      }
+      resolve();
+    });
+  });
+}
+
+// Secret 설정 함수 (개발자 도구 콘솔에서 호출)
+globalThis.setApiSecret = function(secret) {
+  chrome.storage.local.set({ pii_api_secret: secret }, () => {
+    API_SECRET = secret;
+    console.log("[bg] ✓ API Secret 설정 완료");
+  });
+};
+
+// 보안: HMAC-SHA256 생성
+async function generateAuthHeaders() {
+  if (!API_SECRET) {
+    return {}; // Secret 없으면 빈 헤더 반환
+  }
+  
+  const timestamp = Date.now().toString();
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(API_SECRET);
+  const msgData = encoder.encode(timestamp);
+  
+  const key = await crypto.subtle.importKey(
+    "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, msgData);
+  const token = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return {
+    "X-Auth-Token": token,
+    "X-Timestamp": timestamp
+  };
+}
+
 // Service Worker 활성 상태 유지 (alarms 사용)
 chrome.alarms.create("keepAlive", { periodInMinutes: 0.5 }); // 30초마다
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -14,9 +64,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 // 확장프로그램 설치/업데이트 시
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log("[bg] ✓ 확장프로그램 설치/업데이트됨");
+  await initSecret();
 });
+
+// 시작 시 Secret 초기화
+initSecret();
 
 function isAllowedLLMUrl(url, payload) {
   if (!url && payload && payload.source_url) url = payload.source_url;
@@ -40,15 +94,31 @@ function callNative(cmd, args = {}) {
       const payload = { cmd, args, reqId: Date.now() };
       chrome.runtime.sendNativeMessage("com.example.pii_host", payload, (resp) => {
         if (chrome.runtime.lastError) {
-          console.error("[bg] Native 메시지 에러:", chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
+          const errMsg = chrome.runtime.lastError.message || "";
+          if (errMsg.includes("host not found")) {
+            reject(new Error("Native Host 미설치: manifest.json 확인 필요"));
+          } else if (errMsg.includes("disconnected")) {
+            reject(new Error("Native Host 연결 끊김: 프로세스 종료됨"));
+          } else {
+            reject(new Error(`Native 에러: ${errMsg}`));
+          }
           return;
         }
+        
+        // 응답 검증
+        if (!resp || typeof resp !== 'object') {
+          reject(new Error("잘못된 응답 형식: 객체가 아님"));
+          return;
+        }
+        if (!resp.hasOwnProperty('ok')) {
+          reject(new Error("잘못된 응답 형식: 'ok' 필드 없음"));
+          return;
+        }
+        
         resolve(resp);
       });
     } catch (e) {
-      console.error("[bg] Native 호출 실패:", e);
-      reject(e);
+      reject(new Error(`Native 호출 실패: ${e.message}`));
     }
   });
 }
@@ -81,17 +151,13 @@ async function handlePayload(t, payload, senderUrl) {
 
   if (t === "COMBINED_EVENT") {
     let networkInfo = { ip: "unknown" };
-    console.log(`[bg] IP 정보 수집 시도...`);
     try {
       const nativeResp = await callNative("get_ip", {});
       if (nativeResp?.ok && nativeResp.data?.ip) {
         networkInfo.ip = nativeResp.data.ip;
-        console.log(`[bg] ✓ IP 정보 수집 완료:`, networkInfo.ip);
-      } else {
-        console.warn(`[bg] Native Host IP 응답 없음`);
       }
     } catch (e) {
-      console.warn(`[bg] Native Host IP 수집 실패:`, e.message);
+      // IP 수집 실패해도 계속 진행
     }
 
     const combinedPayload = {
@@ -103,18 +169,36 @@ async function handlePayload(t, payload, senderUrl) {
       processed_at: new Date().toISOString()
     };
 
+    const authHeaders = await generateAuthHeaders();
     const options = {
       method: "POST",
-      headers: { "Content-Type": "application/json", [MARK_HEADER]: "1" },
+      headers: { 
+        "Content-Type": "application/json", 
+        [MARK_HEADER]: "1",
+        ...authHeaders
+      },
       body: JSON.stringify(combinedPayload)
     };
 
     console.log(`[bg] 통합 전송: http://127.0.0.1:9000/api/combined`);
     
     fetch("http://127.0.0.1:9000/api/combined", options)
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "응답 없음");
+          if (res.status === 401) throw new Error("인증 실패: API Secret 확인 필요");
+          throw new Error(`서버 에러 ${res.status}: ${errText}`);
+        }
+        return res.json();
+      })
       .then(() => console.log(`[bg] ✓ 서버 응답 완료`))
-      .catch(e => console.log(`[bg] 서버 에러 (무시): ${e.message}`));
+      .catch(e => {
+        if (e.message.includes("fetch")) {
+          console.error(`[bg] 서버 연결 실패: 서버가 실행 중인지 확인하세요`);
+        } else {
+          console.error(`[bg] 서버 에러: ${e.message}`);
+        }
+      });
     
     console.log(`[bg] ✓ 전송 요청 완료 (백그라운드 처리)`);
     return { ok: true };
@@ -146,9 +230,14 @@ async function handlePayload(t, payload, senderUrl) {
       tab: payload?.tab || {},
       processed_at: new Date().toISOString()
     };
+    const authHeaders = await generateAuthHeaders();
     const options = {
       method: "POST",
-      headers: { "Content-Type": "application/json", [MARK_HEADER]: "1" },
+      headers: { 
+        "Content-Type": "application/json", 
+        [MARK_HEADER]: "1",
+        ...authHeaders
+      },
       body: JSON.stringify(finalPayload)
     };
     
@@ -156,7 +245,19 @@ async function handlePayload(t, payload, senderUrl) {
     const res = await fetchWithTimeoutAndRetry(
       SERVER_EVENT_ENDPOINT, options, 5000, SERVER_EVENT_ENDPOINT.replace("127.0.0.1","localhost")
     );
+    
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "응답 없음");
+      if (res.status === 401) throw new Error("인증 실패: API Secret 확인 필요");
+      if (res.status === 403) throw new Error("접근 거부: 권한 없음");
+      throw new Error(`서버 에러 ${res.status}: ${errText}`);
+    }
+    
     const result = await res.json().catch(() => null);
+    if (!result || typeof result !== 'object') {
+      throw new Error("잘못된 서버 응답 형식");
+    }
+    
     console.log(`[bg] ✓ 텍스트 이벤트 전송 완료`);
     return { ok: true, result };
     
@@ -175,9 +276,14 @@ async function handlePayload(t, payload, senderUrl) {
     
     console.log(`[bg] 파일 크기: ${(payload.size/1024).toFixed(2)}KB`);
     
+    const authHeaders = await generateAuthHeaders();
     const options = {
       method: "POST",
-      headers: { "Content-Type": "application/json", [MARK_HEADER]: "1" },
+      headers: { 
+        "Content-Type": "application/json", 
+        [MARK_HEADER]: "1",
+        ...authHeaders
+      },
       body: JSON.stringify(finalFilePayload)
     };
     
@@ -185,7 +291,20 @@ async function handlePayload(t, payload, senderUrl) {
     const res = await fetchWithTimeoutAndRetry(
       SERVER_FILE_ENDPOINT, options, 10000, SERVER_FILE_ENDPOINT.replace("127.0.0.1","localhost")
     );
+    
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "응답 없음");
+      if (res.status === 401) throw new Error("인증 실패: API Secret 확인 필요");
+      if (res.status === 403) throw new Error("접근 거부: 권한 없음");
+      if (res.status === 413) throw new Error("파일 크기 초과: 서버 제한 초과");
+      throw new Error(`서버 에러 ${res.status}: ${errText}`);
+    }
+    
     const result = await res.json().catch(() => null);
+    if (!result || typeof result !== 'object') {
+      throw new Error("잘못된 서버 응답 형식");
+    }
+    
     console.log(`[bg] ✓ 파일 이벤트 전송 완료`);
     return { ok: true, result };
   }

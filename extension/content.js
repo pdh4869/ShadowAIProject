@@ -28,19 +28,31 @@
 
   function sendViaPort(type, payload){
     return new Promise((resolve)=>{
-      if (port) {
-        const reqId = nextReqId();
-        pending.set(reqId, { resolve });
-        port.postMessage({ type, payload, reqId });
-        setTimeout(() => {
-          if (pending.has(reqId)) {
-            pending.delete(reqId);
-            resolve({ ok:false, error:"timeout" });
-          }
-        }, 10000);
-      } else {
-        resolve({ ok:false, error:"no_port" });
+      if (!port) {
+        console.error("[content] 포트 연결 없음: 확장 프로그램 재시작 필요");
+        resolve({ ok:false, error:"포트 연결 없음" });
+        return;
       }
+      
+      const reqId = nextReqId();
+      pending.set(reqId, { resolve });
+      
+      try {
+        port.postMessage({ type, payload, reqId });
+      } catch (e) {
+        pending.delete(reqId);
+        console.error("[content] 메시지 전송 실패:", e.message);
+        resolve({ ok:false, error:`전송 실패: ${e.message}` });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pending.has(reqId)) {
+          pending.delete(reqId);
+          console.error("[content] 응답 타임아웃 (10초): 서버 상태 확인 필요");
+          resolve({ ok:false, error:"응답 타임아웃" });
+        }
+      }, 10000);
     });
   }
 
@@ -48,6 +60,8 @@
   const pendingFiles = [];
   let isProcessing = false;
   let isSending = false;
+  const MAX_FILES = 10;
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
   function arrayBufferToBase64(buffer){
     let b="";
@@ -63,6 +77,16 @@
     const allowed = ['pdf','docx','txt','png','jpg','jpeg','bmp','webp','gif','tiff'];
     if (!allowed.includes(ext)) {
       console.log(`[content] 지원하지 않는 파일 형식: ${file.name}`);
+      return;
+    }
+    
+    if (file.size > MAX_FILE_SIZE) {
+      console.log(`[content] 파일이 너무 큼: ${file.name} (${file.size} bytes)`);
+      return;
+    }
+    
+    if (pendingFiles.length >= MAX_FILES) {
+      console.log(`[content] 최대 파일 개수 초과 (${MAX_FILES}개)`);
       return;
     }
     
@@ -107,11 +131,12 @@
     
     for(const f of pendingFiles) {
       console.log(`[content] 📤 파일 전송 중: ${f.name}`);
-      try {
-        const result = await sendViaPort("FILE_COLLECT", f);
-        console.log(`[content] ✓ 파일 전송 완료:`, result);
-      } catch (e) {
-        console.error(`[content] ✗ 파일 전송 실패: ${f.name}`, e);
+      const result = await sendViaPort("FILE_COLLECT", f);
+      
+      if (result.ok) {
+        console.log(`[content] ✓ 파일 전송 성공: ${f.name}`);
+      } else {
+        console.error(`[content] ✗ 파일 전송 실패: ${f.name} - ${result.error}`);
       }
     }
     
@@ -200,13 +225,18 @@
       const text = getFocusedText().trim();
       if (text || pendingFiles.length > 0) {
         console.log(`[content] 전송: 텍스트 ${text.length}글자, 파일 ${pendingFiles.length}개`);
-        await sendViaPort("COMBINED_EVENT", {
+        const result = await sendViaPort("COMBINED_EVENT", {
           source_url: location.href,
           page_title: document.title,
           raw_text: text,
           files_data: pendingFiles,
           tab: { ua: navigator.userAgent }
         });
+        
+        if (!result.ok) {
+          console.error(`[content] 전송 실패: ${result.error}`);
+        }
+        
         pendingFiles.length = 0;
         filesMap.clear();
       }
@@ -242,13 +272,17 @@
         isSending = true;
         console.log(`[content] 전송: 텍스트 ${lastCapturedText.length}글자, 파일 ${pendingFiles.length}개`);
         
-        await sendViaPort("COMBINED_EVENT", {
+        const result = await sendViaPort("COMBINED_EVENT", {
           source_url: location.href,
           page_title: document.title,
           raw_text: lastCapturedText,
           files_data: pendingFiles,
           tab: { ua: navigator.userAgent }
         });
+        
+        if (!result.ok) {
+          console.error(`[content] 전송 실패: ${result.error}`);
+        }
         
         pendingFiles.length = 0;
         filesMap.clear();
