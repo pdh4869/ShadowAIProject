@@ -11,16 +11,16 @@ import cv2
 import os
 import face_recognition
 import json
-import base64
+import olefile
+import win32com.client
+import tempfile
 from PIL import Image
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad # unpad
-from Crypto.Random import get_random_bytes
 from docx import Document
 from collections import Counter
+from pptx import Presentation
+from openpyxl import load_workbook
 
-Key = b"1234567890abcdef"
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 # NER_MODEL_NAME = "Leo97/KoELECTRA-small-v3-modu-ner"
 NER_MODEL_NAME = "soddokayo/klue-roberta-base-ner"
@@ -41,6 +41,171 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> str:
             return File_Bytes.decode("utf-8"), None
         except UnicodeDecodeError:
             return File_Bytes.decode("cp949"), None
+        
+    elif File_Ext == "hwp":
+        try:
+            # olefile이 아니거나 스트림 읽기 실패 시 암호/손상으로 간주
+            if not olefile.isOleFile(io.BytesIO(File_Bytes)):
+                raise ValueError("[ERROR] HWP 파싱 실패: 파일이 OLE 형식이 아닙니다.")
+            with olefile.OleFileIO(io.BytesIO(File_Bytes)) as f:
+                try:
+                    encoded_text = f.openstream("PrvText").read()
+                except Exception as e:
+                    raise ValueError("[ERROR] HWP 파싱 실패: 암호로 보호된 문서입니다.")
+            text = encoded_text.decode("utf-16")
+            if not text.strip():
+                print("[INFO] HWP 텍스트 없음 → OCR 실행")
+                text = run_ocr_on_hwp_images(File_Bytes)
+            return text, None
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"[ERROR] HWP 파싱 실패: {e}")
+        
+    elif File_Ext == "hwpx":
+        try:
+            with zipfile.ZipFile(io.BytesIO(File_Bytes)) as z:
+                # hwpx는 XML이 있어야 정상. 없으면 암호 또는 손상으로 간주
+                xml_files = [n for n in z.namelist() if n.endswith(".xml")]
+                if not xml_files:
+                    raise ValueError("[ERROR] HWPX 파싱 실패: 암호로 보호된 문서입니다.")
+                text = ""
+                for name in xml_files:
+                    data = z.read(name).decode("utf-8", errors="ignore")
+                    text += re.sub("<[^>]+>", " ", data)
+                if not text.strip():
+                    print("[INFO] HWPX 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_hwpx_images(File_Bytes)
+                return text, None
+        except zipfile.BadZipFile:
+            raise ValueError("[ERROR] HWPX 파싱 실패: 파일이 손상되었거나 암호로 보호된 문서입니다.")
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"[ERROR] HWPX 파싱 실패: {e}")
+        
+    elif File_Ext in ["ppt", "pptx"]:
+        if File_Ext == "pptx":
+            try:
+                with zipfile.ZipFile(io.BytesIO(File_Bytes)) as z:
+                    if "ppt/presentation.xml" not in z.namelist():
+                        raise ValueError("[ERROR] PPTX 파싱 실패: 암호로 보호된 문서입니다.")
+                prs = Presentation(io.BytesIO(File_Bytes))
+                text = "\n".join([shape.text for slide in prs.slides for shape in slide.shapes if hasattr(shape, "text")])
+                if not text.strip():
+                    print("[INFO] PPTX 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_ppt_images(File_Bytes)
+                return text, None
+            except zipfile.BadZipFile:
+                raise ValueError("[ERROR] PPTX 파싱 실패: 파일이 손상되었거나 암호로 보호된 문서입니다.")
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
+        else:  # legacy .ppt (binary)
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+                    tmp.write(File_Bytes); tmp_path = tmp.name
+                try:
+                    # PowerPoint COM으로 열기 시 비밀번호가 있으면 예외 발생
+                    pp = win32com.client.Dispatch("PowerPoint.Application")
+                    pp.Visible = False
+                    pres = pp.Presentations.Open(tmp_path, WithWindow=False)
+                    pres.Close()
+                    pp.Quit()
+                except Exception as e:
+                    raise ValueError("[ERROR] PPT 파싱 실패: 암호로 보호된 문서입니다.")
+                finally:
+                    os.remove(tmp_path)
+                text = ""
+                if not text.strip():
+                    print("[INFO] PPT 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_ppt_images(File_Bytes)
+                return text, None
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPT 파싱 실패: {e}")
+        
+    elif File_Ext in ["xls", "xlsx"]:
+        if File_Ext == "xlsx":
+            try:
+                with zipfile.ZipFile(io.BytesIO(File_Bytes)) as z:
+                    if "xl/workbook.xml" not in z.namelist():
+                        raise ValueError("[ERROR] XLSX 파싱 실패: 암호로 보호된 문서입니다.")
+                wb = load_workbook(io.BytesIO(File_Bytes), data_only=True)
+                text = ""
+                for ws in wb.worksheets:
+                    for row in ws.iter_rows(values_only=True):
+                        text += " ".join([str(cell) for cell in row if cell]) + "\n"
+                text = text.strip()
+                if not text:
+                    print("[INFO] XLSX 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_xls_images(File_Bytes)
+                return text, None
+            except zipfile.BadZipFile:
+                raise ValueError("[ERROR] XLSX 파싱 실패: 파일이 손상되었거나 암호로 보호된 문서입니다.")
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
+        else:  # legacy .xls
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp:
+                    tmp.write(File_Bytes); tmp_path = tmp.name
+                try:
+                    excel = win32com.client.Dispatch("Excel.Application")
+                    excel.Visible = False
+                    wb = excel.Workbooks.Open(tmp_path)
+                    wb.Close(SaveChanges=False)
+                    excel.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] XLS 파싱 실패: 암호로 보호된 문서입니다.")
+                finally:
+                    os.remove(tmp_path)
+                    text = ""
+                    if not text.strip():
+                        print("[INFO] XLS 텍스트 없음 → OCR 실행")
+                        text = run_ocr_on_xls_images(File_Bytes)
+                    return text, None
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"[ERROR] XLS 파싱 실패: {e}")
+        
+    elif File_Ext == "doc":
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp_doc:
+                tmp_doc.write(File_Bytes)
+                tmp_doc_path = tmp_doc.name
+            tmp_docx_path = tmp_doc_path + "x"
+            try:
+                word = win32com.client.Dispatch("Word.Application")
+                word.Visible = False
+                doc = word.Documents.Open(tmp_doc_path)
+                doc.SaveAs(tmp_docx_path, FileFormat=16)
+                doc.Close()
+                word.Quit()
+            except Exception:  # COM 열기 실패 → 암호문서로 간주
+                raise ValueError("[ERROR] DOC 변환/파싱 실패: 암호로 보호된 문서입니다.")
+
+            with open(tmp_docx_path, "rb") as f:
+                converted_bytes = f.read()
+            os.remove(tmp_doc_path)
+            os.remove(tmp_docx_path)
+
+            # --- OCR fallback 추가 부분 ---
+            text, _ = parse_file(converted_bytes, "docx")
+            if not text.strip():
+                print("[INFO] DOC 텍스트 없음 → OCR 실행")
+                text = run_ocr_on_doc_images(File_Bytes)
+            return text, None
+        # -----------------------------
+
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"[ERROR] DOC 변환/파싱 실패: {e}")
     
     elif File_Ext == "docx":
         try:
@@ -138,6 +303,64 @@ def extract_images_from_document(file_bytes: bytes, file_ext: str) -> list:
         except Exception as e:
             print(f"[ERROR] DOCX 이미지 추출 실패: {e}")
 
+    elif file_ext == "doc":
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+            tmp_docx_path = tmp_path + "x"
+            word = win32com.client.Dispatch("Word.Application")
+            word.Visible = False
+            doc = word.Documents.Open(tmp_path)
+            doc.SaveAs(tmp_docx_path, FileFormat=16)
+            doc.Close()
+            word.Quit()
+            with open(tmp_docx_path, "rb") as f:
+                converted_bytes = f.read()
+            os.remove(tmp_path); os.remove(tmp_docx_path)
+            return extract_images_from_document(converted_bytes, "docx")
+        except Exception as e:
+            print(f"[ERROR] DOC 이미지 추출 실패: {e}")
+
+    elif file_ext == "hwpx":
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                for name in z.namelist():
+                    if name.startswith("Contents/") and name.lower().endswith((".jpg", ".png", ".bmp")):
+                        images.append(z.read(name))
+        except Exception as e:
+            print(f"[ERROR] HWPX 이미지 추출 실패: {e}")
+
+    elif file_ext == "hwp":
+        try:
+            with olefile.OleFileIO(io.BytesIO(file_bytes)) as f:
+                for entry in f.listdir():
+                    if "BinData" in entry[0]:
+                        data = f.openstream(entry).read()
+                        images.append(data)
+        except Exception as e:
+            print(f"[ERROR] HWP 이미지 추출 실패: {e}")
+
+    elif file_ext in ["ppt", "pptx"]:
+        try:
+            prs = Presentation(io.BytesIO(file_bytes))
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if shape.shape_type == 13:  # PICTURE
+                        image = shape.image
+                        images.append(image.blob)
+        except Exception as e:
+            print(f"[ERROR] PPT/PPTX 이미지 추출 실패: {e}")
+
+    elif file_ext in ["xls", "xlsx"]:
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                for name in z.namelist():
+                    if name.lower().startswith("xl/media/"):
+                        images.append(z.read(name))
+        except Exception as e:
+            print(f"[ERROR] XLS/XLSX 이미지 추출 실패: {e}")
+
     elif file_ext == "pdf":
         try:
             with fitz.open(stream=file_bytes, filetype="pdf") as doc:
@@ -149,6 +372,28 @@ def extract_images_from_document(file_bytes: bytes, file_ext: str) -> list:
             print(f"[ERROR] PDF 이미지 추출 실패: {e}")
 
     return images
+
+def run_ocr_on_doc_images(file_bytes: bytes) -> str:
+    """DOC 파일을 DOCX로 변환 후 OCR"""
+    ocr_text = ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        tmp_docx_path = tmp_path + "x"
+        word = win32com.client.Dispatch("Word.Application")
+        word.Visible = False
+        doc = word.Documents.Open(tmp_path)
+        doc.SaveAs(tmp_docx_path, FileFormat=16)
+        doc.Close()
+        word.Quit()
+        with open(tmp_docx_path, "rb") as f:
+            converted_bytes = f.read()
+        os.remove(tmp_path); os.remove(tmp_docx_path)
+        ocr_text = run_ocr_on_docx_images(converted_bytes)
+    except Exception as e:
+        print(f"[ERROR] DOC 이미지 OCR 실패: {e}")
+    return ocr_text.strip()
 
 def run_ocr_on_docx_images(file_bytes):
     ocr_text = ""
@@ -164,6 +409,74 @@ def run_ocr_on_docx_images(file_bytes):
     except Exception as e:
         print(f"[ERROR] DOCX 이미지 OCR 실패: {e}")
     return ocr_text.replace("\n", " ").replace(":", "").replace(",", "").strip()
+
+def run_ocr_on_hwp_images(file_bytes: bytes) -> str:
+    """HWP 문서 내 BinData 이미지에 대해 OCR 수행"""
+    ocr_text = ""
+    try:
+        with olefile.OleFileIO(io.BytesIO(file_bytes)) as f:
+            for entry in f.listdir():
+                if "BinData" in entry[0]:
+                    data = f.openstream(entry).read()
+                    try:
+                        img = Image.open(io.BytesIO(data))
+                        result = reader.readtext(np.array(img))
+                        for box in result:
+                            ocr_text += box[1] + "\n"
+                    except Exception:
+                        continue
+    except Exception as e:
+        print(f"[ERROR] HWP 이미지 OCR 실패: {e}")
+    return ocr_text.replace("\n", " ").strip()
+
+def run_ocr_on_hwpx_images(file_bytes: bytes) -> str:
+    """HWPX 파일 내 이미지 OCR"""
+    ocr_text = ""
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            for name in z.namelist():
+                if name.startswith("Contents/") and name.lower().endswith((".jpg", ".png", ".bmp")):
+                    img = Image.open(io.BytesIO(z.read(name)))
+                    result = reader.readtext(np.array(img))
+                    for box in result:
+                        ocr_text += box[1] + "\n"
+    except Exception as e:
+        print(f"[ERROR] HWPX 이미지 OCR 실패: {e}")
+    return ocr_text.replace("\n", " ").strip()
+
+def run_ocr_on_ppt_images(file_bytes: bytes) -> str:
+    """PPT/PPTX 슬라이드 내 이미지 OCR"""
+    ocr_text = ""
+    try:
+        prs = Presentation(io.BytesIO(file_bytes))
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if shape.shape_type == 13:  # PICTURE
+                    try:
+                        img = Image.open(io.BytesIO(shape.image.blob))
+                        result = reader.readtext(np.array(img))
+                        for box in result:
+                            ocr_text += box[1] + "\n"
+                    except Exception:
+                        continue
+    except Exception as e:
+        print(f"[ERROR] PPT/PPTX 이미지 OCR 실패: {e}")
+    return ocr_text.replace("\n", " ").strip()
+
+def run_ocr_on_xls_images(file_bytes: bytes) -> str:
+    """XLS/XLSX 내 이미지 OCR"""
+    ocr_text = ""
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+            for name in z.namelist():
+                if name.lower().startswith("xl/media/"):
+                    img = Image.open(io.BytesIO(z.read(name)))
+                    result = reader.readtext(np.array(img))
+                    for box in result:
+                        ocr_text += box[1] + "\n"
+    except Exception as e:
+        print(f"[ERROR] XLS/XLSX 이미지 OCR 실패: {e}")
+    return ocr_text.replace("\n", " ").strip()
 
 def run_ocr_on_pdf_images(pdf_bytes: bytes) -> str:
     ocr_text = ""
@@ -320,30 +633,6 @@ def detect_by_ner(Text: str) -> list:
 #     return ''.join(masked_text)
 # -> 마스킹 로직, 그냥 주석 처리
 
-def encrypt_data(data: bytes, Key: bytes) -> bytes:
-    try:
-        iv = get_random_bytes(16)  # 128-bit IV 생성
-        cipher = AES.new(Key, AES.MODE_CBC, iv)
-        ct_bytes = cipher.encrypt(pad(data, AES.block_size))
-
-        # IV + 암호문(Base64 인코딩)
-        payload = {
-            "iv": base64.b64encode(iv).decode("utf-8"),
-            "ciphertext": base64.b64encode(ct_bytes).decode("utf-8")
-        }
-        return json.dumps(payload).encode("utf-8")
-    except Exception as e:
-        logging.error(f"암호화 실패: {e}", exc_info=True)
-        return b''
-    
-# def decrypt_data(encrypted_json: str, Key: bytes) -> bytes:
-#     payload = json.loads(encrypted_json)
-#     iv = base64.b64decode(payload["iv"])
-#     ct = base64.b64decode(payload["ciphertext"])
-#     cipher = AES.new(Key, AES.MODE_CBC, iv)
-#     return unpad(cipher.decrypt(ct), AES.block_size)
-# 이건 백엔드에 넣는 복호화 코드. 여기선 필요없으니 나중에 팀원 전달
-
 def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info", meta: dict | None = None) -> bool:
     url = "http://your-backend-api/upload"
     try:
@@ -375,7 +664,8 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         face_detected, face_path = detect_faces(Input_Data)
         if face_detected: # 얼굴 탐지 결과를 Detected에 추가
             return [{"type": "face", "value": "image"}], "", "face_only", face_path
-    elif Original_Format in ["pdf", "docx"]: # 내부 이미지 추출 후 하나씩 face 분석
+    elif Original_Format in ["pdf", "docx", "hwp", "hwpx", "ppt", "pptx", "xls", "xlsx", "doc"]:
+         # 내부 이미지 추출 후 하나씩 face 분석
         for img in extract_images_from_document(Input_Data, Original_Format):
             face_detected, face_path = detect_faces(img)
             if face_detected:
@@ -443,8 +733,7 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
     #             "value": d.get("value"),
     #             "span": d.get("span")
     #             })
-    encrypted = encrypt_data(json.dumps(payload, ensure_ascii=False).encode("utf-8"), Key)
-    ok = send_to_backend(encrypted, filename="Detected_Items.json")
+    ok = send_to_backend(json.dumps(payload, ensure_ascii=False).encode("utf-8"), filename="Detected_Items.json")
     return Detected, Parsed_Text, "sent_ok" if ok else "send_fail", face_path
     # encrypted = encrypt_data(Parsed_Text.encode("utf-8"), Key)
     # backend_status = send_to_backend(encrypted, filename="Detected_Info")

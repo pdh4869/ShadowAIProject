@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from typing import List
 from fastapi import FastAPI, UploadFile, Request, Form, File # FastAPI = API 앱 생성에 사용, File/Form = POST 요청에서 파일이나 폼 데이터 받을 때 사용                        
 from fastapi.responses import JSONResponse # JSONResponse = 텍스트의 경우, 결과물을 JSON 형식으로 반환할 때 사용
-from Logic import handle_input_raw, detect_by_ner, detect_by_regex, encrypt_data, send_to_backend # apply_masking
+from Logic import handle_input_raw, detect_by_ner, detect_by_regex, send_to_backend
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -22,7 +22,6 @@ class TextInput(BaseModel):
     agent_id: str | None = None
     source_url: str | None = None
 
-Key = b"1234567890abcdef"
 image_folder = "processed_faces"
 
 @asynccontextmanager
@@ -278,9 +277,8 @@ async def mask_text(
                 }},
                 status_code=200
             )
-
-        encrypted = encrypt_data(json.dumps(detected, ensure_ascii=False).encode("utf-8"), Key)
-        ok = send_to_backend(encrypted)
+        
+        ok = send_to_backend(json.dumps(detected, ensure_ascii=False).encode("utf-8"))
 
         result_summary = {
             "입력 텍스트": {
