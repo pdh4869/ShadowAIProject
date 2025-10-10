@@ -24,7 +24,12 @@
 ## 2. 사전 준비 (Python & 패키지)
 
 ```bash
-pip install fastapi uvicorn[standard] pillow numpy opencv-python pymupdf python-docx             pycryptodome requests easyocr mtcnn transformers torch torchvision sentencepiece
+pip install fastapi uvicorn[standard] pillow numpy opencv-python pymupdf python-docx pycryptodome requests easyocr mtcnn transformers torch torchvision sentencepiece pyinstaller
+```
+
+**HuggingFace 토큰 설정 (한국어 NER 모델 사용 시):**
+```bash
+set HF_TOKEN=your_huggingface_token_here
 ```
 
 ---
@@ -54,24 +59,30 @@ python LocalServer.py
 `com.example.pii_host.json`에서 `"path"`를 host.exe 절대경로로 수정,  
 `"allowed_origins"`에 확장 ID 추가.
 
-### 빌드 예시
+### 빌드 (필수)
 ```bash
-pyinstaller --onefile host.py --name host
+cd Py_server/native_host
+pyinstaller --onefile --distpath dist --workpath build --specpath . host.py
 ```
+- 결과: `dist/host.exe` 생성
+- **중요**: Chrome이 실행하는 것은 `host.exe`이므로 코드 수정 시 반드시 재컴파일 필요
+- 재컴파일 전 Chrome 완전 종료 + 작업 관리자에서 `host.exe` 프로세스 종료 필수
 
 ---
 
 ## 6. 동작 흐름
 
 1) **content.js** — 텍스트/파일 감지 → COMBINED_EVENT 전송  
-2) **background.js** — IP 조회 → FastAPI로 POST 전송  
-3) **LocalServer.py** — 텍스트+파일 분석 → 대시보드 표시
+2) **background.js** — Native Host 호출(`get_info`) → IP + 호스트명 수집 → FastAPI로 POST 전송  
+3) **host.exe** — `platform.node()`로 컴퓨터 호스트명 반환  
+4) **LocalServer.py** — 텍스트+파일 분석 (한국어 NER 포함) → 대시보드 표시
 
 ---
 
 ## 7. 탐지 항목
 
-- 전화번호, 이메일, 주민번호, 여권, 계좌, 카드, IP, 인명, 조직, 위치  
+- 전화번호, 이메일, 주민번호, 여권, 계좌, 카드, IP, 컴퓨터 호스트명  
+- 한국어 인명 탐지 (NER 모델: `soddokayo/klue-roberta-base-ner`)  
 - 이미지 내 OCR + 얼굴탐지(MTCNN)  
 - PDF/DOCX 내 이미지·텍스트 추출
 
@@ -104,8 +115,13 @@ pyinstaller --onefile host.py --name host
 ## 11. 트러블슈팅
 
 - 대시보드 미표시 → 허용 URL 확인, 서버 로그 확인  
-- IP가 unknown → `com.example.pii_host.json` 설정 확인  
+- IP/호스트명이 unknown → Native Host 설정 확인:
+  - `com.example.pii_host.json`의 `path`가 `host.exe` 절대경로인지 확인
+  - Chrome 완전 종료 후 재시작
+  - `host_log.txt`에서 `get_info` 명령 수신 여부 확인
+- 한국어 이름 미탐지 → HF_TOKEN 환경변수 설정 확인, NER 모델 다운로드 확인  
 - 파일 미탐지 → OCR, MTCNN 라이브러리 설치 확인
+- Native Host 업데이트 안됨 → Chrome/host.exe 프로세스 모두 종료 후 재컴파일
 
 ---
 
