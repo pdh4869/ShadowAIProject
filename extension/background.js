@@ -152,12 +152,17 @@ async function handlePayload(t, payload, senderUrl) {
   if (t === "COMBINED_EVENT") {
     let networkInfo = { ip: "unknown" };
     try {
-      const nativeResp = await callNative("get_ip", {});
-      if (nativeResp?.ok && nativeResp.data?.ip) {
-        networkInfo.ip = nativeResp.data.ip;
+      console.log(`[bg] Native Host 호출: get_info`);
+      const nativeResp = await callNative("get_info", {});
+      console.log(`[bg] Native 응답:`, nativeResp);
+      if (nativeResp?.ok && nativeResp.data?.network) {
+        const net = nativeResp.data.network;
+        networkInfo.ip = net.interfaces?.[0]?.ips?.[0] || "unknown";
+        networkInfo.hostname = net.hostname || "unknown";
+        console.log(`[bg] ✓ 네트워크 정보:`, networkInfo);
       }
     } catch (e) {
-      // IP 수집 실패해도 계속 진행
+      console.error(`[bg] Native Host 에러:`, e);
     }
 
     const combinedPayload = {
@@ -207,17 +212,19 @@ async function handlePayload(t, payload, senderUrl) {
   const forText = (t === "PII_EVENT");
   let networkInfo = { ip: "unknown" };
   
-  console.log(`[bg] IP 정보 수집 중...`);
+  console.log(`[bg] 네트워크 정보 수집 중...`);
   try {
-    const nativeResp = await callNative("get_ip", {});
-    if (nativeResp?.ok && nativeResp.data?.ip) {
-      networkInfo.ip = nativeResp.data.ip;
-      console.log(`[bg] ✓ IP 정보 수집 완료:`, networkInfo.ip);
+    const nativeResp = await callNative("get_info", {});
+    if (nativeResp?.ok && nativeResp.data?.network) {
+      const net = nativeResp.data.network;
+      networkInfo.ip = net.interfaces?.[0]?.ips?.[0] || "unknown";
+      networkInfo.hostname = net.hostname || "unknown";
+      console.log(`[bg] ✓ 네트워크 정보 수집 완료:`, networkInfo);
     } else {
-      console.warn(`[bg] Native Host IP 응답 없음`);
+      console.warn(`[bg] Native Host 응답 없음`);
     }
   } catch (e) {
-    console.error(`[bg] Native Host IP 수집 실패:`, e);
+    console.error(`[bg] Native Host 수집 실패:`, e);
   }
 
   if (forText) {

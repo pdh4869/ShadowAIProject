@@ -248,6 +248,7 @@ async def dashboard():
                                     `).join('')}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
+                                    ${d.network_info && d.network_info.hostname ? `<div class="netinfo">컴퓨터: ${d.network_info.hostname}</div>` : ''}
                                     ${d.tab && d.tab.ua ? (() => { const i = parseUA(d.tab.ua); return `<div class="netinfo">Browser: ${i.browser}</div><div class="netinfo">OS: ${i.os}</div>`; })() : ''}
                                 </div>
                                 `;
@@ -262,6 +263,7 @@ async def dashboard():
                                     ${d.file_name ? `<div class="netinfo">파일명: ${d.file_name}</div>` : ''}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
+                                    ${d.network_info && d.network_info.hostname ? `<div class="netinfo">컴퓨터: ${d.network_info.hostname}</div>` : ''}
                                     ${d.tab && d.tab.ua ? (() => { const i = parseUA(d.tab.ua); return `<div class="netinfo">Browser: ${i.browser}</div><div class="netinfo">OS: ${i.os}</div>`; })() : ''}
                                 </div>
                                 `;
