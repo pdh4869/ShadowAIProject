@@ -62,7 +62,7 @@ IMAGE_EXTENSIONS = ("png", "jpg", "jpeg", "bmp", "webp", "gif", "tif", "tiff")
 easyocr_reader = None
 if easyocr is not None:
     try:
-        easyocr_reader = easyocr.Reader(['ko', 'en'], gpu=False)
+        easyocr_reader = easyocr.Reader(['ko', 'en'], gpu=True)
         logging.info("EasyOCR 초기화 완료")
     except Exception as e:
         logging.warning(f"EasyOCR 초기화 실패: {e}")
@@ -220,8 +220,6 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
     Returns (text, is_image)
     """
     ext = (File_Ext or "").lower()
-    if win32com is not None:
-        import tempfile, os as _os
 
     if ext == "txt":
         try:
@@ -230,32 +228,56 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             return File_Bytes.decode("cp949"), False
 
     if ext == "hwp":
-        # Try OLE text first, then OCR fallback
-        if win32com is None:
-            logging.warning("win32com 미설치 → HWP 변환 불가, OCR 우회 시도")
-            return "", False
-        import tempfile, os as _os
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp:
-                tmp.write(File_Bytes); tmp_path = tmp.name
-            tmp_hwpx_path = tmp_path + "x"
+        if win32com is not None: # hwp를 hwpx로 변환
+            import tempfile, os as _os
             try:
-                hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
-                hwp.Open(tmp_path)
-                hwp.SaveAs(tmp_hwpx_path, "HWPX")
-                hwp.Quit()
-            except Exception:
-                raise ValueError("[ERROR] HWP 변환/파싱 실패: 암호 또는 한글 접근 오류")
-            with open(tmp_hwpx_path, "rb") as f:
-                converted = f.read()
-            _os.remove(tmp_path); _os.remove(tmp_hwpx_path)
-            text, _ = parse_file(converted, "hwpx")
-            if not text.strip():
-                logging.info("HWP 텍스트 없음 → OCR 실행")
-                text = run_ocr_on_hwp_images(converted)
-            return text, False
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp:
+                    tmp.write(File_Bytes); tmp_path = tmp.name
+                tmp_hwpx_path = tmp_path + "x"
+                try:
+                    hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+                    hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
+                    hwp.Open(tmp_path)
+                    hwp.SaveAs(tmp_hwpx_path, "HWPX")
+                    hwp.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] HWP 변환 실패 또는 암호화")
+                with open(tmp_hwpx_path, "rb") as f:
+                    converted = f.read()
+                _os.remove(tmp_path); _os.remove(tmp_hwpx_path)
+                return parse_file(converted, "hwpx")
+            except Exception as e:
+                logging.warning(f"HWP → HWPX 변환 실패, 기본 로직으로 진행: {e}")
+        # Try OLE text first, then OCR fallback
+        if olefile is None:
+            logging.warning("olefile 미설치 → HWP OCR 시도")
+            return run_ocr_on_hwp_images(File_Bytes), False
+        try:
+            if not olefile.isOleFile(io.BytesIO(File_Bytes)):
+                logging.warning("HWP가 OLE 형식이 아님 → OCR 시도")
+                return run_ocr_on_hwp_images(File_Bytes), False
+            def _extract_hwp_text(data: bytes) -> str:
+                with olefile.OleFileIO(io.BytesIO(data)) as f:
+                    for entry in f.listdir():
+                        if "BodyText" in entry[0]:
+                            try:
+                                raw = f.openstream(entry).read()
+                                txt = raw.decode("utf-16", errors="ignore")
+                                if txt.strip():
+                                    return txt
+                            except Exception:
+                                continue
+                    if f.exists("PrvText"):
+                        return f.openstream("PrvText").read().decode("utf-16", errors="ignore")
+                return ""
+            text = _extract_hwp_text(File_Bytes).strip()
+            if not text:
+                logging.warning("HWP 텍스트 스트림 없음 → OCR 시도")
+                text = run_ocr_on_hwp_images(File_Bytes)
+            return text or "", False
         except Exception as e:
-            raise ValueError(f"[ERROR] HWP 변환/파싱 실패: {e}")
+            logging.error(f"HWP 처리 중 예외: {e}")
+            return run_ocr_on_hwp_images(File_Bytes), False
 
     if ext == "hwpx":
         try:
@@ -292,11 +314,9 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             except Exception as e:
                 raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
         else:
+            import tempfile, os as _os
             # legacy .ppt → try COM touch to validate password, then OCR fallback
-                if win32com is None:
-                    logging.warning("win32com 미설치 → PPT 변환 불가, OCR 우회 시도")
-                    return "", False
-                import tempfile, os as _os
+            if win32com is not None:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
                         tmp.write(File_Bytes); tmp_path = tmp.name
@@ -305,20 +325,35 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                         pp = win32com.client.Dispatch("PowerPoint.Application")
                         pp.Visible = False
                         pres = pp.Presentations.Open(tmp_path, WithWindow=False)
-                        pres.SaveAs(tmp_pptx_path, FileFormat=24)  # ppSaveAsOpenXMLPresentation
+                        pres.SaveAs(tmp_pptx_path, FileFormat=24)  # 24: pptx
                         pres.Close(); pp.Quit()
                     except Exception:
-                        raise ValueError("[ERROR] PPT 변환/파싱 실패: 암호 또는 PowerPoint 접근 오류")
+                        raise ValueError("[ERROR] PPT → PPTX 변환 실패 또는 암호")
                     with open(tmp_pptx_path, "rb") as f:
                         converted = f.read()
                     _os.remove(tmp_path); _os.remove(tmp_pptx_path)
-                    text, _ = parse_file(converted, "pptx")
-                    if not text.strip():
-                        logging.info("PPT 텍스트 없음 → OCR 실행")
-                        text = run_ocr_on_ppt_images(converted)
-                    return text, False
+                    return parse_file(converted, "pptx")
                 except Exception as e:
-                    raise ValueError(f"[ERROR] PPT 변환/파싱 실패: {e}")
+                    logging.warning(f"PPT → PPTX 변환 실패, OCR fallback: {e}")
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+                    tmp.write(File_Bytes); tmp_path = tmp.name
+                try:
+                    pp = win32com.client.Dispatch("PowerPoint.Application")
+                    pp.Visible = False
+                    pres = pp.Presentations.Open(tmp_path, WithWindow=False)
+                    pres.Close(); pp.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] PPT 파싱 실패: 암호")
+                finally:
+                    _os.remove(tmp_path)
+                text = ""
+                if not text.strip():
+                    logging.info("PPT 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_ppt_images(File_Bytes)
+                return text, False
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPT 파싱 실패: {e}")
 
     if ext in ("xls", "xlsx"):
         if ext == "xlsx":
@@ -340,10 +375,9 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                 return text, False
             except Exception as e:
                 raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
-        else:  # .xls
-                if win32com is None:
-                    logging.warning("win32com 미설치 → XLS 변환 불가, OCR 우회 시도")
-                    return "", False
+        else: # .xls
+            import tempfile, os as _os
+            if win32com is not None:
                 import tempfile, os as _os
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp:
@@ -353,20 +387,37 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                         excel = win32com.client.Dispatch("Excel.Application")
                         excel.Visible = False
                         wb = excel.Workbooks.Open(tmp_path)
-                        wb.SaveAs(tmp_xlsx_path, FileFormat=51)  # xlOpenXMLWorkbook (.xlsx)
-                        wb.Close(); excel.Quit()
+                        wb.SaveAs(tmp_xlsx_path, FileFormat=51)  # 51: xlsx
+                        wb.Close(SaveChanges=False)
+                        excel.Quit()
                     except Exception:
-                        raise ValueError("[ERROR] XLS 변환/파싱 실패: 암호 또는 Excel 접근 오류")
+                        raise ValueError("[ERROR] XLS → XLSX 변환 실패 또는 암호")
                     with open(tmp_xlsx_path, "rb") as f:
                         converted = f.read()
                     _os.remove(tmp_path); _os.remove(tmp_xlsx_path)
-                    text, _ = parse_file(converted, "xlsx")
-                    if not text.strip():
-                        logging.info("XLS 텍스트 없음 → OCR 실행")
-                        text = run_ocr_on_xls_images(converted)
-                    return text, False
+                    return parse_file(converted, "xlsx")
                 except Exception as e:
-                    raise ValueError(f"[ERROR] XLS 변환/파싱 실패: {e}")
+                    logging.warning(f"XLS → XLSX 변환 실패, OCR fallback: {e}")
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp:
+                    tmp.write(File_Bytes); tmp_path = tmp.name
+                try:
+                    excel = win32com.client.Dispatch("Excel.Application")
+                    excel.Visible = False
+                    wb = excel.Workbooks.Open(tmp_path)
+                    wb.Close(SaveChanges=False)
+                    excel.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] XLS 파싱 실패: 암호")
+                finally:
+                    _os.remove(tmp_path)
+                text = ""
+                if not text.strip():
+                    logging.info("XLS 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_xls_images(File_Bytes)
+                return text, False
+            except Exception as e:
+                raise ValueError(f"[ERROR] XLS 파싱 실패: {e}")
 
     if ext == "doc":
         if win32com is None:
