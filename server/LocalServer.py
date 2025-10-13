@@ -415,13 +415,8 @@ async def handle_text_event(request: Request):
         ner_results = detect_by_ner(text)
         regex_results = detect_by_regex(text)
         
-        # NER로 탐지된 이름 목록
-        ner_names = {d["value"] for d in ner_results if d["type"].upper() in ["PER", "PS"]}
-        
-        # 정규식에서 korean_name 중복 제거
-        filtered_regex = [d for d in regex_results if not (d["type"] == "korean_name" and d["value"] in ner_names)]
-        
-        detected = filtered_regex + ner_results
+        # 합치기
+        detected = regex_results + ner_results
         
         print(f"[INFO] 탐지 결과: {len(detected)}개")
         
@@ -468,13 +463,8 @@ async def handle_combined(request: Request):
             ner_results = detect_by_ner(text)
             regex_results = detect_by_regex(text)
             
-            # NER로 탐지된 이름 목록
-            ner_names = {d["value"] for d in ner_results if d["type"].upper() in ["PER", "PS"]}
-            
-            # 정규식에서 korean_name 중복 제거
-            filtered_regex = [d for d in regex_results if not (d["type"] == "korean_name" and d["value"] in ner_names)]
-            
-            detected = filtered_regex + ner_results
+            # 합치기
+            detected = regex_results + ner_results
             if detected:
                 detection_history.append({
                     "timestamp": processed_at,

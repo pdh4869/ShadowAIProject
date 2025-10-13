@@ -84,7 +84,7 @@
 
   async function storeFileForLater(file, origin){
     const ext = file.name.split('.').pop().toLowerCase();
-    const allowed = ['pdf','docx','txt','png','jpg','jpeg','bmp','webp','gif','tiff'];
+    const allowed = ['pdf','docx','hwp','txt','png','jpg','jpeg','bmp','webp','gif','tiff'];
     if (!allowed.includes(ext)) {
       console.log(`[content] 지원하지 않는 파일 형식: ${file.name}`);
       return;
@@ -155,16 +155,32 @@
     console.log("[content] ========== 파일 전송 완료 ==========");
   }
 
-  // 1. input[type=file] 감지
+  // 1. input[type=file] 감지 (취소 감지 위해 지연 처리)
+  let fileInputTimeout = null;
   document.addEventListener("change",(e)=>{
     if(e.target.tagName==="INPUT"&&e.target.type==="file"){
-      if(e.target.files?.length){
-        console.log(`[content] input[type=file] 감지: ${e.target.files.length}개`);
-        pendingFiles.length = 0;
-        filesMap.clear();
-        for(const f of e.target.files) {
-          storeFileForLater(f, location.href);
-        }
+      const input = e.target;
+      
+      // 이전 타이머 취소
+      if(fileInputTimeout) clearTimeout(fileInputTimeout);
+      
+      if(input.files?.length){
+        console.log(`[content] input[type=file] 감지: ${input.files.length}개, 500ms 대기 중...`);
+        
+        // 500ms 후에 여전히 파일이 있으면 저장
+        fileInputTimeout = setTimeout(() => {
+          if(input.files?.length) {
+            console.log(`[content] 파일 저장 시작: ${input.files.length}개`);
+            pendingFiles.length = 0;
+            filesMap.clear();
+            for(const f of input.files) {
+              storeFileForLater(f, location.href);
+            }
+          } else {
+            console.log(`[content] 파일 취소됨 (저장 안함)`);
+          }
+          fileInputTimeout = null;
+        }, 500);
       } else {
         console.log(`[content] 파일 선택 취소됨, 저장된 파일 초기화`);
         pendingFiles.length = 0;
@@ -175,10 +191,12 @@
 
   // 2. 드래그 앤 드롭 감지
   let dropHandled = false;
+  let justDropped = false;
   document.addEventListener("drop", async (e)=>{
     if (dropHandled) return;
     if (e.dataTransfer?.files?.length) {
       dropHandled = true;
+      justDropped = true;
       console.log(`[content] 드롭 이벤트 감지: ${e.dataTransfer.files.length}개 파일`);
       pendingFiles.length = 0;
       filesMap.clear();
@@ -256,6 +274,27 @@
   // 클릭 이벤트 (텍스트 미리 캡처)
   let lastCapturedText = "";
   document.addEventListener("mousedown", (e)=>{
+    if (!isActive) return;
+    
+    // 취소 버튼 체크 (드롭 직후)
+    if (justDropped && pendingFiles.length > 0) {
+      let el = e.target;
+      for (let i=0; i<8 && el; i++, el=el.parentElement) {
+        const ariaLabel = (el.getAttribute?.("aria-label")||"");
+        const className = el.className?.toString().toLowerCase() || "";
+        
+        if (ariaLabel.includes("제거") || ariaLabel.includes("파일 제거") ||
+            ariaLabel.toLowerCase().includes("close") || ariaLabel.toLowerCase().includes("cancel") || 
+            className.includes("close") || className.includes("cancel")) {
+          justDropped = false;
+          console.log(`[content] 취소 버튼 감지 - 대기 파일 삭제`);
+          pendingFiles.length = 0;
+          filesMap.clear();
+          return;
+        }
+      }
+    }
+    
     lastCapturedText = getFocusedText().trim();
     console.log(`[content] mousedown - 텍스트 캡처: ${lastCapturedText.length}글자`);
   }, true);
@@ -263,7 +302,27 @@
   document.addEventListener("click", async (e)=>{
     if (!isActive || isSending) return;
     
-    let el=e.target;
+    // 취소 버튼 먼저 체크
+    let el = e.target;
+    for (let i=0; i<8 && el; i++, el=el.parentElement) {
+      const ariaLabel = (el.getAttribute?.("aria-label")||"");
+      const className = el.className?.toString().toLowerCase() || "";
+      
+      if (ariaLabel.includes("제거") || ariaLabel.includes("파일 제거") ||
+          ariaLabel.toLowerCase().includes("close") || ariaLabel.toLowerCase().includes("cancel") || 
+          className.includes("close") || className.includes("cancel")) {
+        if (justDropped && pendingFiles.length > 0) {
+          justDropped = false;
+          console.log(`[content] 취소 버튼 감지 - 대기 파일 삭제`);
+          pendingFiles.length = 0;
+          filesMap.clear();
+        }
+        return;
+      }
+    }
+    
+    // 전송 버튼 체크
+    el = e.target;
     for (let i=0;i<8&&el;i++,el=el.parentElement){
       const t=(el.innerText||"").toLowerCase();
       const ariaLabel = (el.getAttribute?.("aria-label")||"").toLowerCase();
@@ -279,6 +338,7 @@
         className.includes("send");
       
       if (isSendButton && (pendingFiles.length > 0 || lastCapturedText)) {
+        justDropped = false;
         isSending = true;
         console.log(`[content] 전송: 텍스트 ${lastCapturedText.length}글자, 파일 ${pendingFiles.length}개`);
         
@@ -297,6 +357,7 @@
         pendingFiles.length = 0;
         filesMap.clear();
         lastCapturedText = "";
+        justDropped = false;
         
         setTimeout(() => { isSending = false; }, 2000);
         break;

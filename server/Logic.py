@@ -25,6 +25,10 @@ try:
     from mtcnn import MTCNN
 except ImportError:
     MTCNN = None
+try:
+    import olefile
+except ImportError:
+    olefile = None
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -103,6 +107,25 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
         except Exception as e:
             raise ValueError(f"[ERROR] PDF 파싱 실패: {e}")
     
+    elif File_Ext == "hwp":
+        if olefile is None:
+            raise ValueError("[ERROR] HWP 파싱 실패: olefile 라이브러리 미설치")
+        try:
+            ole = olefile.OleFileIO(io.BytesIO(File_Bytes))
+            text = ""
+            # HWP 텍스트 추출
+            if ole.exists("PrvText"):
+                stream = ole.openstream("PrvText")
+                raw = stream.read()
+                text = raw.decode("utf-16", errors="ignore").strip()
+            if not text.strip():
+                print("[INFO] HWP 텍스트 없음 → 이미지 OCR 시도")
+                text = run_ocr_on_hwp_images(File_Bytes)
+            ole.close()
+            return text, False
+        except Exception as e:
+            raise ValueError(f"[ERROR] HWP 파싱 실패: {e}")
+    
     elif File_Ext in ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"]:
         print(f"[INFO] 이미지 파일 감지: {File_Ext}")
         ocr_text = run_ocr_on_single_image(File_Bytes)
@@ -160,6 +183,32 @@ def run_ocr_on_pdf_images(pdf_bytes: bytes) -> str:
                 print(f"[ERROR] EasyOCR 실패 (페이지 {idx}): {e}")
     return ocr_text.strip()
 
+def run_ocr_on_hwp_images(hwp_bytes: bytes) -> str:
+    """HWP 파일 내부 이미지에서 OCR 수행"""
+    if reader is None or olefile is None:
+        return ""
+    ocr_text = ""
+    try:
+        ole = olefile.OleFileIO(io.BytesIO(hwp_bytes))
+        # HWP 이미지는 BinData 스트림에 저장됨
+        for entry in ole.listdir():
+            if entry[0] == "BinData":
+                try:
+                    stream = ole.openstream(entry)
+                    img_bytes = stream.read()
+                    img = Image.open(io.BytesIO(img_bytes))
+                    result = reader.readtext(np.array(img))
+                    for box in result:
+                        ocr_text += box[1] + "\n"
+                except Exception:
+                    continue
+        ole.close()
+        if ocr_text:
+            print(f"[INFO] HWP 이미지 OCR 완료: {len(ocr_text)} 글자 추출")
+    except Exception as e:
+        print(f"[ERROR] HWP 이미지 OCR 실패: {e}")
+    return ocr_text.strip()
+
 # ==========================
 # 정규식 탐지 (강화 - 띄어쓰기/하이픈 우회 방지)
 # ==========================
@@ -172,17 +221,14 @@ def detect_by_regex(Text: str) -> list:
     normalized_text = re.sub(r'[\s\-]', '', Text)
     
     Patterns = {
-        # 한글 이름 (2-4글자, NER fallback용)
-        "korean_name": re.compile(r"\b[가-힣]{2,4}\b"),
-        
         # 전화번호: 010-1234-5678, 01012345678, 010 1234 5678 모두 탐지
         "phone": re.compile(r"\b01[016789][\s\-]?\d{3,4}[\s\-]?\d{4}\b"),
         
         # 이메일
         "email": re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"),
         
-        # 생년월일
-        "birth": re.compile(r"\b(19|20)\d{2}[년./\- ]+(0?[1-9]|1[0-2])[월./\- ]+(0?[1-9]|[12][0-9]|3[01])[일]?\b"),
+        # 생년월일 (1900~2006년생만)
+        "birth": re.compile(r"\b(19[0-9]{2}|200[0-6])[년./\- ]+(0?[1-9]|1[0-2])[월./\- ]+(0?[1-9]|[12][0-9]|3[01])[일]?\b"),
         
         # 주민등록번호: 123456-1234567, 1234561234567 모두 탐지
         "ssn": re.compile(r"\b\d{6}[\s\-]?[1-4]\d{6}\b"),
@@ -279,7 +325,7 @@ def detect_by_ner(Text: str) -> list:
         if Start is None or End is None:
             continue
         
-        if Label.upper() in ["PER", "PS", "ORG", "LOC", "MISC"]:
+        if Label.upper() in ["PER", "PS", "ORG", "LOC", "LC", "MISC"]:
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
             print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
     
@@ -358,6 +404,34 @@ def detect_images_in_pdf(pdf_bytes):
         print(f"[WARN] PDF 이미지 검사 실패: {e}")
     return results
 
+def detect_images_in_hwp(hwp_bytes):
+    """HWP 파일 내부 이미지에서 얼굴 탐지"""
+    results = []
+    if olefile is None:
+        return results
+    try:
+        ole = olefile.OleFileIO(io.BytesIO(hwp_bytes))
+        for entry in ole.listdir():
+            if entry[0] == "BinData":
+                try:
+                    stream = ole.openstream(entry)
+                    img_bytes = stream.read()
+                    faces = detect_faces_in_image_bytes(img_bytes)
+                    if len(faces) > 0:
+                        img_name = "/".join(entry)
+                        print(f"[INFO] ✓ {img_name} → 얼굴 {len(faces)}개 탐지")
+                        results.append({
+                            "image_name": img_name,
+                            "faces_found": len(faces),
+                            "faces": faces
+                        })
+                except Exception:
+                    continue
+        ole.close()
+    except Exception as e:
+        print(f"[WARN] HWP 이미지 검사 실패: {e}")
+    return results
+
 def scan_file_for_face_images(file_bytes, file_ext):
     """파일 내 이미지에서 얼굴을 탐지합니다"""
     file_ext = file_ext.lower()
@@ -367,6 +441,8 @@ def scan_file_for_face_images(file_bytes, file_ext):
         return detect_images_in_docx(file_bytes)
     elif file_ext == "pdf":
         return detect_images_in_pdf(file_bytes)
+    elif file_ext == "hwp":
+        return detect_images_in_hwp(file_bytes)
     elif file_ext in ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"]:
         print(f"[INFO] 단일 이미지 파일 얼굴 탐지 시작")
         faces = detect_faces_in_image_bytes(file_bytes)
@@ -419,13 +495,8 @@ def handle_input_raw(Input_Data, Original_Format=None):
         # 정규식 실행
         regex_results = detect_by_regex(Parsed_Text)
         
-        # NER로 탐지된 이름 목록
-        ner_names = {d["value"] for d in ner_results if d["type"].upper() in ["PER", "PS"]}
-        
-        # 정규식에서 korean_name 중복 제거
-        filtered_regex = [d for d in regex_results if not (d["type"] == "korean_name" and d["value"] in ner_names)]
-        
-        Detected = filtered_regex + ner_results
+        # 합치기 (korean_name 패턴 제거로 중복 제거 불필요)
+        Detected = regex_results + ner_results
         
         if len(Detected) > 0:
             print(f"[INFO] ✓ 텍스트 개인정보 {len(Detected)}개 탐지")
