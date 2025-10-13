@@ -1,0 +1,57 @@
+/* 공통 스타일 */
+:root{
+  --bg:#F9F7F7; --card:#DBE2EF; --surface:#DBE2EF; --text:#112D4E; --muted:#3F72AF;
+  --brand:#3F72AF; --brand-2:#112D4E; --border:#DBE2EF; --ok:#10b981; --fail:#ef4444; --chip:#DBE2EF;
+}
+
+*{ box-sizing:border-box }
+
+html,body{
+  margin:0; padding:0; color:var(--text);
+  background: var(--bg);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+}
+
+/* 브랜드바 */
+.brandbar{ display:flex; align-items:center; gap:10px; padding:16px 22px; color:#3F72AF; font-weight:700; letter-spacing:.4px; }
+.brandbar .dot{ width:10px; height:10px; border-radius:50%; background:conic-gradient(from 0deg, #3F72AF, #112D4E, #DBE2EF, #3F72AF); filter:blur(.2px); }
+
+/* 컨테이너 */
+.pm-container{ max-width:1100px; margin:16px auto 26px; padding:0 16px; }
+.page-title{ font-size:28px; font-weight:800; text-align:center; margin: 8px 0 10px 0; }
+
+/* 네비게이션 */
+.pm-navwrap{
+  padding:8px; border-radius:14px;
+  background: #C5D3E8;
+  box-shadow: 0 4px 12px rgba(63,114,175,0.2);
+  margin:0 auto 18px auto; max-width:1040px;
+}
+.pm-nav{ display:flex; gap:16px; justify-content:center; align-items:center; flex-wrap:wrap; }
+.pm-nav a{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:6px 10px; min-width:100px; max-width:140px;
+  border-radius:999px; border:1px solid var(--border);
+  color:#3F72AF; font-size:12px; text-decoration:none; background:#fff;
+  white-space:nowrap; flex:0 1 140px;
+}
+.pm-nav a:hover{ border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.15) inset; }
+.pm-nav a.active{ border-color:#3F72AF; color:#112D4E; }
+
+/* 유틸리티 클래스 */
+.max-w-6xl{ max-width:72rem; }
+.mx-auto{ margin-left:auto; margin-right:auto; }
+.p-4{ padding:1rem; }
+
+/* 우측 상단 유저 박스 */
+.pm-userbox{
+  position: absolute; top:12px; right:16px; z-index:10;
+  display:flex; align-items:center; gap:6px; padding:6px 8px;
+  border-radius:10px; border:1px solid var(--border);
+  background: #C5D3E8;
+  box-shadow:0 8px 28px rgba(0,0,0,.15);
+}
+.pm-userbox .emp{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#fff; border:1px solid var(--border); color:var(--text); font-size:11px; }
+.pm-userbox .emp .dot{ width:6px; height:6px; border-radius:50%; background:conic-gradient(from 0deg,#3F72AF,#112D4E,#DBE2EF,#3F72AF); filter:blur(.15px); }
+.pm-userbox .logout{ padding:6px 8px !important; border-radius:8px; background:#fff; color:var(--text); border:1px solid var(--border); font-weight:700 !important; cursor:pointer; font-size:12px !important; line-height:1; }
+.pm-userbox .logout:hover{ border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.15) inset; }

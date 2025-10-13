@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>개인정보 유형별 현황</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/page-css/personal_information_type.page.css"></head>
+<body>
+  <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
+  <div class="pm-container">
+    <div class="page-title">개인정보 유형별 현황</div>
+    <div class="pm-navwrap">
+      <nav class="pm-nav" aria-label="주요 메뉴">
+        <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
+        <a href="#" onclick="location.href='source_type.html'">소스별 현황</a>
+        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형별 현황</a>
+        <a href="#" onclick="location.href='account_management.html'">계정관리</a>
+      </nav>
+    </div>
+
+    <div class="max-w-6xl mx-auto p-4">
+    <!-- 필터 카드 -->
+    <section class="card" aria-label="필터">
+      <div class="quick" aria-label="빠른 기간 선택">
+        <button class="pill" data-range="today">오늘</button>
+        <button class="pill" data-range="lastweek">지난 주</button>
+        <button class="pill" data-range="lastmonth">지난 달</button>
+        <span class="muted" id="quickDesc"></span>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label for="from">시작 일자</label>
+          <input type="date" id="from" />
+        </div>
+        <div class="field">
+          <label for="to">종료 일자</label>
+          <input type="date" id="to" />
+        </div>
+        <div class="field">
+          <label for="type">개인정보 유형</label>
+          <select id="type">
+            <option value="">전체</option>
+            <option>전화번호</option><option>이메일</option>
+            <option>주민등록번호</option><option>카드번호</option>
+            <option>IP 주소</option><option>생년월일</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="source">소스 유형</label>
+          <select id="source">
+            <option value="">전체</option>
+            <option>텍스트</option><option>PDF</option><option>DOCX</option><option>XLSX</option><option>TXT</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="status">상태</label>
+          <select id="status">
+            <option value="">전체</option>
+            <option>성공</option><option>실패</option>
+          </select>
+        </div>
+
+        <!-- 추가: 사용자(사번) 필터 -->
+        <div class="field">
+          <label for="emp">사용자</label>
+          <input id="emp" placeholder="예: A1023, S0001" />
+        </div>
+
+        <div class="field search">
+          <label for="q">검색(파일명/유형/사유/소스/사번)</label>
+          <input id="q" placeholder="예: report.pdf, 전화번호, 암호화 파일, A1023..." />
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="muted" id="summary">총 0건</div>
+        <div class="actions">
+          <button class="btn ghost" id="resetBtn">초기화</button>
+          <button class="btn primary" id="applyBtn">적용</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 차트 -->
+    <section class="card chart-card" aria-label="유형별 그래프">
+      <h2 style="font-size:16px;margin:6px 0 0 0;">개인정보 유형별 분포 (원형)</h2>
+      <div class="chart-wrap" style="height:500px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="pieChart" style="max-width:100%;max-height:100%;" aria-label="유형별 분포 파이차트"></canvas>
+      </div>
+    </section>
+
+    <!-- 목록 -->
+    <section class="card" style="margin-top:16px" aria-label="목록">
+      <div class="table-wrap">
+        <table aria-describedby="summary">
+          <thead>
+            <tr>
+              <th style="width:100px">상태</th>
+              <th style="width:120px">일자</th>
+              <th style="width:110px">사용자</th><!-- 추가 열 -->
+              <th style="width:220px">개인정보 유형</th>
+              <th style="width:140px">소스 유형</th>
+              <th>파일명</th>
+              <th>실패 사유</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" hidden>조건에 맞는 결과가 없습니다.</div>
+    </section>
+    </div>
+  </div>
+
+<script>
+/* ==== 샘플 데이터 (emp 포함) ==== */
+const DATA = [
+  {emp:'S0001', status:'실패', date:'2025-09-19', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-09-16', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-09-23', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-19', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-09-12', types:['이메일','카드번호'], source:'PDF', filename:'cards.txt', reason:''},
+  {emp:'A1200', status:'실패', date:'2025-09-16', types:[], source:'TXT', filename:'contacts.xlsx', reason:'암호화 파일'},
+  {emp:'B3001', status:'성공', date:'2025-09-17', types:['카드번호','이메일'], source:'XLSX', filename:'report.pdf', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-09-22', types:[], source:'XLSX', filename:'invoice.pdf', reason:'암호화 파일'},
+  {emp:'A1023', status:'성공', date:'2025-09-10', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-09-16', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-14', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-18', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'실패', date:'2025-09-17', types:[], source:'XLSX', filename:'invoice.pdf', reason:'지원 불가 형식'},
+  {emp:'B3001', status:'성공', date:'2025-09-16', types:['IP 주소'], source:'TXT', filename:'cards.txt', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-09-11', types:[], source:'DOCX', filename:'cards.txt', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-09-17', types:['생년월일'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-09-16', types:['주민등록번호','카드번호'], source:'XLSX', filename:'data.xlsx', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-18', types:['주민등록번호','생년월일'], source:'DOCX', filename:'summary.pdf', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-17', types:[], source:'XLSX', filename:'resume.docx', reason:'손상 파일'},
+  {emp:'A1200', status:'성공', date:'2025-09-15', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-14', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-10', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-12', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
+  {emp:'A1138', status:'실패', date:'2025-09-23', types:[], source:'XLSX', filename:'summary.pdf', reason:'지원 불가 형식'},
+  {emp:'B2047', status:'성공', date:'2025-09-23', types:['IP 주소','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-09-21', types:['카드번호'], source:'TXT', filename:'summary.pdf', reason:''},
+  {emp:'A1200', status:'성공', date:'2025-09-21', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-20', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-16', types:['전화번호','이메일'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-19', types:['카드번호'], source:'TXT', filename:'apply.docx', reason:''},
+  {emp:'A1138', status:'실패', date:'2025-09-11', types:[], source:'TXT', filename:'apply.docx', reason:'지원 불가 형식'},
+  {emp:'B2047', status:'성공', date:'2025-09-15', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-19', types:[], source:'DOCX', filename:'data.xlsx', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'성공', date:'2025-09-11', types:['주민등록번호'], source:'PDF', filename:'cards.txt', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-11', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-17', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-19', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
+  {emp:'A1138', status:'성공', date:'2025-09-10', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'B2047', status:'실패', date:'2025-09-16', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'B2099', status:'성공', date:'2025-09-13', types:['전화번호'], source:'TXT', filename:'summary.pdf', reason:''},
+  {emp:'A1200', status:'성공', date:'2025-09-14', types:['전화번호'], source:'DOCX', filename:'invoice.pdf', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-14', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-14', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-10', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.pdf', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-09-22', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
+  {emp:'B2047', status:'실패', date:'2025-09-15', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
+  {emp:'B2099', status:'실패', date:'2025-09-23', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'성공', date:'2025-09-19', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'실패', date:'2025-09-23', types:[], source:'TXT', filename:'data.xlsx', reason:'손상 파일'},
+  {emp:'S0001', status:'성공', date:'2025-09-14', types:['전화번호'], source:'PDF', filename:'q3_report.pdf', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-21', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
+  {emp:'A1138', status:'성공', date:'2025-09-24', types:['전화번호','IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-24', types:['이메일'], source:'XLSX', filename:'user_notes.txt', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-24', types:[], source:'텍스트', filename:'-', reason:'빈 파일'},
+  {emp:'A1200', status:'성공', date:'2025-09-24', types:['주민등록번호'], source:'TXT', filename:'notes.txt', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-10', types:['주민등록번호'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-18', types:['카드번호','주민등록번호'], source:'DOCX', filename:'summary.pdf', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-15', types:['IP 주소'], source:'TXT', filename:'apply.docx', reason:''}
+];
+
+const $ = (sel) => document.querySelector(sel);
+
+// 날짜 유틸
+function fmt(d){ return d.toISOString().slice(0,10); }
+function startOfWeek(d){ const day=d.getDay(); const diff=(day===0?-6:1-day); const r=new Date(d); r.setDate(d.getDate()+diff); r.setHours(0,0,0,0); return r; }
+function endOfWeek(d){ const s=startOfWeek(d); const r=new Date(s); r.setDate(s.getDate()+6); r.setHours(23,59,59,999); return r; }
+function startOfLastWeek(d){ const s=startOfWeek(d); s.setDate(s.getDate()-7); return s; }
+function endOfLastWeek(d){ const e=endOfWeek(d); e.setDate(e.getDate()-7); return e; }
+function startOfLastMonth(d){ return new Date(d.getFullYear(), d.getMonth()-1, 1); }
+function endOfLastMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 0); }
+
+// 빠른 기간
+function setQuickRange(kind){
+  const now = new Date();
+  let from, to, label='';
+  if(kind==='today'){ from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); to = new Date(from); label = '오늘'; }
+  else if(kind==='lastweek'){ from = startOfLastWeek(now); to = endOfLastWeek(now); label = '지난 주'; }
+  else if(kind==='lastmonth'){ from = startOfLastMonth(now); to = endOfLastMonth(now); label = '지난 달'; }
+  else{ return; }
+  $('#from').value = fmt(from);
+  $('#to').value = fmt(to);
+  $('#quickDesc').textContent = `· ${label}: ${fmt(from)} ~ ${fmt(to)}`;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  const btn = document.querySelector(`.pill[data-range="${kind}"]`);
+  if(btn) btn.classList.add('active');
+  applyFilters();
+}
+
+// 필터 적용
+function applyFilters(){
+  const from = $('#from').value;
+  const to = $('#to').value;
+  const type = $('#type').value;
+  const source = $('#source').value;
+  const status = $('#status').value;
+  const emp = ($('#emp')?.value || '').trim().toLowerCase();
+  const q = $('#q').value.trim().toLowerCase();
+
+  let filtered = DATA.filter(row => {
+    if (from && row.date < from) return false;
+    if (to && row.date > to) return false;
+    if (type && !(row.types || []).includes(type)) return false;
+    if (source && row.source !== source) return false;
+    if (status && row.status !== status) return false;
+    if (emp && !(row.emp||'').toLowerCase().includes(emp)) return false;
+    if (q){
+      const hay = [(row.types||[]).join(','),row.source,row.filename,row.reason,row.status,row.date,row.emp].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  renderRows(filtered);
+  renderChart(filtered);
+}
+
+// 테이블 렌더
+function renderRows(rows){
+  const $rows = $('#rows');
+  const $empty = $('#empty');
+  const $summary = $('#summary');
+  $rows.innerHTML='';
+  if(rows.length===0){
+    $empty.hidden = false;
+  } else {
+    $empty.hidden = true;
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const chips = (r.types||[]).map(t=>`<span class="chip">${t}</span>`).join(' ');
+      tr.innerHTML = `
+        <td><span class="status ${r.status==='성공'?'ok':'fail'}">${r.status}</span></td>
+        <td>${r.date}</td>
+        <td>${r.emp || '-'}</td>
+        <td><div class="chips">${chips}</div></td>
+        <td>${r.source}</td>
+        <td>${r.filename||'-'}</td>
+        <td>${r.reason||''}</td>`;
+      $rows.appendChild(tr);
+    });
+  }
+  $summary.textContent = `총 ${rows.length}건`;
+}
+
+// Chart.js 파이차트(성공만 집계)
+let pieChartInstance = null;
+
+function renderChart(rows){
+  const keys = ["전화번호","이메일","주민등록번호","카드번호","IP 주소","생년월일"];
+  const counts = Object.fromEntries(keys.map(k=>[k,0]));
+  rows.forEach(r=>{
+    if (r.status === '성공') (r.types||[]).forEach(t => { if (counts.hasOwnProperty(t)) counts[t]++; });
+  });
+
+  const data = keys.map(k=>counts[k]);
+  const filteredData = [];
+  const filteredLabels = [];
+  
+  for(let i=0;i<keys.length;i++){
+    if(data[i] > 0){
+      filteredData.push(data[i]);
+      filteredLabels.push(keys[i]);
+    }
+  }
+
+  if(pieChartInstance) {
+    pieChartInstance.destroy();
+  }
+
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  pieChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: filteredLabels,
+      datasets: [{
+        data: filteredData,
+        backgroundColor: ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#14b8a6"]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            boxWidth: 12,
+            font: { size: 11 }
+          }
+        },
+        datalabels: {
+          color: '#fff',
+          formatter: (value, ctx) => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return percentage + '%';
+          }
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+}
+
+// 초기화
+function resetFilters(){
+  $('#from').value=''; $('#to').value=''; $('#type').value=''; $('#source').value='';
+  $('#status').value=''; $('#emp').value=''; $('#q').value=''; $('#quickDesc').textContent='';
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  applyFilters();
+}
+
+document.querySelectorAll('.pill').forEach(btn=> btn.addEventListener('click', ()=> setQuickRange(btn.dataset.range)));
+$('#applyBtn').addEventListener('click', applyFilters);
+$('#resetBtn').addEventListener('click', resetFilters);
+document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.target.id==='q' || e.target.id==='emp')) applyFilters(); });
+
+// 시작: 오늘 범위
+setQuickRange('today');
+</script>
+
+<!-- (선택) 우측 상단 유저 박스 -->
+<div class="pm-userbox" role="group" aria-label="사용자 메뉴">
+  <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+  <button type="button" class="logout">로그아웃</button>
+</div>
+</body>
+</html>

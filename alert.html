@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Monitor · Alerts Dashboard</title>
+  
+
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/page-css/alert.page.css"></head>
+<body>
+  <div class="container">
+    <!-- Brand / Header -->
+    <div class="brandbar">
+      <div class="brand" onclick="location.href='main.html'" style="cursor:pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7.5 4.33v9.34L12 21l-7.5-4.33V7.33L12 3z" stroke="#60a5fa"/></svg>
+        <h1>Privacy Monitor</h1>
+        <span class="pill">Alerts</span>
+      </div>
+      <div class="spacer"></div>
+      <div class="actions">
+        
+        <div class="bellwrap">
+          <button class="iconbtn" id="btnBell" title="알림">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 00-6 6v3.764l-1.553 3.107A1 1 0 005.342 18h13.316a1 1 0 00.895-1.47L18 12.764V9a6 6 0 00-6-6z"/><path d="M9 19a3 3 0 006 0"/></svg>
+            <span class="badge" id="bellCount">3</span>
+          </button>    
+          <div class="dropdown" id="notifPanel" aria-hidden="true">
+            <div class="head"><strong>읽지 않은 알림</strong><span class="link" id="markAll">모두읽음</span></div>
+            <div class="list" id="notifList"><div class="empty">새 알림이 없습니다</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Important Banner -->
+    <h1 style="text-align:center;margin:8px 0 10px;">알림 현황</h1>
+
+      <div class="mt12 banner" id="criticalBanner">
+      <div class="dot"></div><div>
+        <div><strong>중요:</strong> 에이전트 2대가 오프라인 상태입니다. 최근 90분간 하트비트 없음</div>
+</div>
+      <div class="spacer"></div>
+      <button class="btn crit" id="btnBannerAck">확인</button>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="layout">
+      <!-- Sidebar Filters -->
+      <aside class="card">
+        <div class="head"><h3>필터 & 정렬</h3><button class="btn ghost" id="btnNewRule">+ 알림 규칙</button></div>
+        <div class="body">
+          <div class="mb12">
+            <label class="small muted">검색</label>
+            <div class="search mt12"><input class="input" id="q" placeholder="에이전트ID, 소스, 요약…"/><button class="btn" id="btnSearch">검색</button></div>
+          </div>
+          <div class="mb12">
+            <label class="small muted">심각도</label>
+            <div class="tags mt12">
+              <button class="tag sevFilter" data-sev="critical">Critical</button>
+              <button class="tag sevFilter" data-sev="warn">Warn</button>
+              <button class="tag sevFilter" data-sev="info">Info</button>
+              <button class="tag sevFilter" data-sev="ok">OK</button>
+            </div>
+          </div>
+          <div class="grid mb12">
+            <div>
+              <label class="small muted">상태</label>
+              <select id="status" class="w100 mt12">
+                <option value="all">전체</option>
+                <option value="open">미처리</option>
+                <option value="ack">처리중</option>
+                <option value="resolved">해결</option>
+              </select>
+            </div>
+            <div>
+              <label class="small muted">소스 유형</label>
+              <select id="source" class="w100 mt12">
+                <option value="all">전체</option>
+                <option>TEXT</option>
+                <option>PDF</option>
+                <option>DOCX</option>
+                <option>XLSX</option>
+                <option>TXT</option>
+                <option>API</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb12">
+            <label class="small muted">기간</label>
+            <select id="range" class="w100 mt12">
+              <option value="24h">최근 24시간</option>
+              <option value="7d">최근 7일</option>
+              <option value="30d">최근 30일</option>
+            </select>
+          </div>
+          <div class="mb12">
+            <label class="small muted">조용시간 (Warn 이하 묵음)</label>
+            <div class="row mt12">
+              <div class="switch" id="quietSwitch"></div>
+              <span class="muted small">22:00 ~ 08:00 (Asia/Seoul)</span>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="btn ghost" id="btnReset">초기화</button>
+            <button class="btn primary" id="btnApply">필터 적용</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Content -->
+      <section class="card">
+        <div class="head">
+          <h3>알림 목록</h3>
+          <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="open">미처리</button>
+            <button class="tab" data-tab="ack">처리중</button>
+            <button class="tab" data-tab="resolved">해결</button>
+          </div>
+        </div>
+        <div class="body">
+          <table>
+            <thead>
+              <tr>
+                <th>심각도</th>
+                <th>일시</th>
+                <th>요약</th>
+                <th>사번</th>
+                <th>담당</th>
+                <th>소스</th>
+                <th>조치</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="footer">
+            <span class="muted small" id="countInfo">총 0건</span>
+            <div class="spacer"></div>
+            <button class="btn ghost" id="btnMore">더 보기</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Rule Builder Modal -->
+  <div class="modal" id="ruleModal" aria-hidden="true">
+    <div class="overlay" data-close></div>
+    <div class="panel">
+      <div class="head">
+        <strong>알림 규칙 생성</strong>
+        <button class="iconbtn" data-close aria-label="닫기">✕</button>
+      </div>
+      <div class="body">
+        <div class="grid">
+          <div class="card">
+            <div class="head"><h3>이벤트 & 조건</h3></div>
+            <div class="body">
+              <label class="small muted">이벤트</label>
+              <select class="w100 mt12" id="rbEvent">
+                <option value="heartbeat_missing">에이전트-하트비트 누락</option>
+                <option value="agent_uninstalled">에이전트-삭제</option>
+                <option value="pii_detected">PII 탐지</option>
+                <option value="masking_failed">마스킹 실패</option>
+                <option value="quota_near">쿼터 임박</option>
+              </select>
+              <div class="grid mt12">
+                <div>
+                  <label class="small muted">지속(분)</label>
+                  <input class="input mt12" id="rbDuration" type="number" min="0" value="30"/>
+                </div>
+                <div>
+                  <label class="small muted">심각도</label>
+                  <select class="w100 mt12" id="rbSeverity">
+                    <option>info</option><option>warn</option><option>critical</option>
+                  </select>
+                </div>
+              </div>
+              <label class="small muted mt12">세부 타입/임계치</label>
+              <input class="input mt12" id="rbMeta" placeholder="예: types=[rrn_valid, card_luhn]; min_count=1"/>
+            </div>
+          </div>
+          <div class="card">
+            <div class="head"><h3>알림 & 에스컬레이션</h3></div>
+            <div class="body">
+              <label class="small muted">채널</label>
+              <div class="tags mt12">
+                <button class="tag rbChan" data-v="inapp">In‑App</button>
+                <button class="tag rbChan" data-v="slack">Slack</button>
+                <button class="tag rbChan" data-v="email">Email</button>
+              </div>
+              <label class="small muted mt12">대상</label>
+              <input class="input mt12" id="rbAudience" placeholder="owner, security_admin"/>
+              <label class="small muted mt12">에스컬레이션(분)</label>
+              <input class="input mt12" id="rbEsc" type="number" min="0" value="120"/>
+              <label class="small muted mt12">런북 URL</label>
+              <input class="input mt12" id="rbRunbook" placeholder="/runbooks/agent-offline"/>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="spacer"></div>
+          <button class="btn ghost" data-close>취소</button>
+          <button class="btn primary" id="rbSave">규칙 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Digest Modal -->
+  <div class="modal" id="digestModal" aria-hidden="true">
+    <div class="overlay" data-close></div>
+    <div class="panel">
+      <div class="head">
+        <strong>다이제스트 설정</strong>
+        <button class="iconbtn" data-close aria-label="닫기">✕</button>
+      </div>
+      <div class="body">
+        <div class="grid">
+          <div class="card">
+            <div class="head"><h3>주기</h3></div>
+            <div class="body">
+              <div class="tags">
+                <button class="tag digFreq" data-v="daily">매일</button>
+                <button class="tag digFreq" data-v="weekly">매주(월)</button>
+              </div>
+              <label class="small muted mt12">시간 (Asia/Seoul)</label>
+              <input class="input mt12" id="digTime" type="time" value="09:00"/>
+              <label class="small muted mt12">채널</label>
+              <div class="tags mt12">
+                <button class="tag digChan" data-v="inapp">In‑App</button>
+                <button class="tag digChan" data-v="slack">Slack</button>
+                <button class="tag digChan" data-v="email">Email</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="head"><h3>포함 내용</h3></div>
+            <div class="body">
+              <div class="row mb8"><div class="switch" id="digOpen"></div><span>미해결 알림</span></div>
+              <div class="row mb8"><div class="switch" id="digTop"></div><span>위험 상위 소스/유형</span></div>
+              <div class="row mb8"><div class="switch" id="digPolicy"></div><span>정책/예외 변경</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="spacer"></div>
+          <button class="btn ghost" data-close>취소</button>
+          <button class="btn primary" id="digSave">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      function byId(id){ return document.getElementById(id); }
+      function on(el, ev, fn){ if(el) el.addEventListener(ev, fn); }
+
+      document.addEventListener('DOMContentLoaded', function init(){
+        // --- Mock Data ---------------------------------------------------------
+        const mock = [
+          {id:'alrt_001', sev:'critical', ts:'2025-09-25 09:12', sum:'에이전트 삭제 감지', emp:'E2023-0987', src:'host', tab:'open', assignee:null, actions:['ack','assign','resolve']},
+          {id:'alrt_002', sev:'warn', ts:'2025-09-25 08:51', sum:'하트비트 누락 30분 경과', emp:'E2022-0731', src:'agent', tab:'open', assignee:null, actions:['ack','assign','resolve']},
+          {id:'alrt_003', sev:'critical', ts:'2025-09-25 08:20', sum:'고위험 PII(주민번호) 탐지·차단', emp:'E2024-0221', src:'PDF', tab:'ack', assignee:'홍서연', actions:['assign','resolve']},
+          {id:'alrt_005', sev:'ok', ts:'2025-09-25 07:30', sum:'파이프라인 정상화', emp:'-', src:'system', tab:'resolved', assignee:'보안팀', actions:[]}
+        ];
+
+        const rowsEl = byId('rows');
+        const countInfo = byId('countInfo');
+
+        function sevPill(sev){
+          return `<span class="sev ${sev==='critical'?'critical':sev==='warn'?'warn':sev==='ok'?'ok':'info'}">${sev.toUpperCase()}</span>`;
+        }
+
+        function rowTpl(a){
+          const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'open';
+          const btnsByTab = { open:['ack','assign'], ack:['assign','resolve'], resolved:['reopen'] };
+          const label = { ack:'확인', assign:'담당', resolve:'해결', reopen:'재처리' };
+          const actsHtml = (btnsByTab[activeTab]||[]).map(k=>`<button class=\"btn ${k==='resolve'?'ok':''}\" data-act=\"${k}\" data-id=\"${a.id}\">${label[k]}</button>`).join('');
+          const assignee = a.tab==='ack' ? (a.assignee || '<span class="muted">미지정</span>') : (a.tab==='resolved' ? (a.assignee||'-') : '-');
+          return `<tr>
+            <td>${sevPill(a.sev)}</td>
+            <td>${a.ts}</td>
+            <td>${a.sum}</td>
+            <td class="small">${a.emp || '-'}</td>
+            <td>${assignee}</td>
+            <td>${a.src}</td>
+            <td class="row-actions">${actsHtml}</td>
+          </tr>`
+        }
+
+        function render(){
+          const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'open';
+          const q = byId('q')?.value?.trim().toLowerCase() || '';
+          const sevSel = [...document.querySelectorAll('.sevFilter.active')].map(x=>x.dataset.sev);
+          const status = byId('status')?.value || 'all';
+          const src = byId('source')?.value || 'all';
+          let data = mock.filter(m=>m.tab===activeTab);
+          if(q) data = data.filter(m=> (m.sum+(m.emp||'')).toLowerCase().includes(q));
+          if(sevSel.length) data = data.filter(m=> sevSel.includes(m.sev));
+          if(status!=='all') data = data.filter(m=> m.tab===status);
+          if(src!=='all') data = data.filter(m=> m.src===src);
+          if(rowsEl) rowsEl.innerHTML = data.map(rowTpl).join('');
+          if(countInfo) countInfo.textContent = `총 ${data.length}건`;
+        }
+
+        // Tabs (document-level delegation)
+        on(document, 'click', (e)=>{
+          const t = e.target.closest('.tab'); if(!t) return;
+          e.preventDefault();
+          document.querySelectorAll('.tab').forEach(x=>{x.classList.remove('active'); x.setAttribute('aria-selected','false');});
+          t.classList.add('active'); t.setAttribute('aria-selected','true');
+          render();
+        });
+
+        // Filters
+        document.querySelectorAll('.sevFilter').forEach(btn=> on(btn,'click',()=>{ btn.classList.toggle('active'); render(); }));
+        on(byId('btnSearch'),'click',render);
+        on(byId('btnApply'),'click',render);
+        on(byId('btnReset'),'click',()=>{
+          document.querySelectorAll('.sevFilter').forEach(b=>b.classList.remove('active'));
+          if(byId('status')) byId('status').value='all';
+          if(byId('source')) byId('source').value='all';
+          if(byId('q')) byId('q').value='';
+          render();
+        });
+
+        // Quiet Hours switch
+        on(byId('quietSwitch'),'click',()=> byId('quietSwitch').classList.toggle('on'));
+
+        // Banner
+        on(byId('btnBannerAck'),'click',()=> byId('criticalBanner')?.classList.add('hidden'));
+
+        // Row actions (delegation on table)
+        let currentAssignId = null; let currentAssignAction = 'assign';
+        on(rowsEl,'click',(e)=>{
+          const btn = e.target.closest('[data-act]'); if(!btn) return;
+          const id = btn.dataset.id; const act = btn.dataset.act;
+          const item = mock.find(m=>m.id===id); if(!item) return;
+          if(act==='ack'){ item.tab='ack'; if(!item.assignee) item.assignee='(담당자 미지정)'; }
+          if(act==='assign'){ currentAssignId = id; openAssignModal(); }
+          if(act==='resolve'){ item.tab='resolved'; item.sev='ok'; item.sum+=' · 해결됨'; }
+          if(act==='reopen'){ currentAssignId = id; currentAssignAction='reopen'; openAssignModal(); }
+          render();
+        });
+
+        // Assign Modal
+        function openAssignModal(){ const m = byId('assignModal'); if(m) m.classList.add('open'); }
+        function closeAssignModal(){ const m = byId('assignModal'); if(m) m.classList.remove('open'); }
+        on(document,'click',(e)=>{ const x = e.target; if(x && x.getAttribute('data-close')!==null){ closeAssignModal(); }});
+        on(byId('assignConfirm'),'click',()=>{
+          const item = mock.find(m=>m.id===currentAssignId); if(!item) return closeAssignModal();
+          const v = document.querySelector('input[name="assignee"]:checked')?.value || '담당자 미지정';
+          item.assignee = v; item.tab='ack';
+          currentAssignAction='assign';
+          closeAssignModal(); render();
+        });
+
+        // Rule & Digest modals (safe guards)
+        on(byId('btnNewRule'),'click',()=> byId('ruleModal')?.classList.add('open'));
+        on(byId('btnDigest'),'click',()=> byId('digestModal')?.classList.add('open'));
+        document.querySelectorAll('#ruleModal [data-close], #digestModal [data-close]').forEach(el=> on(el,'click',()=> el.closest('.modal')?.classList.remove('open')));
+        on(byId('rbSave'),'click',()=>{ alert('규칙이 저장되었습니다 (mock).'); byId('ruleModal')?.classList.remove('open'); });
+        document.querySelectorAll('.rbChan, .digFreq, .digChan').forEach(b=> on(b,'click',()=> b.classList.toggle('active')));
+        ['digOpen','digTop','digPolicy'].forEach(id=> on(byId(id),'click',()=> byId(id).classList.toggle('on')));
+
+        // Bell dropdown
+        let unread = [
+          {id:'n001', title:'에이전트 삭제 감지', preview:'MacBook‑042에서 에이전트가 제거되었습니다', time:'09:12', sev:'critical'},
+          {id:'n002', title:'하트비트 누락', preview:'agt_731 30분 이상 응답 없음', time:'08:51', sev:'warn'},
+          {id:'n003', title:'고위험 PII 탐지', preview:'주민등록번호 탐지·차단됨', time:'08:20', sev:'critical'}
+        ];
+        function sevDot(c){ return `<span style=\"display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${c}\"></span>`; }
+        function sevColor(s){ return s==='critical'?'#ef4444':(s==='warn'?'#f59e0b':'#60a5fa'); }
+        function renderNotifs(){
+          const list = byId('notifList');
+          if(!list) return;
+          if(!unread.length){ list.innerHTML = '<div class="empty">새 알림이 없습니다</div>'; }
+          else{
+            list.innerHTML = unread.map(n=>`<div class=\"notif\" data-nid=\"${n.id}\">
+              <div class=\"ico\">${sevDot(sevColor(n.sev))}</div>
+              <div class=\"txt\"><div class=\"title\">${n.title}</div><div class=\"prev\">${n.preview}</div></div>
+              <div class=\"time\">${n.time}</div>
+            </div>`).join('');
+          }
+          const bc = byId('bellCount'); if(bc){ bc.textContent = String(unread.length); bc.style.display = unread.length? 'inline-block':'none'; }
+          const head = byId('notifPanel')?.querySelector('.head strong'); if(head){ head.textContent = `읽지 않은 알림 (${unread.length})`; }
+        }
+        on(byId('btnBell'),'click',()=>{ const p = byId('notifPanel'); if(!p) return; p.classList.toggle('open'); });
+        on(document,'click',(e)=>{ const p = byId('notifPanel'); const bell = byId('btnBell'); if(!p) return; if(p.classList.contains('open') && !p.contains(e.target) && !bell.contains(e.target)) p.classList.remove('open'); });
+        on(byId('markAll'),'click',()=>{ unread = []; renderNotifs(); });
+        on(byId('notifList'),'click',(e)=>{ const it = e.target.closest('.notif'); if(!it) return; const nid = it.dataset.nid; unread = unread.filter(n=>n.id!==nid); renderNotifs(); });
+
+        // First render
+        render(); renderNotifs();
+      });
+    })();
+  </script>
+  <!-- Assign Modal -->
+  <div class="modal" id="assignModal" aria-hidden="true">
+    <div class="overlay" data-close></div>
+    <div class="panel">
+      <div class="head">
+        <strong>담당자 선택</strong>
+        <button class="iconbtn" data-close aria-label="닫기">✕</button>
+      </div>
+      <div class="body">
+        <p class="muted small">처리중(Ack) 상태의 담당자를 지정합니다.</p>
+        <div class="card mt12">
+          <div class="body">
+            <label class="row mb8"><input type="radio" name="assignee" value="홍서연" checked style="margin-right:8px;"/>홍서연 · 보안팀</label>
+            <label class="row mb8"><input type="radio" name="assignee" value="김관리" style="margin-right:8px;"/>김관리 · 보안관리자</label>
+            <label class="row mb8"><input type="radio" name="assignee" value="이응대" style="margin-right:8px;"/>이응대 · 응대담당</label>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="spacer"></div>
+          <button class="btn ghost" data-close>취소</button>
+          <button class="btn primary" id="assignConfirm">선택</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- (선택) 우측 상단 유저 박스 -->
+  <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
+    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+    <button type="button" class="logout">로그아웃</button>
+  </div>
+
+<script>
+(function(){
+  function placeBell(){
+    var user = document.querySelector('.pm-userbox');
+    var bell = document.querySelector('.bellwrap');
+    if(!user || !bell) return;
+    var gap = 6; // px between bell and userbox
+    var userWidth = Math.ceil(user.getBoundingClientRect().width);
+    var right = 16 + userWidth + gap; // userbox right + width + gap
+    bell.style.right = right + 'px';
+    bell.style.top = '12px';
+  }
+  addEventListener('load', placeBell);
+  addEventListener('resize', placeBell);
+  // Recompute if userbox width changes after fonts load
+  var ro = new ResizeObserver(placeBell);
+  var u = document.querySelector('.pm-userbox'); if(u) ro.observe(u);
+})();
+</script>
+
+</body>
+</html>

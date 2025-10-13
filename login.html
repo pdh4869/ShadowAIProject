@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>대시보드 로그인</title>
+
+
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/page-css/login.page.css"></head>
+<body>
+  <main class="card" role="dialog" aria-label="대시보드 로그인 폼">
+    <div class="brand"><div class="dot"></div> Privacy Monitor</div>
+    <div class="head">
+      <h1>대시보드 로그인</h1>
+      <p class="subtitle">접근을 위해 ID와 비밀번호를 입력하세요.</p>
+    </div>
+    <form class="body" id="loginForm" autocomplete="off" novalidate>
+      <div class="field">
+        <label for="emp">ID (사번)</label>
+        <div class="input-wrap">
+          <input id="emp" name="emp" placeholder="예: A1023" inputmode="latin" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="pwd">비밀번호</label>
+        <div class="input-wrap">
+          <input id="pwd" name="pwd" type="password" placeholder="비밀번호" required />
+          <button class="show" type="button" id="togglePwd" aria-controls="pwd" aria-pressed="false">표시</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="error" id="error"></div>
+      </div>
+      <button class="btn" type="submit" id="submitBtn">로그인</button>
+    </form>
+    <div class="foot">
+      <div class="note">문의사항은 <b>최고 관리자</b>에게 문의해 주세요.</div>
+    </div>
+  </main>
+
+<script>
+const $ = (sel)=>document.querySelector(sel);
+const form = $('#loginForm');
+const emp  = $('#emp');
+const pwd  = $('#pwd');
+const err  = $('#error');
+const submitBtn = $('#submitBtn');
+const togglePwd = $('#togglePwd');
+
+// Demo validation (프론트엔드 검증 샘플)
+function validEmp(v){ return /^[A-Za-z0-9_-]{2,20}$/.test(v); }
+
+togglePwd.addEventListener('click', ()=>{
+  const visible = pwd.getAttribute('type') === 'text';
+  pwd.setAttribute('type', visible ? 'password' : 'text');
+  togglePwd.setAttribute('aria-pressed', String(!visible));
+  togglePwd.textContent = visible ? '표시' : '숨김';
+});
+
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  err.textContent = '';
+  const id = emp.value.trim();
+  const pw = pwd.value;
+  if (!validEmp(id)){ err.textContent = 'ID(사번) 형식이 올바르지 않습니다.'; emp.focus(); return; }
+  if (pw.length < 8){ err.textContent = '비밀번호는 8자 이상이어야 합니다.'; pwd.focus(); return; }
+
+  submitBtn.disabled = true;
+  // TODO: 실제 서비스에서는 여기서 API 호출(fetch)로 인증 처리
+  setTimeout(()=>{
+    // 데모: 항상 실패로 처리하여 에러 메시지 표시
+    err.textContent = '로그인에 실패했습니다. ID 또는 비밀번호를 확인하세요.';
+    submitBtn.disabled = false;
+  }, 700);
+});
+
+// Enter 키
+[pwd, emp].forEach(el => el.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){ form.requestSubmit(); }
+}));
+</script>
+</body>
+</html>
