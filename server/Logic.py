@@ -29,6 +29,14 @@ try:
     import olefile
 except ImportError:
     olefile = None
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    load_workbook = None
+try:
+    from pptx import Presentation
+except ImportError:
+    Presentation = None
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -126,6 +134,41 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
         except Exception as e:
             raise ValueError(f"[ERROR] HWP 파싱 실패: {e}")
     
+    elif File_Ext == "xlsx":
+        if load_workbook is None:
+            raise ValueError("[ERROR] XLSX 파싱 실패: openpyxl 라이브러리 미설치")
+        try:
+            wb = load_workbook(io.BytesIO(File_Bytes), data_only=True)
+            text = ""
+            for sheet in wb.worksheets:
+                for row in sheet.iter_rows(values_only=True):
+                    row_text = " ".join([str(cell) if cell is not None else "" for cell in row])
+                    if row_text.strip():
+                        text += row_text + "\n"
+            return text.strip(), False
+        except Exception as e:
+            raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
+    
+    elif File_Ext == "pptx":
+        if Presentation is None:
+            raise ValueError("[ERROR] PPTX 파싱 실패: python-pptx 라이브러리 미설치")
+        try:
+            prs = Presentation(io.BytesIO(File_Bytes))
+            text = ""
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        text += shape.text + "\n"
+            
+            # 이미지 OCR 추가
+            ocr_text = run_ocr_on_pptx_images(File_Bytes)
+            if ocr_text:
+                text += "\n" + ocr_text
+            
+            return text.strip(), False
+        except Exception as e:
+            raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
+    
     elif File_Ext in ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"]:
         print(f"[INFO] 이미지 파일 감지: {File_Ext}")
         ocr_text = run_ocr_on_single_image(File_Bytes)
@@ -207,6 +250,30 @@ def run_ocr_on_hwp_images(hwp_bytes: bytes) -> str:
             print(f"[INFO] HWP 이미지 OCR 완료: {len(ocr_text)} 글자 추출")
     except Exception as e:
         print(f"[ERROR] HWP 이미지 OCR 실패: {e}")
+    return ocr_text.strip()
+
+def run_ocr_on_pptx_images(pptx_bytes: bytes) -> str:
+    """PPTX 파일 내부 이미지에서 OCR 수행"""
+    if reader is None:
+        return ""
+    ocr_text = ""
+    try:
+        with zipfile.ZipFile(io.BytesIO(pptx_bytes)) as pptx_zip:
+            image_files = [f for f in pptx_zip.namelist() if f.startswith("ppt/media/")]
+            print(f"[INFO] PPTX 내부 이미지 {len(image_files)}개 발견, OCR 시작")
+            for image_name in image_files:
+                try:
+                    with pptx_zip.open(image_name) as image_file:
+                        img = Image.open(image_file)
+                        result = reader.readtext(np.array(img))
+                        for box in result:
+                            ocr_text += box[1] + "\n"
+                except Exception:
+                    continue
+        if ocr_text:
+            print(f"[INFO] PPTX 이미지 OCR 완료: {len(ocr_text)} 글자 추출")
+    except Exception as e:
+        print(f"[ERROR] PPTX 이미지 OCR 실패: {e}")
     return ocr_text.strip()
 
 # ==========================
@@ -326,6 +393,21 @@ def detect_by_ner(Text: str) -> list:
             continue
         
         if Label.upper() in ["PER", "PS", "ORG", "LOC", "LC", "MISC"]:
+            # PS (사람 이름) 필터링: 숫자만 있거나 한글 없이 특수문자만 있는 경우 제외
+            if Label.upper() in ["PS", "PER"]:
+                # 한글 포함 여부 확인
+                has_korean = any('\uac00' <= c <= '\ud7a3' for c in Word)
+                
+                # 숫자만 있는 경우 제외
+                if Word.replace(" ", "").isdigit():
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (숫자만 포함)")
+                    continue
+                
+                # 한글이 없고 특수문자만 있는 경우 제외
+                if not has_korean and any(c in Word for c in "#@$%^&*()_+=[]{}|\\;:'\",.<>?/~`"):
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (한글 없이 특수문자 포함)")
+                    continue
+            
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
             print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
     
@@ -432,6 +514,28 @@ def detect_images_in_hwp(hwp_bytes):
         print(f"[WARN] HWP 이미지 검사 실패: {e}")
     return results
 
+def detect_images_in_pptx(pptx_bytes):
+    """PPTX 파일 내부 이미지에서 얼굴 탐지"""
+    results = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(pptx_bytes)) as pptx_zip:
+            image_files = [f for f in pptx_zip.namelist() if f.startswith("ppt/media/")]
+            print(f"[INFO] PPTX 내부 이미지 {len(image_files)}개 발견, 얼굴 탐지 시작")
+            for image_name in image_files:
+                with pptx_zip.open(image_name) as image_file:
+                    img_bytes = image_file.read()
+                    faces = detect_faces_in_image_bytes(img_bytes)
+                    if len(faces) > 0:
+                        print(f"[INFO] ✓ {image_name} → 얼굴 {len(faces)}개 탐지")
+                        results.append({
+                            "image_name": image_name,
+                            "faces_found": len(faces),
+                            "faces": faces
+                        })
+    except Exception as e:
+        print(f"[WARN] PPTX 이미지 검사 실패: {e}")
+    return results
+
 def scan_file_for_face_images(file_bytes, file_ext):
     """파일 내 이미지에서 얼굴을 탐지합니다"""
     file_ext = file_ext.lower()
@@ -443,6 +547,8 @@ def scan_file_for_face_images(file_bytes, file_ext):
         return detect_images_in_pdf(file_bytes)
     elif file_ext == "hwp":
         return detect_images_in_hwp(file_bytes)
+    elif file_ext == "pptx":
+        return detect_images_in_pptx(file_bytes)
     elif file_ext in ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"]:
         print(f"[INFO] 단일 이미지 파일 얼굴 탐지 시작")
         faces = detect_faces_in_image_bytes(file_bytes)
