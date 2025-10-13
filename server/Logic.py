@@ -172,6 +172,9 @@ def detect_by_regex(Text: str) -> list:
     normalized_text = re.sub(r'[\s\-]', '', Text)
     
     Patterns = {
+        # 한글 이름 (2-4글자, NER fallback용)
+        "korean_name": re.compile(r"\b[가-힣]{2,4}\b"),
+        
         # 전화번호: 010-1234-5678, 01012345678, 010 1234 5678 모두 탐지
         "phone": re.compile(r"\b01[016789][\s\-]?\d{3,4}[\s\-]?\d{4}\b"),
         
@@ -409,7 +412,21 @@ def handle_input_raw(Input_Data, Original_Format=None):
     Detected = []
     if Parsed_Text:
         print(f"[INFO] 텍스트 분석 중... (길이: {len(Parsed_Text)} 글자)")
-        Detected = detect_by_regex(Parsed_Text) + detect_by_ner(Parsed_Text)
+        
+        # NER 먼저 실행
+        ner_results = detect_by_ner(Parsed_Text)
+        
+        # 정규식 실행
+        regex_results = detect_by_regex(Parsed_Text)
+        
+        # NER로 탐지된 이름 목록
+        ner_names = {d["value"] for d in ner_results if d["type"].upper() in ["PER", "PS"]}
+        
+        # 정규식에서 korean_name 중복 제거
+        filtered_regex = [d for d in regex_results if not (d["type"] == "korean_name" and d["value"] in ner_names)]
+        
+        Detected = filtered_regex + ner_results
+        
         if len(Detected) > 0:
             print(f"[INFO] ✓ 텍스트 개인정보 {len(Detected)}개 탐지")
     else:

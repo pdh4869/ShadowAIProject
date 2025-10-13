@@ -101,7 +101,9 @@ if __name__ == "__main__":
     while True:
         msg = read_message()
         if msg is None:
-            continue
+            log_file.write("stdin closed, exiting\\n")
+            log_file.close()
+            break
         log_file.write(f"Received: {msg}\\n")
         log_file.flush()
         

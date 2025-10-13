@@ -26,12 +26,22 @@
   }
   if (chrome?.runtime?.id) connectPort();
 
-  function sendViaPort(type, payload){
-    return new Promise((resolve)=>{
+  async function sendViaPort(type, payload){
+    return new Promise(async (resolve)=>{
       if (!port) {
-        console.error("[content] 포트 연결 없음: 확장 프로그램 재시작 필요");
-        resolve({ ok:false, error:"포트 연결 없음" });
-        return;
+        console.warn("[content] 포트 연결 없음, Service Worker 깨우기 시도...");
+        try {
+          await chrome.runtime.sendMessage({type: "ping"});
+        } catch(e) {
+          console.log("[content] Service Worker 깨우기 실패, 재연결 시도");
+        }
+        await new Promise(r => setTimeout(r, 100));
+        connectPort();
+        if (!port) {
+          console.error("[content] 포트 재연결 실패");
+          resolve({ ok:false, error:"포트 연겴 실패" });
+          return;
+        }
       }
       
       const reqId = nextReqId();

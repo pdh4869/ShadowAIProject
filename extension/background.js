@@ -355,6 +355,13 @@ chrome.runtime.onConnect.addListener((port) => {
 /* === 기존 sendMessage 경로도 유지(콜백) === */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const t = msg?.type;
+  
+  if (t === "ping") {
+    console.log("[bg] Ping 수신 - Service Worker 활성화");
+    sendResponse({ ok: true });
+    return true;
+  }
+  
   if (!t || (t !== "PII_EVENT" && t !== "FILE_COLLECT")) return;
   
   console.log(`[bg] (레거시) 메시지 수신: ${t}`);
