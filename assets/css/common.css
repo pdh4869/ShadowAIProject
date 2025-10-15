@@ -9,7 +9,7 @@
 html,body{
   margin:0; padding:0; color:var(--text);
   background: var(--bg);
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
 }
 
 /* 브랜드바 */
@@ -23,7 +23,7 @@ html,body{
 /* 네비게이션 */
 .pm-navwrap{
   padding:8px; border-radius:14px;
-  background: #C5D3E8;
+  background: #3F72AF;
   box-shadow: 0 4px 12px rgba(63,114,175,0.2);
   margin:0 auto 18px auto; max-width:1040px;
 }
@@ -32,11 +32,11 @@ html,body{
   display:inline-flex; align-items:center; justify-content:center;
   padding:6px 10px; min-width:100px; max-width:140px;
   border-radius:999px; border:1px solid var(--border);
-  color:#3F72AF; font-size:12px; text-decoration:none; background:#fff;
+  color:#112D4E; font-size:12px; font-weight:700; text-decoration:none; background:#fff;
   white-space:nowrap; flex:0 1 140px;
 }
 .pm-nav a:hover{ border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.15) inset; }
-.pm-nav a.active{ border-color:#3F72AF; color:#112D4E; }
+.pm-nav a.active{ border-color:#3F72AF; background:#F9F7F7; color:#3F72AF; box-shadow: 0 0 0 3px rgba(63,114,175,.15) inset; }
 
 /* 유틸리티 클래스 */
 .max-w-6xl{ max-width:72rem; }
@@ -48,7 +48,7 @@ html,body{
   position: absolute; top:12px; right:16px; z-index:10;
   display:flex; align-items:center; gap:6px; padding:6px 8px;
   border-radius:10px; border:1px solid var(--border);
-  background: #C5D3E8;
+  background: #3F72AF;
   box-shadow:0 8px 28px rgba(0,0,0,.15);
 }
 .pm-userbox .emp{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#fff; border:1px solid var(--border); color:var(--text); font-size:11px; }

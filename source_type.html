@@ -6,6 +6,7 @@
   <title>소스별 현황 상세</title>
   
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="assets/css/common.css">
 <link rel="stylesheet" href="assets/page-css/source_type.page.css"></head>
 <body>
@@ -28,7 +29,7 @@
         <button class="pill" data-range="today">오늘</button>
         <button class="pill" data-range="lastweek">지난 주</button>
         <button class="pill" data-range="lastmonth">지난 달</button>
-        <span class="muted" id="quickDesc"></span>
+        <span class="muted" id="quickDesc" style="text-align:center;display:block;"></span>
       </div>
       <div class="filters">
         <div class="field">
@@ -76,10 +77,8 @@
 
     <section class="card chart-card" aria-label="소스별 그래프">
       <h2 style="font-size:16px;margin:6px 0 0 0;">소스별 분포 (막대)</h2>
-      <div class="chart-wrap" style="position:relative;">
-        <div id="yAxisLabels" style="position:absolute;left:0;top:24px;bottom:50px;width:50px;display:flex;flex-direction:column-reverse;justify-content:space-between;align-items:flex-end;font-size:12px;color:var(--muted);padding-right:8px;"></div>
-        <canvas id="barChart" width="900" height="260" aria-label="소스별 분포 막대 그래프"></canvas>
-        <div id="chartLabels" style="display:flex;justify-content:space-around;padding:10px 60px 0 60px;font-size:12px;color:var(--muted);"></div>
+      <div style="height:260px;">
+        <canvas id="barChart"></canvas>
       </div>
     </section>
 
@@ -89,13 +88,13 @@
         <table aria-describedby="summary">
           <thead>
             <tr>
-              <th style="width:100px">상태</th>
-              <th style="width:120px">일자</th>
-              <th style="width:110px">사용자(사번)</th><!-- 추가 열 -->
-              <th style="width:220px">개인정보 유형</th>
-              <th style="width:140px">소스 유형</th>
-              <th>파일명</th>
-              <th>실패 사유</th>
+              <th style="width:100px;text-align:center;">상태</th>
+              <th style="width:120px;text-align:center;">일자</th>
+              <th style="width:110px;text-align:center;">사번</th><!-- 추가 열 -->
+              <th style="width:220px;text-align:center;">개인정보 유형</th>
+              <th style="width:140px;text-align:center;">소스 유형</th>
+              <th style="text-align:center;">파일명</th>
+              <th style="text-align:center;">실패 사유</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -107,52 +106,76 @@
   </div>
 
 <script>
+// 오늘 날짜 자동 설정
+function setTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+  document.getElementById('from').value = todayStr;
+  document.getElementById('to').value = todayStr;
+}
+
+// 페이지 로드 시 오늘 날짜 설정
+document.addEventListener('DOMContentLoaded', function() {
+  setTodayDate();
+  // 오늘 범위 표시
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
+  // 오늘 버튼 활성화
+  document.querySelector('.pill[data-range="today"]').classList.add('active');
+  // 필터 적용
+  applyFilters();
+});
+
 /* 샘플 데이터(사번 포함) */
 const DATA = [
-  {emp:'S0001', status:'실패', date:'2025-09-19', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-09-16', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-09-23', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-19', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-09-12', types:['이메일','카드번호'], source:'PDF', filename:'cards.txt', reason:''},
-  {emp:'A1200', status:'실패', date:'2025-09-16', types:[], source:'TXT', filename:'contacts.xlsx', reason:'암호화 파일'},
-  {emp:'B3001', status:'성공', date:'2025-09-17', types:['카드번호','이메일'], source:'XLSX', filename:'report.pdf', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-09-22', types:[], source:'XLSX', filename:'invoice.pdf', reason:'암호화 파일'},
-  {emp:'A1023', status:'성공', date:'2025-09-10', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-09-16', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-14', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-18', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'실패', date:'2025-09-17', types:[], source:'XLSX', filename:'invoice.pdf', reason:'지원 불가 형식'},
-  {emp:'B3001', status:'성공', date:'2025-09-16', types:['IP 주소'], source:'TXT', filename:'cards.txt', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-09-11', types:[], source:'DOCX', filename:'cards.txt', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-09-17', types:['생년월일'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-09-16', types:['주민등록번호','카드번호'], source:'XLSX', filename:'data.xlsx', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-18', types:['주민등록번호','생년월일'], source:'DOCX', filename:'summary.pdf', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-17', types:[], source:'XLSX', filename:'resume.docx', reason:'손상 파일'},
-  {emp:'A1200', status:'성공', date:'2025-09-15', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-14', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-10', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-12', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
-  {emp:'A1138', status:'실패', date:'2025-09-23', types:[], source:'XLSX', filename:'summary.pdf', reason:'지원 불가 형식'},
+  {emp:'S0001', status:'실패', date:'2025-10-15', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-15', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-15', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-10-14', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-10-13', types:['이메일','카드번호'], source:'PDF', filename:'cards.txt', reason:''},
+  {emp:'A1200', status:'실패', date:'2025-10-12', types:[], source:'TXT', filename:'contacts.xlsx', reason:'암호화 파일'},
+  {emp:'B3001', status:'성공', date:'2025-10-11', types:['카드번호','이메일'], source:'XLSX', filename:'report.pdf', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-10-10', types:[], source:'XLSX', filename:'invoice.pdf', reason:'암호화 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-09', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-08', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-10-07', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-10-06', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'실패', date:'2025-10-05', types:[], source:'XLSX', filename:'invoice.pdf', reason:'지원 불가 형식'},
+  {emp:'B3001', status:'성공', date:'2025-10-04', types:['IP 주소'], source:'TXT', filename:'cards.txt', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-10-03', types:[], source:'DOCX', filename:'cards.txt', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-02', types:['생년월일'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-01', types:['주민등록번호','카드번호'], source:'XLSX', filename:'data.xlsx', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-30', types:['주민등록번호','생년월일'], source:'DOCX', filename:'summary.pdf', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-29', types:[], source:'XLSX', filename:'resume.docx', reason:'손상 파일'},
+  {emp:'A1200', status:'성공', date:'2025-09-28', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-27', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-26', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-25', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
+  {emp:'A1138', status:'실패', date:'2025-09-24', types:[], source:'XLSX', filename:'summary.pdf', reason:'지원 불가 형식'},
   {emp:'B2047', status:'성공', date:'2025-09-23', types:['IP 주소','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-09-21', types:['카드번호'], source:'TXT', filename:'summary.pdf', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-09-22', types:['카드번호'], source:'TXT', filename:'summary.pdf', reason:''},
   {emp:'A1200', status:'성공', date:'2025-09-21', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
   {emp:'B3001', status:'성공', date:'2025-09-20', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-16', types:['전화번호','이메일'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-19', types:['카드번호'], source:'TXT', filename:'apply.docx', reason:''},
-  {emp:'A1138', status:'실패', date:'2025-09-11', types:[], source:'TXT', filename:'apply.docx', reason:'지원 불가 형식'},
-  {emp:'B2047', status:'성공', date:'2025-09-15', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-19', types:[], source:'DOCX', filename:'data.xlsx', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'성공', date:'2025-09-11', types:['주민등록번호'], source:'PDF', filename:'cards.txt', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-11', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-17', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-19', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
+  {emp:'S0001', status:'성공', date:'2025-09-19', types:['전화번호','이메일'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-18', types:['카드번호'], source:'TXT', filename:'apply.docx', reason:''},
+  {emp:'A1138', status:'실패', date:'2025-09-17', types:[], source:'TXT', filename:'apply.docx', reason:'지원 불가 형식'},
+  {emp:'B2047', status:'성공', date:'2025-09-16', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-15', types:[], source:'DOCX', filename:'data.xlsx', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'성공', date:'2025-09-14', types:['주민등록번호'], source:'PDF', filename:'cards.txt', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-13', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-12', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-11', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
   {emp:'A1138', status:'성공', date:'2025-09-10', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'B2047', status:'실패', date:'2025-09-16', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'B2099', status:'성공', date:'2025-09-13', types:['전화번호'], source:'TXT', filename:'summary.pdf', reason:''},
-  {emp:'A1200', status:'성공', date:'2025-09-14', types:['전화번호'], source:'DOCX', filename:'invoice.pdf', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-14', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-14', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-10', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.pdf', reason:''},
+  {emp:'B2047', status:'실패', date:'2025-09-09', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'B2099', status:'성공', date:'2025-09-08', types:['전화번호'], source:'TXT', filename:'summary.pdf', reason:''},
+  {emp:'A1200', status:'성공', date:'2025-09-07', types:['전화번호'], source:'DOCX', filename:'invoice.pdf', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-06', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-05', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-04', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.pdf', reason:''},
   {emp:'A1138', status:'성공', date:'2025-09-22', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
   {emp:'B2047', status:'실패', date:'2025-09-15', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
   {emp:'B2099', status:'실패', date:'2025-09-23', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
@@ -182,11 +205,25 @@ function endOfLastMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 0); }
 
 // quick range
 function setQuickRange(kind){
-  const now = new Date();
+  const now = new Date(); // 현재 날짜 사용
   let from, to, label='';
-  if(kind==='today'){ from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); to = new Date(from); label = '오늘'; }
-  else if(kind==='lastweek'){ from = startOfLastWeek(now); to = endOfLastWeek(now); label = '지난 주'; }
-  else if(kind==='lastmonth'){ from = startOfLastMonth(now); to = endOfLastMonth(now); label = '지난 달'; }
+  if(kind==='today'){ 
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    from = new Date(todayStr); to = new Date(todayStr); label = '오늘'; 
+  }
+  else if(kind==='lastweek'){ 
+    from = new Date(now); from.setDate(now.getDate() - 7);
+    to = new Date(now); to.setDate(now.getDate() - 1);
+    label = '지난 주'; 
+  }
+  else if(kind==='lastmonth'){ 
+    from = new Date(now); from.setDate(now.getDate() - 30);
+    to = new Date(now); to.setDate(now.getDate() - 1);
+    label = '지난 달'; 
+  }
   else{ return; }
   $('#from').value = fmt(from);
   $('#to').value = fmt(to);
@@ -250,66 +287,57 @@ function renderRows(rows){
   $summary.textContent = `총 ${rows.length}건`;
 }
 
-// bar chart (캔버스 2D)
+// Chart.js 막대 차트
+let barChart;
 function renderChart(rows){
-  const canvas = document.getElementById('barChart');
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
   const keys = ["텍스트","PDF","DOCX","XLSX","TXT"];
   const counts = Object.fromEntries(keys.map(k=>[k,0]));
   rows.forEach(r=>{ if(counts.hasOwnProperty(r.source)) counts[r.source]++; });
   const data = keys.map(k=>counts[k]);
-  const maxV = Math.max(1, ...data);
 
-  const padding = {left:60, right:16, top:24, bottom:10};
+  if(barChart) barChart.destroy();
   
-  // Update x-axis labels
-  const labelsDiv = document.getElementById('chartLabels');
-  labelsDiv.innerHTML = keys.map(k => `<span>${k}</span>`).join('');
-  const chartW = canvas.width - padding.left - padding.right;
-  const chartH = canvas.height - padding.top - padding.bottom;
-  const barW = chartW / keys.length * 0.6;
-  const gap = (chartW / keys.length) - barW;
-
-  // axes
-  ctx.strokeStyle = "#334155";
-  ctx.beginPath();
-  ctx.moveTo(padding.left, padding.top);
-  ctx.lineTo(padding.left, padding.top + chartH);
-  ctx.lineTo(padding.left + chartW, padding.top + chartH);
-  ctx.stroke();
-
-  // y ticks and labels
-  const ticks = Math.min(5, maxV);
-  const yLabelsDiv = document.getElementById('yAxisLabels');
-  const yLabels = [];
-  for(let i=0;i<=ticks;i++){
-    const val = Math.round(maxV * i / ticks);
-    const y = padding.top + chartH - (val / maxV) * chartH;
-    yLabels.push(val);
-    // grid lines only
-    ctx.strokeStyle="rgba(148,163,184,.15)"; ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left+chartW, y);
-    ctx.stroke();
-  }
-  yLabelsDiv.innerHTML = yLabels.map(val => `<span>${val}</span>`).join('');
-
-  // bars
-  for(let i=0;i<keys.length;i++){
-    const x = padding.left + i*(barW+gap) + gap/2;
-    const val = data[i];
-    const h = (val / maxV) * chartH;
-    const y = padding.top + chartH - h;
-    ctx.fillStyle = "#3b82f6";
-    ctx.fillRect(x, y, barW, h);
-    // value label
-    ctx.fillStyle = "#e5e7eb";
-    ctx.textAlign = "center";
-    ctx.fillText(String(val), x + barW/2, y - 6);
-
-  }
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: keys,
+      datasets: [{
+        data: data,
+        backgroundColor: '#3b82f6',
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 35,
+          bottom: 20,
+          left: 40,
+          right: 40
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => `${context.label}: ${context.parsed.y}건`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0 },
+          grid: { display: false }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
 }
 
 function resetFilters(){
@@ -327,8 +355,12 @@ $('#applyBtn').addEventListener('click', applyFilters);
 $('#resetBtn').addEventListener('click', resetFilters);
 document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.target.id==='q' || e.target.id==='emp')) applyFilters(); });
 
-// Default: today
-setQuickRange('today');
+// Default: today (DOMContentLoaded에서 처리됨)
+
+// 화면 크기 변경 시 차트 다시 그리기
+window.addEventListener('resize', () => {
+  if(barChart) barChart.resize();
+});
 
 // 네비게이션 활성화
 document.addEventListener('DOMContentLoaded', function() {
@@ -340,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- (선택) 우측 상단 유저 박스 -->
 <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
-  <button type="button" class="logout">로그아웃</button>
+  <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
 </div>
 </body>
 </html>

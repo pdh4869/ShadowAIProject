@@ -61,17 +61,16 @@ togglePwd.addEventListener('click', ()=>{
 form.addEventListener('submit', (e)=>{
   e.preventDefault();
   err.textContent = '';
-  const id = emp.value.trim();
-  const pw = pwd.value;
-  if (!validEmp(id)){ err.textContent = 'ID(사번) 형식이 올바르지 않습니다.'; emp.focus(); return; }
-  if (pw.length < 8){ err.textContent = '비밀번호는 8자 이상이어야 합니다.'; pwd.focus(); return; }
+  // const id = emp.value.trim();
+  // const pw = pwd.value;
+  // if (!validEmp(id)){ err.textContent = 'ID(사번) 형식이 올바르지 않습니다.'; emp.focus(); return; }
+  // if (pw.length < 8){ err.textContent = '비밀번호는 8자 이상이어야 합니다.'; pwd.focus(); return; }
 
   submitBtn.disabled = true;
   // TODO: 실제 서비스에서는 여기서 API 호출(fetch)로 인증 처리
   setTimeout(()=>{
-    // 데모: 항상 실패로 처리하여 에러 메시지 표시
-    err.textContent = '로그인에 실패했습니다. ID 또는 비밀번호를 확인하세요.';
-    submitBtn.disabled = false;
+    // 데모: main.html로 이동
+    location.href = 'main.html';
   }, 700);
 });
 

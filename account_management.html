@@ -43,13 +43,13 @@
         <table>
           <thead>
             <tr>
-              <th style="width:160px">사번</th>
-              <th style="width:220px">이메일</th>
-              <th style="width:160px">이름</th>
-              <th style="width:120px">역할</th>
-              <th style="width:160px">최근 로그인</th>
-              <th style="width:160px">생성일</th>
-              <th style="width:220px">작업</th>
+              <th style="width:160px;text-align:center;">사번</th>
+              <th style="width:220px;text-align:center;">이메일</th>
+              <th style="width:160px;text-align:center;">이름</th>
+              <th style="width:120px;text-align:center;">역할</th>
+              <th style="width:160px;text-align:center;">최근 로그인</th>
+              <th style="width:160px;text-align:center;">생성일</th>
+              <th style="width:220px;text-align:center;">작업</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -148,9 +148,13 @@
 let CURRENT_USER_ROLE = 'super'; // 'admin'으로 바꾸면 버튼/작업 비활성화
 
 // ====== 데모 데이터 (사번 기반) ======
+// 오늘 날짜 생성
+const now = new Date();
+const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
 const admins = [
-  { emp:'S0001', email:'root@company.com', name:'최고관리자', role:'super', lastLogin:'2025-09-24 09:12', created:'2024-01-03' },
-  { emp:'A1023', email:'ops1@company.com',  name:'운영1', role:'admin', lastLogin:'2025-09-23 16:41', created:'2024-04-12' },
+  { emp:'S0001', email:'root@company.com', name:'최고관리자', role:'super', lastLogin:`${todayStr} 09:12`, created:'2024-01-03' },
+  { emp:'A1023', email:'ops1@company.com',  name:'운영1', role:'admin', lastLogin:`${todayStr} 16:41`, created:'2024-04-12' },
   { emp:'A1138', email:'ops2@company.com',  name:'운영2', role:'admin', lastLogin:'2025-09-22 10:03', created:'2024-07-28' },
   { emp:'B2047', email:'sec1@company.com',  name:'보안담당A', role:'admin', lastLogin:'2025-08-31 18:25', created:'2024-08-02' },
 ];
@@ -173,13 +177,16 @@ function renderTable(list){
     const tr = document.createElement('tr');
     const roleBadge = `<span class="badge role ${u.role==='super'?'super':'admin'}">${u.role==='super'?'최고 관리자':'일반 관리자'}</span>`;
     const isSuper = CURRENT_USER_ROLE === 'super';
+    const now = new Date();
+    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    const isToday = u.lastLogin && u.lastLogin.startsWith(today);
     tr.innerHTML = `
       <td>${u.emp}</td>
       <td>${u.email}</td>
       <td>${u.name}</td>
       <td>${roleBadge}</td>
-      <td class="muted">${u.lastLogin||'-'}</td>
-      <td class="muted">${u.created||'-'}</td>
+      <td class="${isToday ? 'muted' : ''}">${u.lastLogin||'-'}</td>
+      <td>${u.created||'-'}</td>
       <td>
         <div class="table-actions">
           <button class="btn" data-action="pw" data-emp="${u.emp}" ${!isSuper?'disabled':''}>비밀번호 변경</button>
@@ -314,6 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
   <!-- 우측 상단: 사번 + 로그아웃 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
-  <button type="button" class="logout">로그아웃</button>
+  <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
 </body>
 </html>

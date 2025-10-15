@@ -42,6 +42,10 @@
 table { width:100%; border-collapse:collapse; }
 thead tr { background:#3F72AF; }
 thead th { color:#ffffff !important; border-bottom:1px solid var(--border); }
-tbody td { border-top:1px solid #1f2937; }
+tbody td { border-top:1px solid #1f2937; color:#000000 !important; }
 
 h1, h2, h3 { color: var(--text) }
+
+/* 차트 위치 조정 */
+#chartDetectionsOverTime { margin-top: 20px; }
+#chartAccountCounts { margin-top: 20px; }
