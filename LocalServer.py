@@ -471,7 +471,7 @@ async def handle_combined(request: Request):
     # 보안: 인증 검증
     if not verify_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    
+
     try:
         data = await request.json()
         text = data.get("text", "")

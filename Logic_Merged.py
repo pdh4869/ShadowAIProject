@@ -213,6 +213,112 @@ def run_ocr_on_pdf_images(pdf_bytes: bytes) -> str:
         logging.error(f"PDF 이미지 OCR 실패: {e}")
     return text.replace("\n", " ").strip()
 
+def extract_additional_text(file_bytes: bytes, ext: str) -> str:
+    """표, 도형, 주석, 숨은 텍스트 등 보조 영역 텍스트를 최대한 확보."""
+    ext = ext.lower()
+    text_parts = []
+
+    try:
+        if ext == "docx":
+            if Document is None:
+                return ""
+            doc = Document(io.BytesIO(file_bytes))
+            # 본문
+            for p in doc.paragraphs:
+                text_parts.append(p.text)
+            # 표
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            text_parts.append(cell.text)
+            # 머리글 / 바닥글 / 주석
+            if hasattr(doc, "sections"):
+                for section in doc.sections:
+                    # 헤더
+                    if hasattr(section, "header") and section.header:
+                        for p in getattr(section.header, "paragraphs", []):
+                            if p.text.strip():
+                                text_parts.append(p.text)
+                    # 푸터
+                    if hasattr(section, "footer") and section.footer:
+                        for p in getattr(section.footer, "paragraphs", []):
+                            if p.text.strip():
+                                text_parts.append(p.text)
+            if hasattr(doc, "comments_part"):
+                for c in doc.comments_part.comments:
+                    text_parts.append(c.text)
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+        elif ext in ("pptx", "ppt"):
+            if Presentation is None:
+                return ""
+            prs = Presentation(io.BytesIO(file_bytes))
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        text_parts.append(shape.text)
+                    if hasattr(shape, "text_frame"):
+                        for p in shape.text_frame.paragraphs:
+                            text_parts.append(" ".join(r.text for r in p.runs))
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+        elif ext in ("xlsx", "xls"):
+            if load_workbook is None:
+                return ""
+            wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    for c in row:
+                        if c is not None:
+                            text_parts.append(str(c))
+            # 메모(comment)도 포함
+            for ws in wb.worksheets:
+                for row in ws.iter_rows():
+                    for cell in row:
+                        if cell.comment and cell.comment.text:
+                            text_parts.append(cell.comment.text)
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+        elif ext == "hwpx":
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as z:
+                xml_files = [n for n in z.namelist() if n.endswith(".xml")]
+                for name in xml_files:
+                    data = z.read(name).decode("utf-8", errors="ignore")
+                    text_parts.append(re.sub("<[^>]+>", " ", data))
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+        elif ext == "hwp":
+            if olefile is None:
+                return ""
+            with olefile.OleFileIO(io.BytesIO(file_bytes)) as f:
+                for entry in f.listdir():
+                    if "BodyText" in entry[0] or "SummaryInformation" in entry[0]:
+                        try:
+                            raw = f.openstream(entry).read()
+                            t = raw.decode("utf-16", errors="ignore")
+                            if t.strip():
+                                text_parts.append(t)
+                        except Exception:
+                            continue
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+        elif ext == "pdf":
+            if fitz is None:
+                return ""
+            with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+                for page in doc:
+                    text_parts.append(page.get_text("text"))
+                    annot_texts = [a.info.get("content", "") for a in page.annots() or []]
+                    text_parts.extend(annot_texts)
+            return "\n".join(t.strip() for t in text_parts if t.strip())
+
+    except Exception as e:
+        logging.warning(f"보조 텍스트 추출 실패({ext}): {e}")
+        return ""
+
+    return ""
+
 # ==========================
 # File parsing (union of features)
 # ==========================
@@ -275,6 +381,8 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             if not text:
                 logging.warning("HWP 텍스트 스트림 없음 → OCR 시도")
                 text = run_ocr_on_hwp_images(File_Bytes)
+            text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+            text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
             return text or "", False
         except Exception as e:
             logging.error(f"HWP 처리 중 예외: {e}")
@@ -294,6 +402,8 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                 if not text:
                     logging.info("HWPX 텍스트 없음 → OCR 실행")
                     text = run_ocr_on_hwpx_images(File_Bytes)
+                text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+                text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
                 return text, False
         except Exception as e:
             raise ValueError(f"[ERROR] HWPX 파싱 실패: {e}")
@@ -309,8 +419,15 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                 prs = Presentation(io.BytesIO(File_Bytes))
                 text = "\n".join([shape.text for slide in prs.slides for shape in slide.shapes if hasattr(shape, "text")])
                 if not text.strip():
-                    logging.info("PPTX 텍스트 없음 → OCR 실행")
-                    text = run_ocr_on_ppt_images(File_Bytes)
+                    # 보조 텍스트 추출 시도
+                    extra = extract_additional_text(File_Bytes, ext)
+                    if extra.strip():
+                        text = extra
+                    if not text.strip():
+                        logging.info("PPTX 텍스트 없음 → OCR 실행")
+                        text = run_ocr_on_ppt_images(File_Bytes)
+                text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+                text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
                 return text, False
             except Exception as e:
                 raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
@@ -350,8 +467,15 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                     _os.remove(tmp_path)
                 text = ""
                 if not text.strip():
-                    logging.info("PPT 텍스트 없음 → OCR 실행")
-                    text = run_ocr_on_ppt_images(File_Bytes)
+                    # 보조 텍스트 추출 시도
+                    extra = extract_additional_text(File_Bytes, ext)
+                    if extra.strip():
+                        text = extra
+                    if not text.strip():
+                        logging.info("PPT 텍스트 없음 → OCR 실행")
+                        text = run_ocr_on_ppt_images(File_Bytes)
+                text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+                text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
                 return text, False
             except Exception as e:
                 raise ValueError(f"[ERROR] PPT 파싱 실패: {e}")
@@ -373,6 +497,8 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                 if not text:
                     logging.info("XLSX 텍스트 없음 → OCR 실행")
                     text = run_ocr_on_xls_images(File_Bytes)
+                text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+                text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
                 return text, False
             except Exception as e:
                 raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
@@ -414,8 +540,15 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                     _os.remove(tmp_path)
                 text = ""
                 if not text.strip():
-                    logging.info("XLS 텍스트 없음 → OCR 실행")
-                    text = run_ocr_on_xls_images(File_Bytes)
+                    # 보조 텍스트 추출 시도
+                    extra = extract_additional_text(File_Bytes, ext)
+                    if extra.strip():
+                        text = extra
+                    if not text.strip():
+                        logging.info("XLS 텍스트 없음 → OCR 실행")
+                        text = run_ocr_on_xls_images(File_Bytes)
+                text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+                text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
                 return text, False
             except Exception as e:
                 raise ValueError(f"[ERROR] XLS 파싱 실패: {e}")
@@ -442,8 +575,15 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             _os.remove(tmp_path); _os.remove(tmp_docx_path)
             text, _ = parse_file(converted, "docx")
             if not text.strip():
-                logging.info("DOC 텍스트 없음 → OCR 실행")
-                text = run_ocr_on_docx_images(converted)
+                # 보조 텍스트 추출 시도
+                extra = extract_additional_text(File_Bytes, ext)
+                if extra.strip():
+                    text = extra
+                if not text.strip():
+                    logging.info("DOC 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_docx_images(converted)
+            text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+            text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
             return text, False
         except Exception as e:
             raise ValueError(f"[ERROR] DOC 변환/파싱 실패: {e}")
@@ -463,12 +603,18 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             fs.seek(0)
             doc = Document(fs)
             text = "\n".join([(p.text or "") for p in doc.paragraphs])
+            extra = extract_additional_text(File_Bytes, ext)
+            # 보조 텍스트 추출 시도
+            if extra.strip():
+                text += "\n" + extra
             if not text.strip():
                 logging.info("DOCX 텍스트 없음 → OCR 실행")
                 text = run_ocr_on_docx_images(File_Bytes)
                 if not text.strip():
                     logging.warning("DOCX OCR 결과 없음 → 빈 문자열 반환")
                     return "", False
+            text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+            text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
             return text, False
         except Exception as e:
             raise e
@@ -482,11 +628,18 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
                 raise ValueError("[ERROR] PDF 파싱 실패: 암호")
             text = " ".join([p.get_text().replace("\n", " ") for p in doc])
             if not any(c.isalnum() for c in text):
-                logging.info("PDF 텍스트 없음 → OCR 실행")
-                text = run_ocr_on_pdf_images(File_Bytes)
+                # 보조 텍스트 추출 시도
+                extra = extract_additional_text(File_Bytes, ext)
+                if extra.strip():
+                    text = extra
                 if not text.strip():
-                    logging.error("PDF OCR 텍스트 추출 실패")
-                    return "", False
+                    logging.info("PDF 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_pdf_images(File_Bytes)
+                    if not text.strip():
+                        logging.error("PDF OCR 텍스트 추출 실패")
+                        return "", False
+            text = re.sub(r"[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]", " ", text)  # \n, \r, \t 유지
+            text = re.sub(r"[ ]{2,}", " ", text).strip()  # 공백만 축약
             return text, False
         except Exception as e:
             raise ValueError(f"[ERROR] PDF 파싱 실패: {e}")
@@ -775,6 +928,8 @@ def detect_by_ner(Text: str) -> list:
         if start is None or end is None:
             continue
         word = ent.get('word', '').strip()
+        if word.startswith("##") or len(word) < 2:
+            continue
         if label.upper() in ["DATE", "DAT", "DT", "TIME", "TI"]:
             # 0 또는 9로만 구성된 비정상 날짜/시간 제거
             if re.fullmatch(r"0[\s0:시분초]*", word):
