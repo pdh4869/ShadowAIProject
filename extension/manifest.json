@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PII Traffic Hook (Agent)",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Hook LLM send events, talk to native host, and forward payloads to local server",
   "permissions": ["storage","activeTab","scripting","nativeMessaging","alarms"],
   "host_permissions": ["http://127.0.0.1:9000/*","http://localhost:9000/*"],

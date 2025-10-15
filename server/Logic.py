@@ -2,6 +2,9 @@ import io
 import re
 import logging
 import numpy as np
+import datetime
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 try:
     import fitz  # PyMuPDF
 except ImportError:
@@ -37,6 +40,10 @@ try:
     from pptx import Presentation
 except ImportError:
     Presentation = None
+try:
+    import win32com.client
+except ImportError:
+    win32com = None
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
@@ -68,6 +75,49 @@ except Exception as e:
 detector = MTCNN()
 
 # ==========================
+# 검증 함수 (Luhn + 주민번호)
+# ==========================
+def validate_luhn(card_number: str) -> bool:
+    """Luhn 알고리즘으로 카드번호 검증"""
+    digits = [int(d) for d in re.sub(r"\D", "", card_number)]
+    checksum = 0
+    for i, d in enumerate(reversed(digits)):
+        if i % 2 == 1:
+            t = d * 2
+            checksum += t - 9 if t > 9 else t
+        else:
+            checksum += d
+    return checksum % 10 == 0
+
+def validate_ssn(ssn: str) -> bool:
+    """주민등록번호 검증 (생년월일 + 체크섬)"""
+    ssn = re.sub(r"\D", "", ssn)
+    if len(ssn) != 13:
+        return False
+    yy = int(ssn[0:2])
+    mm = int(ssn[2:4])
+    dd = int(ssn[4:6])
+    g = int(ssn[6])
+    
+    if g not in [1, 2, 3, 4, 5, 6, 7, 8]:
+        return False
+    
+    full_year = (1900 + yy) if g in [1, 2, 5, 6] else (2000 + yy)
+    
+    try:
+        datetime.date(full_year, mm, dd)
+    except ValueError:
+        return False
+    
+    if full_year >= 2020:
+        return True
+    
+    weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5]
+    s = sum(int(ssn[i]) * weights[i] for i in range(12))
+    check = (11 - (s % 11)) % 10
+    return check == int(ssn[-1])
+
+# ==========================
 # 파일 파싱
 # ==========================
 def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
@@ -90,7 +140,26 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
         except Exception:
             raise ValueError("[ERROR] DOCX 파싱 실패: Document 객체 생성 불가")
         try:
-            text = "\n".join([para.text or "" for para in doc.paragraphs])
+            # 단락 텍스트 추출
+            print(f"[DEBUG] DOCX 단락 개수: {len(doc.paragraphs)}")
+            para_texts = []
+            for i, para in enumerate(doc.paragraphs):
+                if para.text:
+                    print(f"[DEBUG] 단락 {i}: '{para.text[:50]}'")
+                    para_texts.append(para.text)
+            text = "\n".join(para_texts)
+            
+            # 테이블 텍스트 추출
+            print(f"[DEBUG] DOCX 테이블 개수: {len(doc.tables)}")
+            for t_idx, table in enumerate(doc.tables):
+                print(f"[DEBUG] 테이블 {t_idx}: {len(table.rows)}행 x {len(table.columns)}열")
+                for r_idx, row in enumerate(table.rows):
+                    row_text = " ".join([cell.text.strip() for cell in row.cells if cell.text.strip()])
+                    if row_text:
+                        print(f"[DEBUG] 테이블 {t_idx} 행 {r_idx}: '{row_text[:50]}'")
+                        text += "\n" + row_text
+            
+            print(f"[DEBUG] 추출된 텍스트 길이: {len(text)} 글자")
             if not text.strip():
                 print("[INFO] 텍스트 없음 → OCR 실행")
                 text = run_ocr_on_docx_images(File_Bytes)
@@ -105,7 +174,15 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             doc = fitz.open(stream=File_Bytes, filetype="pdf")
             if doc.is_encrypted:
                 raise ValueError("[ERROR] PDF 파싱 실패: 암호로 보호된 PDF 문서입니다.")
-            text = " ".join([page.get_text().replace("\n", " ") for page in doc])
+            
+            # 텍스트 추출 최적화 (리스트 컴프리헨션 대신 join 사용)
+            text_parts = []
+            for page in doc:
+                page_text = page.get_text()
+                if page_text:
+                    text_parts.append(page_text.replace("\n", " "))
+            text = " ".join(text_parts)
+            
             if not any(char.isalnum() for char in text):
                 print("[INFO] 텍스트 없음 → OCR 실행")
                 text = run_ocr_on_pdf_images(File_Bytes)
@@ -116,58 +193,212 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             raise ValueError(f"[ERROR] PDF 파싱 실패: {e}")
     
     elif File_Ext == "hwp":
+        # win32com으로 HWP → HWPX 변환 시도
+        if win32com is not None:
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".hwp") as tmp:
+                    tmp.write(File_Bytes)
+                    tmp_path = tmp.name
+                tmp_hwpx_path = tmp_path + "x"
+                try:
+                    hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+                    hwp.RegisterModule("FilePathCheckDLL", "FilePathCheckerModule")
+                    hwp.Open(tmp_path)
+                    hwp.SaveAs(tmp_hwpx_path, "HWPX")
+                    hwp.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] HWP 변환 실패 또는 암호화")
+                with open(tmp_hwpx_path, "rb") as f:
+                    converted = f.read()
+                os.remove(tmp_path)
+                os.remove(tmp_hwpx_path)
+                return parse_file(converted, "hwpx")
+            except Exception as e:
+                print(f"[WARN] HWP → HWPX 변환 실패, 기본 로직으로 진행: {e}")
+        
+        # 기본 HWP 파싱
         if olefile is None:
             raise ValueError("[ERROR] HWP 파싱 실패: olefile 라이브러리 미설치")
         try:
             ole = olefile.OleFileIO(io.BytesIO(File_Bytes))
             text = ""
-            # HWP 텍스트 추출
+            
+            # 방법 1: PrvText 스트림에서 추출
             if ole.exists("PrvText"):
                 stream = ole.openstream("PrvText")
                 raw = stream.read()
                 text = raw.decode("utf-16", errors="ignore").strip()
+                print(f"[DEBUG] HWP PrvText 추출: {len(text)} 글자")
+            
+            # 방법 2: BodyText 섹션에서 추출 (더 정확함)
+            if not text.strip():
+                print("[INFO] PrvText 없음, BodyText 시도")
+                for entry in ole.listdir():
+                    if entry[0] == "BodyText":
+                        try:
+                            stream = ole.openstream(entry)
+                            raw = stream.read()
+                            decoded = raw.decode("utf-16", errors="ignore")
+                            cleaned = ''.join(c for c in decoded if c.isprintable() or c in '\n\r\t ')
+                            text += cleaned + "\n"
+                        except Exception:
+                            continue
+                print(f"[DEBUG] HWP BodyText 추출: {len(text)} 글자")
+            
+            # 방법 3: OCR 시도
             if not text.strip():
                 print("[INFO] HWP 텍스트 없음 → 이미지 OCR 시도")
                 text = run_ocr_on_hwp_images(File_Bytes)
+            
             ole.close()
+            text = text.strip()
+            
+            # HWP 텍스트 정리
+            text = re.sub(r'<>', ' ', text)
+            text = re.sub(r'<', ' ', text)
+            text = re.sub(r'>', ' ', text)
+            
+            # HWP 특수 처리: 한글 단일 글자 띄어쓰기 제거 ("이 무 송" -> "이무송")
+            # 한국 성씨로 시작하는 2~4글자 패턴만 병합
+            for surname in KOREAN_SURNAMES:
+                text = re.sub(rf'\b{surname}\s+([가-힣])\s+([가-힣])\s+([가-힣])\b', rf'{surname}\1\2\3', text)
+                text = re.sub(rf'\b{surname}\s+([가-힣])\s+([가-힣])\b', rf'{surname}\1\2', text)
+            
+            text = re.sub(r'\s+', ' ', text)
+            text = text.strip()
+            
+            print(f"[INFO] HWP 최종 텍스트: {len(text)} 글자")
+            print(f"[DEBUG] HWP 텍스트 미리보기: {text[:200]}")
             return text, False
         except Exception as e:
             raise ValueError(f"[ERROR] HWP 파싱 실패: {e}")
     
-    elif File_Ext == "xlsx":
-        if load_workbook is None:
-            raise ValueError("[ERROR] XLSX 파싱 실패: openpyxl 라이브러리 미설치")
+    elif File_Ext == "hwpx":
         try:
-            wb = load_workbook(io.BytesIO(File_Bytes), data_only=True)
-            text = ""
-            for sheet in wb.worksheets:
-                for row in sheet.iter_rows(values_only=True):
-                    row_text = " ".join([str(cell) if cell is not None else "" for cell in row])
-                    if row_text.strip():
-                        text += row_text + "\n"
-            return text.strip(), False
+            with zipfile.ZipFile(io.BytesIO(File_Bytes)) as z:
+                xml_files = [n for n in z.namelist() if n.endswith('.xml')]
+                if not xml_files:
+                    raise ValueError("[ERROR] HWPX 파싱 실패: 암호 또는 손상")
+                text = ""
+                for name in xml_files:
+                    data = z.read(name).decode("utf-8", errors="ignore")
+                    text += re.sub("<[^>]+>", " ", data)
+                text = text.strip()
+                if not text:
+                    print("[INFO] HWPX 텍스트 없음 → OCR 실행")
+                    text = run_ocr_on_hwpx_images(File_Bytes)
+                return text, False
         except Exception as e:
-            raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
+            raise ValueError(f"[ERROR] HWPX 파싱 실패: {e}")
     
-    elif File_Ext == "pptx":
-        if Presentation is None:
-            raise ValueError("[ERROR] PPTX 파싱 실패: python-pptx 라이브러리 미설치")
+    elif File_Ext in ["xls", "xlsx"]:
+        if File_Ext == "xlsx":
+            if load_workbook is None:
+                raise ValueError("[ERROR] XLSX 파싱 실패: openpyxl 라이브러리 미설치")
+            try:
+                wb = load_workbook(io.BytesIO(File_Bytes), data_only=True)
+                text = ""
+                for sheet in wb.worksheets:
+                    for row in sheet.iter_rows(values_only=True):
+                        for cell in row:
+                            if cell is not None:
+                                cell_str = str(cell).strip()
+                                if cell_str:
+                                    text += cell_str + "\n"
+                return text.strip(), False
+            except Exception as e:
+                raise ValueError(f"[ERROR] XLSX 파싱 실패: {e}")
+        else:  # .xls
+            if win32com is None:
+                raise ValueError("[ERROR] XLS 파싱 실패: win32com 미설치")
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".xls") as tmp:
+                    tmp.write(File_Bytes)
+                    tmp_path = tmp.name
+                tmp_xlsx_path = tmp_path + "x"
+                try:
+                    excel = win32com.client.Dispatch("Excel.Application")
+                    excel.Visible = False
+                    wb = excel.Workbooks.Open(tmp_path)
+                    wb.SaveAs(tmp_xlsx_path, FileFormat=51)
+                    wb.Close(SaveChanges=False)
+                    excel.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] XLS → XLSX 변환 실패 또는 암호")
+                with open(tmp_xlsx_path, "rb") as f:
+                    converted = f.read()
+                os.remove(tmp_path)
+                os.remove(tmp_xlsx_path)
+                return parse_file(converted, "xlsx")
+            except Exception as e:
+                raise ValueError(f"[ERROR] XLS 파싱 실패: {e}")
+    
+    elif File_Ext in ["ppt", "pptx"]:
+        if File_Ext == "pptx":
+            if Presentation is None:
+                raise ValueError("[ERROR] PPTX 파싱 실패: python-pptx 라이브러리 미설치")
+            try:
+                prs = Presentation(io.BytesIO(File_Bytes))
+                text = ""
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text"):
+                            text += shape.text + "\n"
+                ocr_text = run_ocr_on_pptx_images(File_Bytes)
+                if ocr_text:
+                    text += "\n" + ocr_text
+                return text.strip(), False
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
+        else:  # .ppt
+            if win32com is None:
+                raise ValueError("[ERROR] PPT 파싱 실패: win32com 미설치")
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+                    tmp.write(File_Bytes)
+                    tmp_path = tmp.name
+                tmp_pptx_path = tmp_path + "x"
+                try:
+                    pp = win32com.client.Dispatch("PowerPoint.Application")
+                    pp.Visible = False
+                    pres = pp.Presentations.Open(tmp_path, WithWindow=False)
+                    pres.SaveAs(tmp_pptx_path, FileFormat=24)
+                    pres.Close()
+                    pp.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] PPT → PPTX 변환 실패 또는 암호")
+                with open(tmp_pptx_path, "rb") as f:
+                    converted = f.read()
+                os.remove(tmp_path)
+                os.remove(tmp_pptx_path)
+                return parse_file(converted, "pptx")
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPT 파싱 실패: {e}")
+    
+    elif File_Ext == "doc":
+        if win32com is None:
+            raise ValueError("[ERROR] DOC 파싱 실패: win32com 미설치")
         try:
-            prs = Presentation(io.BytesIO(File_Bytes))
-            text = ""
-            for slide in prs.slides:
-                for shape in slide.shapes:
-                    if hasattr(shape, "text"):
-                        text += shape.text + "\n"
-            
-            # 이미지 OCR 추가
-            ocr_text = run_ocr_on_pptx_images(File_Bytes)
-            if ocr_text:
-                text += "\n" + ocr_text
-            
-            return text.strip(), False
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+                tmp.write(File_Bytes)
+                tmp_path = tmp.name
+            tmp_docx_path = tmp_path + "x"
+            try:
+                word = win32com.client.Dispatch("Word.Application")
+                word.Visible = False
+                doc = word.Documents.Open(tmp_path)
+                doc.SaveAs(tmp_docx_path, FileFormat=16)
+                doc.Close()
+                word.Quit()
+            except Exception:
+                raise ValueError("[ERROR] DOC 변환/파싱 실패: 암호")
+            with open(tmp_docx_path, "rb") as f:
+                converted = f.read()
+            os.remove(tmp_path)
+            os.remove(tmp_docx_path)
+            return parse_file(converted, "docx")
         except Exception as e:
-            raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
+            raise ValueError(f"[ERROR] DOC 파싱 실패: {e}")
     
     elif File_Ext in ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"]:
         print(f"[INFO] 이미지 파일 감지: {File_Ext}")
@@ -196,17 +427,36 @@ def run_ocr_on_single_image(image_bytes: bytes) -> str:
         return ""
 
 def run_ocr_on_docx_images(file_bytes):
+    if reader is None:
+        print("[WARN] EasyOCR이 초기화되지 않았습니다.")
+        return ""
     ocr_text = ""
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as docx_zip:
             image_files = [f for f in docx_zip.namelist() if f.startswith("word/media/")]
             print(f"[INFO] DOCX 내부 이미지 {len(image_files)}개 발견, OCR 시작")
             for image_name in image_files:
-                with docx_zip.open(image_name) as image_file:
-                    image = Image.open(image_file)
-                    result = reader.readtext(np.array(image))
-                    for box in result:
-                        ocr_text += box[1] + "\n"
+                try:
+                    with docx_zip.open(image_name) as image_file:
+                        image = Image.open(image_file).convert('RGB')
+                        print(f"[DEBUG] 이미지 크기: {image.size}")
+                        
+                        # 이미지 전처리: 대비 증가
+                        from PIL import ImageEnhance
+                        enhancer = ImageEnhance.Contrast(image)
+                        image = enhancer.enhance(2.0)
+                        
+                        # OCR 실행 (신뢰도 임계값 낮춤)
+                        result = reader.readtext(np.array(image), detail=1, paragraph=False)
+                        print(f"[DEBUG] OCR 결과: {len(result)}개 텍스트 박스")
+                        for box in result:
+                            text_content = box[1]
+                            confidence = box[2]
+                            print(f"[DEBUG] 추출 텍스트: '{text_content}' (신뢰도: {confidence:.2f})")
+                            if confidence > 0.1:  # 신뢰도 10% 이상만
+                                ocr_text += text_content + "\n"
+                except Exception as img_e:
+                    print(f"[ERROR] 이미지 {image_name} OCR 실패: {img_e}")
     except Exception as e:
         print(f"[ERROR] DOCX 이미지 OCR 실패: {e}")
     return ocr_text.strip()
@@ -276,6 +526,23 @@ def run_ocr_on_pptx_images(pptx_bytes: bytes) -> str:
         print(f"[ERROR] PPTX 이미지 OCR 실패: {e}")
     return ocr_text.strip()
 
+def run_ocr_on_hwpx_images(hwpx_bytes: bytes) -> str:
+    """HWPX 파일 내부 이미지에서 OCR 수행"""
+    if reader is None:
+        return ""
+    ocr_text = ""
+    try:
+        with zipfile.ZipFile(io.BytesIO(hwpx_bytes)) as z:
+            for name in z.namelist():
+                if name.startswith("Contents/") and name.lower().endswith((".jpg", ".png", ".bmp")):
+                    img = Image.open(io.BytesIO(z.read(name)))
+                    result = reader.readtext(np.array(img))
+                    for box in result:
+                        ocr_text += box[1] + "\n"
+    except Exception as e:
+        print(f"[ERROR] HWPX 이미지 OCR 실패: {e}")
+    return ocr_text.strip()
+
 # ==========================
 # 정규식 탐지 (강화 - 띄어쓰기/하이픈 우회 방지)
 # ==========================
@@ -324,11 +591,14 @@ def detect_by_regex(Text: str) -> list:
     # 원본 텍스트에서 탐지
     for label, pattern in Patterns.items():
         for match in pattern.finditer(Text):
-            detected.append({
-                "type": label, 
-                "value": match.group(), 
-                "span": match.span()
-            })
+            item = {"type": label, "value": match.group(), "span": match.span()}
+            # 카드번호 Luhn 검증
+            if label == "card":
+                item["status"] = "valid" if validate_luhn(item["value"]) else "invalid (Luhn check failed)"
+            # 주민번호 검증
+            if label == "ssn":
+                item["status"] = "valid" if validate_ssn(item["value"]) else "invalid (SSN check failed)"
+            detected.append(item)
     
     # 정규화된 텍스트에서 추가 탐지 (공백/하이픈 우회 시도 차단)
     normalized_patterns = {
@@ -359,12 +629,14 @@ def detect_by_regex(Text: str) -> list:
         for match in pattern.finditer(normalized_text):
             normalized_value = match.group()
             if normalized_value not in existing_values:
-                # 원본 텍스트에서 해당 위치 찾기
-                detected.append({
-                    "type": original_label,
-                    "value": normalized_value,
-                    "span": match.span()
-                })
+                item = {"type": original_label, "value": normalized_value, "span": match.span()}
+                # 카드번호 Luhn 검증
+                if original_label == "card":
+                    item["status"] = "valid" if validate_luhn(item["value"]) else "invalid (Luhn check failed)"
+                # 주민번호 검증
+                if original_label == "ssn":
+                    item["status"] = "valid" if validate_ssn(item["value"]) else "invalid (SSN check failed)"
+                detected.append(item)
                 existing_values.add(normalized_value)
     
     return detected
@@ -372,13 +644,62 @@ def detect_by_regex(Text: str) -> list:
 # ==========================
 # NER 탐지 (조직명 제외)
 # ==========================
+# 화이트리스트: 탐지하지 않을 이름 목록
+NAME_WHITELIST = {
+    # 예시: "선우성민", "홍길동", "김철수"
+}
+
+# 한국 성씨 목록 (상위 100개)
+KOREAN_SURNAMES = {
+    '김', '이', '박', '최', '정', '강', '조', '윤', '장', '임',
+    '한', '오', '서', '신', '권', '황', '안', '송', '류', '전',
+    '홍', '고', '문', '양', '손', '배', '백', '허', '남', '심',
+    '노', '하', '곽', '성', '차', '주', '우', '구', '라', '진',
+    '유', '나', '변', '염', '방', '원', '천', '공', '현', '함',
+    '여', '석', '선', '설', '마', '길', '연', '위', '표', '명',
+    '기', '반', '왕', '금', '옥', '육', '인', '맹', '제', '모',
+    '탁', '국', '어', '경', '은', '편', '용', '예', '봉', '사',
+    '부', '가', '복', '태', '목', '형', '피', '두', '감', '음',
+    '빈', '동', '온', '호', '범', '좌', '팽', '승', '간', '견'
+}
+
+# 일반 명사 블랙리스트 (이름이 아닌 단어들)
+NAME_BLACKLIST = {
+    '코딱지', '노홍카', '사과나무', '컴퓨터', '키보드', '마우스',
+    '노란색', '파란색', '빨간색', '검은색', '흰색',
+    '고양이', '강아지', '토끼', '거북이',
+}
+
 def detect_by_ner(Text: str) -> list:
     if not Text.strip():
         return []
     
-    print(f"[DEBUG] NER 입력: {Text[:100]}")
-    Results = ner_pipeline(Text)
-    print(f"[DEBUG] NER 결과: {Results}")
+    # HWP 등에서 추출된 제어 문자 제거 (NER 입력용)
+    normalized_text = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\x9f]', '', Text)
+    
+    if normalized_text != Text:
+        print(f"[INFO] ⚠ 한글 띄어쓰기 정규화 적용")
+        print(f"[DEBUG] 원본: {cleaned_text[:200]}")
+        print(f"[DEBUG] 정규화: {normalized_text[:200]}")
+    
+    print(f"[DEBUG] NER 입력 (최종): {normalized_text[:100]}")
+    print(f"[DEBUG] '이무송' 포함 여부: {'이무송' in normalized_text}")
+    print(f"[DEBUG] '성명' 주변 텍스트: {normalized_text[normalized_text.find('성명'):normalized_text.find('성명')+20] if '성명' in normalized_text else 'N/A'}")
+    Results = ner_pipeline(normalized_text)
+    print(f"[DEBUG] NER 원본 결과: {Results}")
+    
+    # 빈 결과일 경우 문맥 추가해서 재시도 (한글 이름 패턴만)
+    if not Results:
+        stripped = normalized_text.strip()
+        # 2~4글자 한글 + 첫 글자가 한국 성씨 + 블랙리스트 아님
+        if (2 <= len(stripped) <= 4 and 
+            re.match(r'^[가-힣]+$', stripped) and 
+            stripped[0] in KOREAN_SURNAMES and
+            stripped not in NAME_BLACKLIST):
+            retry_text = f"제 이름은 {stripped}입니다"
+            print(f"[INFO] NER 재시도 (문맥 추가): {retry_text}")
+            Results = ner_pipeline(retry_text)
+            print(f"[DEBUG] NER 재시도 결과: {Results}")
     
     Detected = []
     for Entity in Results:
@@ -393,13 +714,21 @@ def detect_by_ner(Text: str) -> list:
             continue
         
         if Label.upper() in ["PER", "PS", "ORG", "LOC", "LC", "MISC"]:
-            # PS (사람 이름) 필터링: 숫자만 있거나 한글 없이 특수문자만 있는 경우 제외
+            # PS (사람 이름) 필터링
             if Label.upper() in ["PS", "PER"]:
+                # 공백 제거 후 길이 체크
+                clean_word = Word.replace(" ", "").strip()
+                
+                # 너무 짧은 이름 제외 (2글자 이하)
+                if len(clean_word) <= 2:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (2글자 이하)")
+                    continue
+                
                 # 한글 포함 여부 확인
                 has_korean = any('\uac00' <= c <= '\ud7a3' for c in Word)
                 
                 # 숫자만 있는 경우 제외
-                if Word.replace(" ", "").isdigit():
+                if clean_word.isdigit():
                     print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (숫자만 포함)")
                     continue
                 
@@ -407,30 +736,104 @@ def detect_by_ner(Text: str) -> list:
                 if not has_korean and any(c in Word for c in "#@$%^&*()_+=[]{}|\\;:'\",.<>?/~`"):
                     print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (한글 없이 특수문자 포함)")
                     continue
+                
+                # 화이트리스트 체크
+                if clean_word in NAME_WHITELIST:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (화이트리스트)")
+                    continue
+                
+                # 블랙리스트 체크 (일반 명사 제외)
+                if clean_word in NAME_BLACKLIST:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (블랙리스트 - 일반 명사)")
+                    continue
+                
+                # 불필요한 접두사 제거 (저는, 나는, 제가, 내가 등)
+                prefixes_to_remove = ["저는", "나는", "제가", "내가", "저의", "나의", "제", "내"]
+                cleaned_name = Word
+                for prefix in prefixes_to_remove:
+                    if Word.startswith(prefix):
+                        cleaned_name = Word[len(prefix):].strip()
+                        print(f"[INFO] ⚠ NER 접두사 제거: '{Word}' → '{cleaned_name}'")
+                        break
+                
+                # 정리된 이름이 너무 짧으면 제외
+                if len(cleaned_name.replace(" ", "")) <= 1:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (접두사 제거 후 너무 짧음)")
+                    continue
+                
+                # 정리된 이름 저장
+                Word = cleaned_name
             
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
             print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
     
     return Detected
 
+
 # ==========================
 # 얼굴 탐지 (MTCNN)
 # ==========================
-def detect_faces_in_image_bytes(image_bytes):
-    """이미지에서 얼굴을 탐지합니다"""
+def detect_faces_in_image_bytes(image_bytes, confidence_threshold=0.98):
+    """이미지에서 얼굴을 탐지합니다 (오탐지 방지 강화)"""
     try:
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        
+        # 이미지 크기 체크 (너무 작으면 스킵)
+        if img.width < 50 or img.height < 50:
+            return []
+        
+        # 이미지 리사이즈 (큰 이미지는 축소하여 속도 향상)
+        max_size = 800
+        if img.width > max_size or img.height > max_size:
+            ratio = min(max_size / img.width, max_size / img.height)
+            new_size = (int(img.width * ratio), int(img.height * ratio))
+            img = img.resize(new_size, Image.LANCZOS)
+        
         img_np = np.array(img)
         results = detector.detect_faces(img_np)
         detections = []
+        
         for res in results:
+            conf = float(res['confidence'])
             x, y, w, h = res['box']
+            
+            # 필터링 조건
+            # 1. confidence >= 0.98 (더 엄격하게)
+            if conf < confidence_threshold:
+                continue
+            
+            # 2. 얼굴 크기 검증 (너무 작거나 큰 것 제외)
+            if w < 30 or h < 30 or w > img.width * 0.9 or h > img.height * 0.9:
+                continue
+            
+            # 3. 가로세로 비율 검증 (얼굴은 대략 0.7~1.3 비율)
+            aspect_ratio = w / h if h > 0 else 0
+            if aspect_ratio < 0.6 or aspect_ratio > 1.5:
+                continue
+            
+            # 4. keypoints 검증 (눈, 코, 입이 제대로 탐지되었는지)
+            keypoints = res.get('keypoints', {})
+            if keypoints:
+                left_eye = keypoints.get('left_eye')
+                right_eye = keypoints.get('right_eye')
+                nose = keypoints.get('nose')
+                
+                # 눈과 코가 모두 탐지되어야 함
+                if not (left_eye and right_eye and nose):
+                    continue
+                
+                # 두 눈 사이 거리 검증
+                eye_distance = abs(left_eye[0] - right_eye[0])
+                if eye_distance < w * 0.2 or eye_distance > w * 0.8:
+                    continue
+            
             detections.append({
                 "bbox": [int(x), int(y), int(w), int(h)], 
-                "confidence": float(res['confidence'])
+                "confidence": conf
             })
+        
         if len(detections) > 0:
-            print(f"[INFO] ✓ MTCNN 얼굴 탐지 성공: {len(detections)}개 발견")
+            print(f"[INFO] ✓ MTCNN 얼굴 탐지 성공: {len(detections)}개 발견 (필터링 후)")
         return detections
     except Exception as e:
         print(f"[ERROR] MTCNN 얼굴 탐지 실패: {e}")
@@ -460,28 +863,58 @@ def detect_images_in_docx(file_bytes):
         print(f"[WARN] DOCX 이미지 검사 실패: {e}")
     return results
 
+def _process_pdf_image(args):
+    """PDF 이미지 하나를 처리 (병렬 처리용)"""
+    pno, img_index, img_bytes = args
+    faces = detect_faces_in_image_bytes(img_bytes)
+    if len(faces) > 0:
+        print(f"[INFO] ✓ PDF p{pno+1}, img{img_index} → 얼굴 {len(faces)}개 탐지")
+        return {
+            "page": pno + 1,
+            "image_index": img_index,
+            "faces_found": len(faces),
+            "faces": faces
+        }
+    return None
+
 def detect_images_in_pdf(pdf_bytes):
     results = []
     try:
         with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            # 중복 이미지 제거 (xref 기반)
+            seen_xrefs = set()
+            image_tasks = []
+            
             for pno, page in enumerate(doc):
                 images = page.get_images(full=True)
                 if len(images) > 0:
                     print(f"[INFO] PDF 페이지 {pno+1}에서 이미지 {len(images)}개 발견")
+                
                 for img_index, img in enumerate(images):
                     xref = img[0]
+                    
+                    # 중복 이미지 스킵 (같은 이미지가 여러 페이지에 반복되는 경우)
+                    if xref in seen_xrefs:
+                        continue
+                    seen_xrefs.add(xref)
+                    
                     base_image = doc.extract_image(xref)
                     img_bytes = base_image.get("image")
-                    if img_bytes:
-                        faces = detect_faces_in_image_bytes(img_bytes)
-                        if len(faces) > 0:
-                            print(f"[INFO] ✓ PDF p{pno+1}, img{img_index} → 얼굴 {len(faces)}개 탐지")
-                            results.append({
-                                "page": pno + 1,
-                                "image_index": img_index,
-                                "faces_found": len(faces),
-                                "faces": faces
-                            })
+                    
+                    # 너무 작은 이미지 스킵 (로고, 아이콘 등)
+                    if img_bytes and len(img_bytes) > 5000:  # 5KB 이상만
+                        image_tasks.append((pno, img_index, img_bytes))
+            
+            # 병렬 처리 (CPU 코어 수에 맞춰 조정)
+            if image_tasks:
+                print(f"[INFO] 총 {len(image_tasks)}개 이미지를 병렬 처리 시작 (중복 제거 완료)")
+                max_workers = min(8, os.cpu_count() or 4)  # CPU 코어 수에 맞춰 동적 조정
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = [executor.submit(_process_pdf_image, task) for task in image_tasks]
+                    for future in as_completed(futures):
+                        result = future.result()
+                        if result:
+                            results.append(result)
     except Exception as e:
         print(f"[WARN] PDF 이미지 검사 실패: {e}")
     return results
@@ -594,6 +1027,7 @@ def handle_input_raw(Input_Data, Original_Format=None):
     Detected = []
     if Parsed_Text:
         print(f"[INFO] 텍스트 분석 중... (길이: {len(Parsed_Text)} 글자)")
+        print(f"[DEBUG] 텍스트 샘플: {Parsed_Text[:500]}")
         
         # NER 먼저 실행
         ner_results = detect_by_ner(Parsed_Text)
@@ -601,11 +1035,15 @@ def handle_input_raw(Input_Data, Original_Format=None):
         # 정규식 실행
         regex_results = detect_by_regex(Parsed_Text)
         
-        # 합치기 (korean_name 패턴 제거로 중복 제거 불필요)
-        Detected = regex_results + ner_results
+        # 중복 제거: value 기준으로 중복 제거
+        seen = set()
+        for item in regex_results + ner_results:
+            val = item['value'].strip().lower()
+            if val not in seen:
+                seen.add(val)
+                Detected.append(item)
         
-        if len(Detected) > 0:
-            print(f"[INFO] ✓ 텍스트 개인정보 {len(Detected)}개 탐지")
+        print(f"[INFO] ✓ 텍스트 개인정보 {len(Detected)}개 탐지 (중복 제거 완료)")
     else:
         print("[INFO] 추출된 텍스트 없음")
     

@@ -429,7 +429,8 @@ async def handle_text_event(request: Request):
                 "network_info": network_info,
                 "tab": data.get("tab", {})
             })
-            print(f"[INFO] ✓ 탐지: {item['type']} = {item['value']}")
+            status_info = f" [{item['status']}]" if 'status' in item else ""
+            print(f"[INFO] ✓ 탐지: {item['type']} = {item['value']}{status_info}")
 
         return JSONResponse(content={"result": {"status": "처리 완료", "detected_count": len(detected)}}, status_code=200)
 
@@ -475,7 +476,8 @@ async def handle_combined(request: Request):
                     "tab": data.get("tab", {})
                 })
                 for item in detected:
-                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}")
+                    status_info = f" [{item['status']}]" if 'status' in item else ""
+                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}{status_info}")
 
         # 파일 탐지
         for file_info in files_data:
@@ -495,7 +497,8 @@ async def handle_combined(request: Request):
                         "file_name": file_name,
                         "tab": data.get("tab", {})
                     })
-                    print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}")
+                    status_info = f" [{item['status']}]" if 'status' in item else ""
+                    print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}{status_info}")
 
         return JSONResponse(content={"result": {"status": "처리 완료"}}, status_code=200)
 

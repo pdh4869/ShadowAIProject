@@ -84,7 +84,7 @@
 
   async function storeFileForLater(file, origin){
     const ext = file.name.split('.').pop().toLowerCase();
-    const allowed = ['pdf','docx','hwp','txt','png','jpg','jpeg','bmp','webp','gif','tiff','xlsx','pptx'];
+    const allowed = ['pdf','docx','hwp','hwpx','txt','png','jpg','jpeg','bmp','webp','gif','tiff','xlsx','pptx'];
     if (!allowed.includes(ext)) {
       console.log(`[content] 지원하지 않는 파일 형식: ${file.name}`);
       return;
