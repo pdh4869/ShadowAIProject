@@ -774,9 +774,45 @@ def detect_by_ner(Text: str) -> list:
         start = ent.get('start'); end = ent.get('end')
         if start is None or end is None:
             continue
-        word = ent.get('word', '')
+        word = ent.get('word', '').strip()
+        if label.upper() in ["DATE", "DAT", "DT", "TIME", "TI"]:
+            # 0 또는 9로만 구성된 비정상 날짜/시간 제거
+            if re.fullmatch(r"0[\s0:시분초]*", word):
+                continue
+            if re.fullmatch(r"9[\s9:시분초]*", word):
+                continue
+
+            # 날짜형 유효성 검증 (YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY MM DD)
+            clean = re.sub(r"[./\s]", "-", word)
+            m = re.match(r"(\d{4})-(\d{1,2})-(\d{1,2})", clean)
+            if m:
+                y, mo, d = map(int, m.groups())
+                try:
+                    datetime.date(y, mo, d)
+                except ValueError:
+                    continue  # 존재하지 않는 날짜 필터링
+
+            # 시간형 유효성 검증 (HH:MM:SS, HH시MM분SS초, HH:MM)
+            time_clean = re.sub(r"[시분초\s]", ":", word)
+            t = re.match(r"(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?", time_clean)
+            if t:
+                hh, mm, ss = t.groups()
+                hh = int(hh)
+                mm = int(mm)
+                ss = int(ss) if ss else 0
+                if not (0 <= hh < 24 and 0 <= mm < 60 and 0 <= ss < 60):
+                    continue  # 비정상 시각 (예: 25:99:99) 제거
+
+            # 완전 무의미한 시간 표현 제거 ("00:00:00" 또는 "0시0분0초")
+            if re.fullmatch(r"0{1,2}[:시\s]?0{1,2}[:분\s]?0{1,2}(초)?", word):
+                continue
         out.append({"type": label, "value": word, "span": (start, end)})
     return out
+
+# 0과 9만 별도의 필터링으로 나누는 이유? : 모델이 가장 자주 오탐하는 두 패턴이 서로 다르니까.
+# 0만 구성된 경우 : “날짜 없음”, “공란 채우기용 숫자”로 학습되어 날짜처럼 감지
+# 9만 구성된 경우 : “미래 날짜”, “샘플/가상 데이터”로 인식되어 날짜로 감지
+# 두 패턴은 NER 모델이 오탐을 유발하는 대표적인 “비의미 숫자 그룹”이라 별도로 제거함
 
 # ==========================
 # Main handler
@@ -819,6 +855,47 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
 
     # Text detections
     detected = detect_by_regex(Parsed_Text) + detect_by_ner(Parsed_Text)
+
+    # -------------------------------
+    # 중복 제거 로직 (정규표현식 우선)
+    # -------------------------------
+    regex_priority = {"birth", "ssn", "card", "driver_license", "account", "passport", "phone", "email"}
+    unique = []
+    seen = {}  # value → type
+
+    for d in detected:
+        val = d.get("value")
+        typ = d.get("type")
+        if not val or not typ:
+            continue
+
+        # Case 1: 처음 보는 값
+        if val not in seen:
+            seen[val] = typ
+            unique.append(d)
+            continue
+
+        # Case 2: 동일 값 이미 존재함 → 중복 판단
+        prev_type = seen[val]
+
+        # (4) 정규표현식 기반 탐지를 우선
+        if prev_type not in regex_priority and typ in regex_priority:
+            # 기존 NER 탐지 대신 정규표현식으로 교체
+            for u in unique:
+                if u["value"] == val:
+                    u["type"] = typ
+                    break
+            seen[val] = typ
+            continue
+
+        # (3) 동일 필드명 + 동일 값 → 완전 중복이므로 제거
+        if prev_type == typ:
+            continue
+
+        # (2) 서로 다른 필드명이지만 값이 동일 → 중복으로 제거 (정규표현식 우선 정책 적용됨)
+        continue
+
+    detected = unique
 
     # Append face summary into Detected
     total_faces = sum(i.get("faces_found", 0) for i in image_detections)

@@ -26,7 +26,7 @@ REQUIRE_AUTH = os.getenv("PII_REQUIRE_AUTH", "false").lower() == "true"
 
 if REQUIRE_AUTH:
     API_SECRET = os.getenv("PII_API_SECRET", secrets.token_hex(32))
-    print(f"[SECURITY] ✓ 인증 활성화")
+    print(f"[SECURITY] 인증 활성화")
     print(f"[SECURITY] 개발자 도구 콘솔에서 setApiSecret() 함수로 Secret 설정")
 else:
     API_SECRET = None
@@ -384,7 +384,7 @@ async def handle_file_collect(request: Request):
                     "faces": faces
                 })
                 status_info = f" ({item.get('status')})" if 'status' in item else ""
-                print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}{status_info}")
+                print(f"[INFO] 파일 탐지: {item['type']} = {item['value']}{status_info}")
             
             return JSONResponse(content={"result": {"status": "처리 완료"}}, status_code=200)
 
@@ -532,22 +532,30 @@ async def handle_combined(request: Request):
 
                 for item in detected:
                     status_info = f" ({item.get('status')})" if 'status' in item else ""
-                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}{status_info}")
-                    
+                    print(f"[INFO] 텍스트 탐지: {item['type']} = {item['value']}{status_info}")
+
                 print(f"[INFO] 탐지 요약: {dict(type_counts)}")
                 print(f"[INFO] 카드 검증 요약: {validation_summary['card']}")
                 print(f"[INFO] 주민등록번호 검증 요약: {validation_summary['ssn']}")
                 print(f"[INFO] 백엔드 전송 상태: {backend_status}")
 
         # 파일 탐지
-        for file_info in files_data:
-            file_name = file_info.get("name", "unknown")
-            file_b64 = file_info.get("data_b64", "")
-            if file_b64:
+        if files_data:
+            # print("[INFO] 파일 탐지 요약")
+            file_card_total = file_card_valid = file_card_invalid = 0
+            file_ssn_total = file_ssn_valid = file_ssn_invalid = 0
+            file_type_counts = Counter()
+
+            for file_info in files_data:
+                file_name = file_info.get("name", "unknown")
+                file_b64 = file_info.get("data_b64", "")
+                if not file_b64:
+                    continue
+
                 file_bytes = base64.b64decode(file_b64)
                 extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
-                # detected, _, _, _ = handle_input_raw(file_bytes, extension)
                 detected, parsed_text, backend_status, faces = handle_input_raw(file_bytes, extension)
+
                 for item in detected:
                     detection_history.append({
                         "timestamp": processed_at,
@@ -562,9 +570,27 @@ async def handle_combined(request: Request):
                         "faces": faces
                     })
                     status_info = f" ({item.get('status')})" if 'status' in item else ""
-                    # print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}")
-                    print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}{status_info}")
+                    print(f"[INFO] 파일 탐지: {item['type']} = {item['value']}{status_info}")
 
+                    # 검증 통계
+                    file_type_counts[item["type"]] += 1
+                    t = item.get("type"); st = str(item.get("status", "")).lower()
+                    if t == "card":
+                        file_card_total += 1; file_card_valid += (st == "valid"); file_card_invalid += (st != "valid")
+                    if t == "ssn":
+                        file_ssn_total += 1; file_ssn_valid += (st == "valid"); file_ssn_invalid += (st != "valid")
+
+            # 파일 전체 요약 출력
+            file_validation_summary = {
+                "card": {"total": file_card_total, "valid": file_card_valid, "invalid": file_card_invalid},
+                "ssn":  {"total": file_ssn_total,  "valid": file_ssn_valid,  "invalid": file_ssn_invalid}
+            }
+
+            print(f"[INFO] 파일 탐지 요약: {dict(file_type_counts)}")
+            print(f"[INFO] 카드 검증 요약: {file_validation_summary['card']}")
+            print(f"[INFO] 주민등록번호 검증 요약: {file_validation_summary['ssn']}")
+            print(f"[INFO] 백엔드 전송 상태: {backend_status}")
+            
         return JSONResponse(content={"result": {"status": "처리 완료"}}, status_code=200)
 
     except Exception as e:
