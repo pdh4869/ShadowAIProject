@@ -5,6 +5,7 @@ import json
 import zipfile
 import logging
 import datetime
+import requests
 from collections import Counter
 
 # Optional / platform-dependent deps
@@ -866,24 +867,30 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
         "filename": (meta_info or {}).get("filename") if isinstance(meta_info, dict) else None,
     }
     # 백엔드 전송은 비활성화 유지
-    _ = payload  # placeholder to avoid linter complaints
+    # _ = payload  # placeholder to avoid linter complaints
+    try:
+        json_data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        ok = send_to_backend(json_data, filename="Detected_Info.json", meta=meta_info)
+        backend_status = "backend_success" if ok else "backend_failed"
+    except Exception as e:
+        logging.error(f"백엔드 전송 중 오류: {e}")
+        backend_status = "backend_failed"
 
-    return detected, Parsed_Text, "backend_disabled", image_detections
+    return detected, Parsed_Text, backend_status, image_detections
 
-# --- 백엔드 전송 (비활성화) ---
-# def send_to_backend(encrypted_data: bytes, filename: str = "Detected_Info", meta: dict | None = None) -> bool:
-#     url = "http://your-backend-api/upload"
-#     try:
-#         files = {"File": (filename, encrypted_data)}
-#         data = {}
-#         if meta:
-#             data["meta"] = json.dumps(meta, ensure_ascii=False)
-#         response = requests.post(url, files=files, data=data)
-#         print(f"[INFO] 백엔드 응답 상태 코드: {response.status_code}")
-#         return response.status_code == 200
-#     except requests.exceptions.RequestException as e:
-#         print(f"[ERROR] 백엔드 전송 실패: {e}")
-#         return False
+def send_to_backend(raw_data: bytes, filename: str = "Detected_Info.json", meta: dict | None = None) -> bool:
+    url = "http://your-backend-api/upload"
+    # url = os.getenv("BACKEND_URL", "http://127.0.0.1:8080/upload")
+    try:
+        files = {"file": (filename, raw_data, "application/json")}
+        data = {"meta": json.dumps(meta, ensure_ascii=False)} if meta else {}
+        response = requests.post(url, files=files, data=data)
+        # print(f"[INFO] 백엔드 응답 상태 코드: {response.status_code}")
+        logging.info(f"백엔드 응답 코드: {response.status_code}")
+        return response.status_code == 200
+    except Exception as e:
+        logging.error(f"백엔드 전송 실패: {e}")
+        return False
 
 if __name__ == "__main__": # 서버 API 없이도 디버그 할 수 있게 해주는 임시 코드. 로직 기능 자체와는 무관하다.
     # Minimal self-check
