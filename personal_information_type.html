@@ -223,8 +223,10 @@ function setQuickRange(kind){
     label = '지난 주'; 
   }
   else if(kind==='lastmonth'){ 
-    from = new Date(now); from.setDate(now.getDate() - 30);
-    to = new Date(now); to.setDate(now.getDate() - 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    from = new Date(lastMonth.getFullYear() + '-' + String(lastMonth.getMonth() + 1).padStart(2, '0') + '-01');
+    to = new Date(lastMonthEnd.getFullYear() + '-' + String(lastMonthEnd.getMonth() + 1).padStart(2, '0') + '-' + String(lastMonthEnd.getDate()).padStart(2, '0'));
     label = '지난 달'; 
   }
   else{ return; }

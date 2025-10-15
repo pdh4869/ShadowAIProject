@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>소스별 현황 상세</title>
+  <title>탐지 유형 상세</title>
   
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,11 +12,11 @@
 <body>
   <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title">소스별 현황 상세</div>
+    <div class="page-title">탐지 유형 상세</div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='source_type.html'">소스별 현황</a>
+        <a href="#" onclick="location.href='source_type.html'">탐지 유형</a>
         <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형별 현황</a>
         <a href="#" onclick="location.href='account_management.html'">계정관리</a>
       </nav>
@@ -41,7 +41,7 @@
           <input type="date" id="to" />
         </div>
         <div class="field">
-          <label for="source">소스 유형</label>
+          <label for="source">탐지 유형</label>
           <select id="source">
             <option value="">전체</option>
             <option>텍스트</option><option>PDF</option><option>DOCX</option><option>XLSX</option><option>TXT</option>
@@ -62,7 +62,7 @@
         </div>
 
         <div class="field search">
-          <label for="q">검색(파일명/유형/사유/소스/사번)</label>
+          <label for="q">검색(파일명/유형/사유/사번)</label>
           <input id="q" placeholder="예: report.pdf, 전화번호, 암호화 파일, A1023..." />
         </div>
       </div>
@@ -75,8 +75,8 @@
       </div>
     </section>
 
-    <section class="card chart-card" aria-label="소스별 그래프">
-      <h2 style="font-size:16px;margin:6px 0 0 0;">소스별 분포 (막대)</h2>
+    <section class="card chart-card" aria-label="탐지 유형 그래프">
+      <h2 style="font-size:16px;margin:6px 0 0 0;">탐지 유형 분포 (막대)</h2>
       <div style="height:260px;">
         <canvas id="barChart"></canvas>
       </div>
@@ -92,7 +92,7 @@
               <th style="width:120px;text-align:center;">일자</th>
               <th style="width:110px;text-align:center;">사번</th><!-- 추가 열 -->
               <th style="width:220px;text-align:center;">개인정보 유형</th>
-              <th style="width:140px;text-align:center;">소스 유형</th>
+              <th style="width:140px;text-align:center;">탐지 유형</th>
               <th style="text-align:center;">파일명</th>
               <th style="text-align:center;">실패 사유</th>
             </tr>
@@ -220,8 +220,10 @@ function setQuickRange(kind){
     label = '지난 주'; 
   }
   else if(kind==='lastmonth'){ 
-    from = new Date(now); from.setDate(now.getDate() - 30);
-    to = new Date(now); to.setDate(now.getDate() - 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    from = new Date(lastMonth.getFullYear() + '-' + String(lastMonth.getMonth() + 1).padStart(2, '0') + '-01');
+    to = new Date(lastMonthEnd.getFullYear() + '-' + String(lastMonthEnd.getMonth() + 1).padStart(2, '0') + '-' + String(lastMonthEnd.getDate()).padStart(2, '0'));
     label = '지난 달'; 
   }
   else{ return; }
@@ -365,7 +367,7 @@ window.addEventListener('resize', () => {
 // 네비게이션 활성화
 document.addEventListener('DOMContentLoaded', function() {
   const navLinks = document.querySelectorAll('.pm-nav a');
-  navLinks[1].classList.add('active'); // 소스별 현황 버튼 활성화
+  navLinks[1].classList.add('active'); // 탐지 현황 버튼 활성화
 });
 </script>
 
