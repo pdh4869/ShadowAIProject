@@ -338,6 +338,12 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.target.id==
 
 // 시작: 오늘 범위
 setQuickRange('today');
+
+// 네비게이션 활성화
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('.pm-nav a');
+  navLinks[2].classList.add('active'); // 개인정보 유형별 현황 버튼 활성화
+});
 </script>
 
 <!-- (선택) 우측 상단 유저 박스 -->

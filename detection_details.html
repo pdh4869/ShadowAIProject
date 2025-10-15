@@ -279,6 +279,12 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.target.id==
 /* 시작: 오늘 범위 */
 setQuickRange('today');
 
+/* 네비게이션 활성화 */
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('.pm-nav a');
+  navLinks[0].classList.add('active'); // 탐지 현황 버튼 활성화
+});
+
 /* 로그아웃 버튼 스타일 강제 적용 */
 document.addEventListener('DOMContentLoaded', function() {
   const logoutBtn = document.querySelector('.pm-userbox .logout');

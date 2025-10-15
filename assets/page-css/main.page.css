@@ -16,7 +16,7 @@
 .mb-2{ margin-bottom:0.5rem; }
 .min-w-full{ min-width:100%; }
 .text-left{ text-align:left; }
-.text-gray-500{ color:#6b7280; }
+.text-gray-500{ color:#3F72AF; }
 .py-1{ padding-top:0.25rem; padding-bottom:0.25rem; }
 .border-t{ border-top-width:1px; }
 .flex{ display:flex; }
@@ -31,9 +31,8 @@
 
 /* 카드 스타일 */
 .bg-white{ 
-  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) padding-box,
-             linear-gradient(180deg, rgba(59,130,246,.25), rgba(20,184,166,.18)) border-box !important;
-  border:1px solid transparent !important; 
+  background: #ffffff !important;
+  border:1px solid #e5e7eb !important; 
   border-radius:16px !important;
   box-shadow: 0 10px 40px rgba(0,0,0,.25) !important; 
   color:var(--text) !important; 
@@ -41,8 +40,8 @@
 
 /* 테이블 스타일 */
 table { width:100%; border-collapse:collapse; }
-thead tr { background:#0b1220; }
-thead th { color:#94a3b8 !important; border-bottom:1px solid var(--border); }
+thead tr { background:#3F72AF; }
+thead th { color:#ffffff !important; border-bottom:1px solid var(--border); }
 tbody td { border-top:1px solid #1f2937; }
 
 h1, h2, h3 { color: var(--text) }

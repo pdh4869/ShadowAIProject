@@ -304,6 +304,12 @@ applyPermissionUI();
 renderTable(admins);
 bindStrength('c_pwd', 'c_strength', 'c_hint');
 bindStrength('p_pwd', 'p_strength', 'p_hint');
+
+// 네비게이션 활성화
+document.addEventListener('DOMContentLoaded', function() {
+  const navLinks = document.querySelectorAll('.pm-nav a');
+  navLinks[3].classList.add('active'); // 계정관리 버튼 활성화
+});
 </script>
   <!-- 우측 상단: 사번 + 로그아웃 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">

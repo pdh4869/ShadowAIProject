@@ -67,10 +67,10 @@
         <div class="bg-white p-3 rounded shadow">
           <h2 class="font-semibold mb-1 text-sm">탐지 실패</h2>
           <p class="text-xs text-gray-700">총 실패: <strong>3</strong></p>
-          <ul class="mt-1 text-xs text-gray-600 space-y-1">
-            <li>• 2025-09-20 — 사번: A1023 / secret.pdf (암호화 파일)</li>
-            <li>• 2025-09-21 — 사번: A1138 / test.docx (손상 파일)</li>
-            <li>• 2025-09-22 — 사번: B2047 / data.xlsx (빈 파일)</li>
+          <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;">
+            <li style="list-style: none;">• 2025-09-20 — 사번: A1023 / secret.pdf (암호화 파일)</li>
+            <li style="list-style: none;">• 2025-09-21 — 사번: A1138 / test.docx (손상 파일)</li>
+            <li style="list-style: none;">• 2025-09-22 — 사번: B2047 / data.xlsx (빈 파일)</li>
           </ul>
         </div>
       </section>
@@ -108,7 +108,7 @@
       type: "line",
       data: {
         labels: detectionsOverTime.map(d => d.date),
-        datasets: [{ label: "탐지 건수", data: detectionsOverTime.map(d => d.count), fill: true, tension: 0.3 }]
+        datasets: [{ label: "탐지 건수", data: detectionsOverTime.map(d => d.count), fill: true, backgroundColor: "rgba(54, 162, 235, 0.3)", borderColor: "rgba(54, 162, 235, 1)", tension: 0.3 }]
       },
       options: { plugins: { legend: { display: false } } }
     });
