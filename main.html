@@ -23,6 +23,9 @@
   .delta.warn{color:#d97706;}
   .delta.bad{color:#dc2626;}
   .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;border:1px solid #e2e8f0;font-size:12px;color:#334155;}
+  .tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .tbl th,.tbl td{border-bottom:1px solid #e2e8f0;padding:7px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tbl th{font-weight:600}
 </style></head>
 <body>
   <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
@@ -71,47 +74,42 @@
     </section>
     
     <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white p-3 rounded shadow">
-          <h2 class="font-semibold mb-1 text-sm">탐지 건수 (기간별)</h2>
-          <canvas id="chartDetectionsOverTime" height="80"></canvas>
+        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
+            <h2 style="margin:0;font-size:16px;">사용자별 탐지 빈도 (TOP 5)</h2>
+            <p class="text-xs text-gray-700" style="margin:0;" id="contribTimestamp"></p>
+          </div>
+          <div style="display:flex;justify-content:center;align-items:center;flex:1;">
+            <table class="tbl" id="contribTable">
+              <thead><tr><th>대상</th><th>탐지 수</th><th>고위험%</th></tr></thead>
+              <tbody id="contribTbody"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="bg-white p-3 rounded shadow">
-          <h3 class="font-semibold mb-1 text-sm">금일 탐지 유형</h3>
-          <p class="text-xs text-gray-700 mb-2">총 건수: <strong><span id="todayTotal">0</span></strong></p>
-          <table class="min-w-full text-xs">
-            <thead><tr class="text-left text-gray-500"><th class="py-1">유형</th><th class="py-1">건수</th></tr></thead>
-            <tbody id="todayTypeTbody"></tbody>
-          </table>
+        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
+            <h2 style="margin:0;font-size:16px;">금일 탐지 유형</h2>
+            <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="todayTotal">0</span></strong></p>
+          </div>
+          <div style="display:flex;justify-content:center;align-items:center;flex:1;">
+            <table class="tbl" id="todayTypeTable">
+              <thead><tr><th>유형</th><th>건수</th></tr></thead>
+              <tbody id="todayTypeTbody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
       <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white p-3 rounded shadow">
-          <h2 class="font-semibold mb-1 text-sm">사용자별 탐지 빈도 (TOP 5)</h2>
-          <canvas id="chartAccountCounts" height="140"></canvas>
-        </div>
-        <div class="bg-white rounded shadow" style="padding: 2px 12px 2px 12px;">
-          <h3 class="font-semibold mb-1 text-sm">소스별 분포</h3>
+        <div class="bg-white rounded shadow" style="padding:16px;">
+          <h2 style="margin:0 0 8px 0;font-size:16px;">탐지 유형별 분포</h2>
           <div style="width: 270px; height: 270px; margin: 0 auto;"><canvas id="chartSourcePie"></canvas></div>
         </div>
-      </section>
-
-      <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white p-3 rounded shadow">
-          <h3 class="font-semibold mb-1 text-sm">탐지 유형별 통계</h3>
-          <table class="min-w-full text-xs mb-0">
-            <thead><tr class="text-left text-gray-500"><th class="py-1">유형</th><th class="py-1">건수</th><th class="py-1">비율</th></tr></thead>
-            <tbody>
-              <tr class="border-t"><td class="py-1">전화번호</td><td>30</td><td>40%</td></tr>
-              <tr class="border-t"><td class="py-1">이메일</td><td>20</td><td>27%</td></tr>
-              <tr class="border-t"><td class="py-1">주민번호</td><td>15</td><td>20%</td></tr>
-              <tr class="border-t"><td class="py-1">IP 주소</td><td>10</td><td>13%</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="bg-white p-3 rounded shadow">
-          <h2 class="font-semibold mb-1 text-sm">탐지 실패</h2>
-          <p class="text-xs text-gray-700">총 실패: <strong>3</strong></p>
+        <div class="bg-white rounded shadow" style="padding:16px;">
+          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
+            <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
+            <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong>3</strong></p>
+          </div>
           <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;">
             <li style="list-style: none;">• 2025-09-20 — 사번: A1023 / secret.pdf (암호화 파일)</li>
             <li style="list-style: none;">• 2025-09-21 — 사번: A1138 / test.docx (손상 파일)</li>
@@ -122,7 +120,52 @@
     </div>
   </div>
 
+  <!-- 우측 상단 유저 박스 -->
+  <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
+    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+    <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
+  </div>
+
   <script>
+    // 오늘 기준 7일간 시간 추이 데이터 생성
+    const generateTrendData = () => {
+      const data = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        data.push({
+          date: dateStr,
+          total: Math.floor(Math.random() * 30) + 20,
+          highRisk: Math.floor(Math.random() * 15) + 5,
+          failed: Math.floor(Math.random() * 5) + 1
+        });
+      }
+      return data;
+    };
+    const trendData = generateTrendData();
+    
+    // 시간 추이 그래프
+    new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: trendData.map(d => d.date.slice(5)),
+        datasets: [
+          { label: "총탐지", data: trendData.map(d => d.total), borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,0.1)", fill: true, tension: 0.3 },
+          { label: "고위험", data: trendData.map(d => d.highRisk), borderColor: "#16a34a", backgroundColor: "rgba(22,163,74,0.1)", fill: false, tension: 0.3 },
+          { label: "탐지실패", data: trendData.map(d => d.failed), borderColor: "#dc2626", backgroundColor: "rgba(220,38,38,0.1)", fill: false, tension: 0.3 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    // 기존 차트들
     const detectionsOverTime = [
       { date: "2025-09-18", count: 3 },
       { date: "2025-09-19", count: 7 },
@@ -130,15 +173,15 @@
       { date: "2025-09-21", count: 8 },
       { date: "2025-09-22", count: 4 },
     ];
-    const accountCountsRaw = [
-      { account: "S0001", count: 22 },
-      { account: "A1023", count: 20 },
-      { account: "A1138", count: 18 },
-      { account: "B2047", count: 12 },
-      { account: "B2099", count: 9 },
-      { account: "A1200", count: 7 },
+    
+    // 사용자 기여도 데이터 (사번만)
+    const contribData = [
+      { name: "A1023", count: 45, highRisk: 12 },
+      { name: "S0001", count: 38, highRisk: 8 },
+      { name: "B2047", count: 32, highRisk: 15 },
+      { name: "A1138", count: 28, highRisk: 6 },
+      { name: "B2099", count: 25, highRisk: 9 }
     ];
-    const accountCounts = accountCountsRaw.sort((a,b)=>b.count-a.count).slice(0,5);
 
     const sourceStats = [
       { source: "PDF", count: 50 },
@@ -157,78 +200,33 @@
       },
       options: { plugins: { legend: { display: false } } }
     });
-    new Chart(document.getElementById("chartAccountCounts"), {
-      type: "bar",
-      data: { labels: accountCounts.map(a => a.account), datasets: [{ label: "탐지 수", data: accountCounts.map(a => a.count) }] },
-      options: { indexAxis: "y", plugins: { legend: { display: false } } }
-    });
+    // 사용자 기여도 테이블 생성 (사번만)
+    (function(){
+      const tbody = document.getElementById("contribTbody");
+      contribData.forEach(item => {
+        const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${item.name}</td><td>${item.count.toLocaleString('ko-KR')}</td><td>${highRiskPercent}%</td>`;
+        tbody.appendChild(tr);
+      });
+      
+      // 현재 시간 표시
+      const now = new Date();
+      const timestamp = now.getFullYear() + '.' + 
+                       String(now.getMonth() + 1).padStart(2, '0') + '.' + 
+                       String(now.getDate()).padStart(2, '0') + ' ' + 
+                       String(now.getHours()).padStart(2, '0') + ':' + 
+                       String(now.getMinutes()).padStart(2, '0') + ' 기준';
+      document.getElementById('contribTimestamp').textContent = timestamp;
+    })();
     new Chart(document.getElementById("chartSourcePie"), {
       type: "pie",
       data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count) }] },
       options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%' } } },
       plugins: [ChartDataLabels]
     });
-    
-    // 시간 추이 그래프
-    const trendData = [
-      { date: "2025-01-15", total: 45, highRisk: 12, failed: 3 },
-      { date: "2025-01-16", total: 52, highRisk: 15, failed: 2 },
-      { date: "2025-01-17", total: 38, highRisk: 8, failed: 4 },
-      { date: "2025-01-18", total: 61, highRisk: 18, failed: 1 },
-      { date: "2025-01-19", total: 47, highRisk: 11, failed: 5 },
-      { date: "2025-01-20", total: 55, highRisk: 16, failed: 2 },
-      { date: "2025-01-21", total: 42, highRisk: 9, failed: 3 }
-    ];
-    
-    new Chart(document.getElementById("trendChart"), {
-      type: "line",
-      data: {
-        labels: trendData.map(d => d.date.slice(5)),
-        datasets: [
-          {
-            label: "총탐지",
-            data: trendData.map(d => d.total),
-            borderColor: "#2563eb",
-            backgroundColor: "rgba(37, 99, 235, 0.1)",
-            fill: true,
-            tension: 0.3
-          },
-          {
-            label: "고위험",
-            data: trendData.map(d => d.highRisk),
-            borderColor: "#16a34a",
-            backgroundColor: "rgba(22, 163, 74, 0.1)",
-            fill: false,
-            tension: 0.3
-          },
-          {
-            label: "탐지실패",
-            data: trendData.map(d => d.failed),
-            borderColor: "#dc2626",
-            backgroundColor: "rgba(220, 38, 38, 0.1)",
-            fill: false,
-            tension: 0.3
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: "#f1f5f9" }
-          },
-          x: {
-            grid: { display: false }
-          }
-        }
-      }
-    });
 
+    // 금일 탐지 유형 데이터
     (function(){
       const todayTypeStats = [
         { type: "전화번호", count: 10 },
@@ -246,7 +244,6 @@
     
     // 통계 카드 데이터 업데이트
     (function(){
-      // 금일 탐지 데이터 (금일 탐지 유형 데이터에서 계산)
       const todayTypeStats = [
         { type: "전화번호", count: 10, isHighRisk: false, validCount: 9 },
         { type: "이메일", count: 8, isHighRisk: false, validCount: 7 },
@@ -261,41 +258,26 @@
       const validRatio = ((validCount / todayTotal) * 100).toFixed(1);
       
       const stats = {
-        total: { num: todayTotal, delta: 12.5 }, // 금일 총 탐지 수
-        highRisk: { num: parseFloat(highRiskRatio), delta: 3.2 }, // 금일 고위험 PII 비중
-        valid: { num: parseFloat(validRatio), delta: 5.1 } // 금일 검증 통과율
+        total: { num: todayTotal, delta: 12.5 },
+        highRisk: { num: parseFloat(highRiskRatio), delta: 3.2 },
+        valid: { num: parseFloat(validRatio), delta: 5.1 }
       };
       
-      // 금일 탐지 수
       document.getElementById('totalNum').textContent = stats.total.num;
       const totalDelta = document.getElementById('totalDelta');
       totalDelta.textContent = (stats.total.delta > 0 ? '+' : '') + stats.total.delta + '%';
       totalDelta.className = 'delta ' + (stats.total.delta > 0 ? 'ok' : 'bad');
       
-      // 고위험 PII 비중
       document.getElementById('highRiskNum').textContent = stats.highRisk.num + '%';
       const riskDelta = document.getElementById('highRiskDelta');
       riskDelta.textContent = (stats.highRisk.delta > 0 ? '+' : '') + stats.highRisk.delta + '%';
       riskDelta.className = 'delta ' + (stats.highRisk.delta > 0 ? 'bad' : 'ok');
       
-      // 검증 통과율
       document.getElementById('validNum').textContent = stats.valid.num + '%';
       const validDelta = document.getElementById('validDelta');
       validDelta.textContent = (stats.valid.delta > 0 ? '+' : '') + stats.valid.delta + '%';
       validDelta.className = 'delta ' + (stats.valid.delta > 0 ? 'ok' : 'bad');
     })();
   </script>
-
-
-
-  <!-- 우측 상단 유저 박스 -->
-  <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
-    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
-    <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
-  </div>
-
-<script>
-
-</script>
 </body>
 </html>
