@@ -1,4 +1,4 @@
-/* source_type.html 전용 스타일 */
+/* detection_type.html 전용 스타일 */
 
 .subtitle{display:none}
 
@@ -11,6 +11,7 @@
 
 /* 필터 관련 */
 .quick{display:flex;gap:8px; padding:12px 16px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap}
+.muted{color:var(--muted);font-size:13px;margin-left:16px}
 .pill{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#F9F7F7;font-size:13px;cursor:pointer;color:var(--text)}
 .pill.active{background:var(--brand);border-color:var(--brand);color:#fff}
 
