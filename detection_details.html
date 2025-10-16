@@ -13,13 +13,13 @@
   <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
 
   <div class="pm-container">
-    <div class="page-title">탐지 현황 상세</div>
+    <div class="page-title">탐지 현황</div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='source_type.html'">소스별 현황</a>
-        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형별 현황</a>
-        <a href="#" onclick="location.href='account_management.html'">계정관리</a>
+        <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
+        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
+        <a href="#" onclick="location.href='account_management.html'">계정 관리</a>
       </nav>
     </div>
 
@@ -107,6 +107,93 @@
       </div>
       <div class="empty" id="empty" hidden>조건에 맞는 결과가 없습니다.</div>
     </section>
+    </div>
+  </div>
+
+  <!-- 세부 내용 팝업 모달 -->
+  <div id="detailModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;backdrop-filter:blur(2px);">
+    <div class="modal-content card" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;width:600px;max-height:85vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+      <div class="modal-header" style="background:#f8fafc;padding:20px 24px;border-bottom:1px solid #e2e8f0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;font-size:18px;font-weight:600;color:#1e293b;">탐지 세부 내용</h3>
+          <button id="closeModal" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;font-size:16px;transition:all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:24px;max-height:calc(85vh - 120px);overflow-y:auto;">
+        <div class="detail-sections">
+          <!-- 기본 정보 -->
+          <div class="detail-section" style="margin-bottom:24px;">
+            <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">기본 정보</h4>
+            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">상태</div>
+                <div id="detail-status" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">사번</div>
+                <div id="detail-emp" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 시스템 정보 -->
+          <div class="detail-section" style="margin-bottom:24px;">
+            <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">시스템 정보</h4>
+            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">IP 주소</div>
+                <div id="detail-ip" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">운영체제</div>
+                <div id="detail-os" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">컴퓨터 이름</div>
+                <div id="detail-computer" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 웹 정보 -->
+          <div class="detail-section" style="margin-bottom:24px;">
+            <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">웹 정보</h4>
+            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">브라우저</div>
+                <div id="detail-browser" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">LLM</div>
+                <div id="detail-llm" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">URL</div>
+                <div id="detail-url" style="font-size:13px;font-weight:500;word-break:break-all;">-</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 탐지 정보 -->
+          <div class="detail-section">
+            <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">탐지 정보</h4>
+            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">탐지 유형</div>
+                <div id="detail-source" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">개인정보 유형</div>
+                <div id="detail-types" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;" id="reason-section">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">실패 사유</div>
+                <div id="detail-reason" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -251,6 +338,74 @@ function applyFilters(){
   renderRows(filtered);
 }
 
+/* 세부 내용 생성 함수 */
+function generateDetailData(row) {
+  const ips = ['192.168.0.1', '10.0.0.15', '172.16.1.100', '192.168.1.50', '10.1.1.25'];
+  const oses = ['Windows 10', 'Windows 11', 'macOS', 'Ubuntu'];
+  const computers = ['DESKTOP-TR03E35', 'LAPTOP-ABC123', 'WORKSTATION-XYZ', 'PC-DEF456'];
+  const urls = ['https://chatgpt.com/', 'https://claude.ai/', 'https://bard.google.com/', 'https://www.bing.com/chat'];
+  const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge'];
+  const llms = ['GPT', 'Claude', 'Bard', 'Copilot'];
+  
+  const hash = row.emp.charCodeAt(0) + row.date.charCodeAt(5);
+  return {
+    ip: ips[hash % ips.length],
+    os: oses[hash % oses.length],
+    computer: computers[hash % computers.length],
+    url: urls[hash % urls.length],
+    browser: browsers[hash % browsers.length],
+    llm: llms[hash % llms.length]
+  };
+}
+
+/* 팝업 열기 */
+function openDetailModal(row) {
+  const detail = generateDetailData(row);
+  
+  // 상태 스타일링
+  const statusEl = $('#detail-status');
+  statusEl.textContent = row.status;
+  statusEl.style.color = row.status === '성공' ? '#059669' : '#dc2626';
+  
+  $('#detail-emp').textContent = row.emp || '-';
+  $('#detail-ip').textContent = detail.ip;
+  $('#detail-os').textContent = detail.os;
+  $('#detail-computer').textContent = detail.computer;
+  $('#detail-url').textContent = detail.url;
+  $('#detail-browser').textContent = detail.browser;
+  $('#detail-llm').textContent = detail.llm;
+  $('#detail-source').textContent = row.source;
+  
+  // 개인정보 유형 칩 스타일링
+  const typesEl = $('#detail-types');
+  if (row.types && row.types.length > 0) {
+    typesEl.innerHTML = row.types.map(type => 
+      `<span style="display:inline-block;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;">${type}</span>`
+    ).join('');
+  } else {
+    typesEl.textContent = '-';
+  }
+  
+  // 실패 사유 섭션 표시/숨김
+  const reasonSection = $('#reason-section');
+  const reasonEl = $('#detail-reason');
+  if (row.reason && row.reason.trim()) {
+    reasonEl.textContent = row.reason;
+    reasonSection.style.display = 'block';
+  } else {
+    reasonSection.style.display = 'none';
+  }
+  
+  $('#detailModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+/* 팝업 닫기 */
+function closeDetailModal() {
+  $('#detailModal').style.display = 'none';
+  document.body.style.overflow = 'auto';
+}
+
 /* 테이블 렌더링 */
 function renderRows(rows){
   const $rows = $('#rows');
@@ -261,17 +416,19 @@ function renderRows(rows){
     $empty.hidden = false;
   } else {
     $empty.hidden = true;
-    rows.forEach(r => {
+    rows.forEach((r, index) => {
       const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => openDetailModal(r));
       const chips = (r.types||[]).map(t=>`<span class="chip">${t}</span>`).join(' ');
       tr.innerHTML = `
-        <td><span class="status ${r.status==='성공'?'ok':'fail'}">${r.status}</span></td>
-        <td>${r.date}</td>
-        <td>${r.emp || '-'}</td>
-        <td><div class="chips">${chips}</div></td>
-        <td>${r.source}</td>
-        <td>${r.filename||'-'}</td>
-        <td>${r.reason||''}</td>`;
+        <td style="text-align:center;"><span class="status ${r.status==='성공'?'ok':'fail'}">${r.status}</span></td>
+        <td style="text-align:center;">${r.date}</td>
+        <td style="text-align:center;">${r.emp || '-'}</td>
+        <td style="text-align:center;"><div class="chips">${chips}</div></td>
+        <td style="text-align:center;">${r.source}</td>
+        <td style="text-align:center;">${r.filename||'-'}</td>
+        <td style="text-align:center;">${r.reason||''}</td>`;
       $rows.appendChild(tr);
     });
   }
@@ -330,6 +487,17 @@ document.addEventListener('DOMContentLoaded', function() {
     logoutBtn.style.fontWeight = '700';
     logoutBtn.style.padding = '6px 8px';
   }
+});
+
+/* 모달 이벤트 리스너 */
+document.addEventListener('DOMContentLoaded', function() {
+  $('#closeModal').addEventListener('click', closeDetailModal);
+  $('#detailModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDetailModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDetailModal();
+  });
 });
 </script>
 

@@ -10,7 +10,20 @@
   
 
 <link rel="stylesheet" href="assets/css/common.css">
-<link rel="stylesheet" href="assets/page-css/main.page.css"></head>
+<link rel="stylesheet" href="assets/page-css/main.page.css">
+<style>
+  .grid.indicators{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px;}
+  .panel{background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;box-shadow:0 5px 20px rgba(15,23,42,.05);cursor:pointer;}
+  .panel h2{margin:0 0 8px 0;font-size:16px;}
+  .small{color:#475569;font-size:12px;margin:0 0 8px 0;}
+  .ind-val{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;}
+  .ind-val .num{font-size:28px;font-weight:800;}
+  .ind-val .delta{font-size:12px;font-weight:700;}
+  .delta.ok{color:#16a34a;}
+  .delta.warn{color:#d97706;}
+  .delta.bad{color:#dc2626;}
+  .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;border:1px solid #e2e8f0;font-size:12px;color:#334155;}
+</style></head>
 <body>
   <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
@@ -18,13 +31,45 @@
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='source_type.html'">소스별 현황</a>
-        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형별 현황</a>
-        <a href="#" onclick="location.href='account_management.html'">계정관리</a>
+        <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
+        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
+        <a href="#" onclick="location.href='account_management.html'">계정 관리</a>
       </nav>
     </div>
 
     <div class="max-w-6xl mx-auto p-4">
+    <!-- Indicator cards (3) -->
+    <section class="grid indicators" id="cards">
+      <div class="panel" data-detail="total">
+        <h2>총 탐지 수 <span class="chip">운영</span></h2>
+        <div class="small">기간 내 PII 탐지 건수</div>
+        <div class="ind-val"><div class="num" id="totalNum">0</div><div class="delta" id="totalDelta">0%</div></div>
+      </div>
+      <div class="panel" data-detail="highrisk">
+        <h2>고위험 PII 비중 <span class="chip">위험지표</span></h2>
+        <div class="small">주민/외국인/여권/면허/카드/계좌</div>
+        <div class="ind-val"><div class="num" id="highRiskNum">0%</div><div class="delta" id="highRiskDelta">0%</div></div>
+      </div>
+      <div class="panel" data-detail="valid">
+        <h2>검증 통과율 <span class="chip">품질지표</span></h2>
+        <div class="small">Luhn / 체크섬 통과율</div>
+        <div class="ind-val"><div class="num" id="validNum">0%</div><div class="delta" id="validDelta">0%</div></div>
+      </div>
+    </section>
+    
+    <!-- 시간 추이 그래프 -->
+    <section class="panel" data-detail="trend" style="margin-bottom:24px;">
+      <h2>시간 추이(일별)</h2>
+      <div style="height:220px;position:relative;">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#475569;margin-top:8px;">
+        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#2563eb;border:1px solid #0001;"></span>총탐지</span>
+        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#16a34a;border:1px solid #0001;"></span>고위험</span>
+        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#dc2626;border:1px solid #0001;"></span>탐지실패</span>
+      </div>
+    </section>
+    
     <section class="grid grid-cols-2 gap-3 mb-4">
         <div class="bg-white p-3 rounded shadow">
           <h2 class="font-semibold mb-1 text-sm">탐지 건수 (기간별)</h2>
@@ -123,6 +168,66 @@
       options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%' } } },
       plugins: [ChartDataLabels]
     });
+    
+    // 시간 추이 그래프
+    const trendData = [
+      { date: "2025-01-15", total: 45, highRisk: 12, failed: 3 },
+      { date: "2025-01-16", total: 52, highRisk: 15, failed: 2 },
+      { date: "2025-01-17", total: 38, highRisk: 8, failed: 4 },
+      { date: "2025-01-18", total: 61, highRisk: 18, failed: 1 },
+      { date: "2025-01-19", total: 47, highRisk: 11, failed: 5 },
+      { date: "2025-01-20", total: 55, highRisk: 16, failed: 2 },
+      { date: "2025-01-21", total: 42, highRisk: 9, failed: 3 }
+    ];
+    
+    new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: trendData.map(d => d.date.slice(5)),
+        datasets: [
+          {
+            label: "총탐지",
+            data: trendData.map(d => d.total),
+            borderColor: "#2563eb",
+            backgroundColor: "rgba(37, 99, 235, 0.1)",
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: "고위험",
+            data: trendData.map(d => d.highRisk),
+            borderColor: "#16a34a",
+            backgroundColor: "rgba(22, 163, 74, 0.1)",
+            fill: false,
+            tension: 0.3
+          },
+          {
+            label: "탐지실패",
+            data: trendData.map(d => d.failed),
+            borderColor: "#dc2626",
+            backgroundColor: "rgba(220, 38, 38, 0.1)",
+            fill: false,
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: "#f1f5f9" }
+          },
+          x: {
+            grid: { display: false }
+          }
+        }
+      }
+    });
 
     (function(){
       const todayTypeStats = [
@@ -137,6 +242,47 @@
       const total = todayTypeStats.reduce((a,b)=>a+b.count,0);
       tbody.innerHTML = todayTypeStats.map(r=>`<tr class="border-t"><td class="py-1">${r.type}</td><td>${r.count}</td></tr>`).join('');
       totalSpan.textContent = total;
+    })();
+    
+    // 통계 카드 데이터 업데이트
+    (function(){
+      // 금일 탐지 데이터 (금일 탐지 유형 데이터에서 계산)
+      const todayTypeStats = [
+        { type: "전화번호", count: 10, isHighRisk: false, validCount: 9 },
+        { type: "이메일", count: 8, isHighRisk: false, validCount: 7 },
+        { type: "주민등록번호", count: 5, isHighRisk: true, validCount: 4 },
+        { type: "카드번호", count: 3, isHighRisk: true, validCount: 3 },
+        { type: "IP 주소", count: 2, isHighRisk: false, validCount: 2 }
+      ];
+      const todayTotal = todayTypeStats.reduce((a,b)=>a+b.count,0);
+      const highRiskCount = todayTypeStats.filter(item => item.isHighRisk).reduce((a,b)=>a+b.count,0);
+      const validCount = todayTypeStats.reduce((a,b)=>a+b.validCount,0);
+      const highRiskRatio = ((highRiskCount / todayTotal) * 100).toFixed(1);
+      const validRatio = ((validCount / todayTotal) * 100).toFixed(1);
+      
+      const stats = {
+        total: { num: todayTotal, delta: 12.5 }, // 금일 총 탐지 수
+        highRisk: { num: parseFloat(highRiskRatio), delta: 3.2 }, // 금일 고위험 PII 비중
+        valid: { num: parseFloat(validRatio), delta: 5.1 } // 금일 검증 통과율
+      };
+      
+      // 금일 탐지 수
+      document.getElementById('totalNum').textContent = stats.total.num;
+      const totalDelta = document.getElementById('totalDelta');
+      totalDelta.textContent = (stats.total.delta > 0 ? '+' : '') + stats.total.delta + '%';
+      totalDelta.className = 'delta ' + (stats.total.delta > 0 ? 'ok' : 'bad');
+      
+      // 고위험 PII 비중
+      document.getElementById('highRiskNum').textContent = stats.highRisk.num + '%';
+      const riskDelta = document.getElementById('highRiskDelta');
+      riskDelta.textContent = (stats.highRisk.delta > 0 ? '+' : '') + stats.highRisk.delta + '%';
+      riskDelta.className = 'delta ' + (stats.highRisk.delta > 0 ? 'bad' : 'ok');
+      
+      // 검증 통과율
+      document.getElementById('validNum').textContent = stats.valid.num + '%';
+      const validDelta = document.getElementById('validDelta');
+      validDelta.textContent = (stats.valid.delta > 0 ? '+' : '') + stats.valid.delta + '%';
+      validDelta.className = 'delta ' + (stats.valid.delta > 0 ? 'ok' : 'bad');
     })();
   </script>
 
