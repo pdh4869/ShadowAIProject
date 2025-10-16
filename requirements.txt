@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+transformers
+torch
+easyocr
+pymupdf
+pillow
+mtcnn
+pycryptodome
+python-docx
+olefile
+openpyxl
+python-pptx
