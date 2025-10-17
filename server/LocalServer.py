@@ -12,7 +12,7 @@ from collections import deque
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
-from Logic import handle_input_raw, detect_by_ner, detect_by_regex
+from Logic import handle_input_raw, detect_by_ner, detect_by_regex, detect_quasi_identifiers, analyze_combination_risk
 from fastapi.middleware.cors import CORSMiddleware
 
 # 보안: Extension ID 화이트리스트
@@ -260,7 +260,7 @@ async def dashboard():
                                         <span class="type-badge">${escapeHtml(d.type)}</span>
                                         <strong>${escapeHtml(d.value || '(파일)')}</strong>
                                     </div>
-                                    ${d.file_name ? `<div class="netinfo">파일명: ${d.file_name}</div>` : ''}
+                                    ${d.file_name ? `<div class="netinfo">파일명: ${d.original_file_name ? `<span style="color:#f59e0b;font-weight:bold;">${escapeHtml(d.file_name)}</span> <span style="color:#64748b;">(원본: ${escapeHtml(d.original_file_name)})</span>` : escapeHtml(d.file_name)}</div>` : ''}
                                     ${d.url ? `<div class="netinfo">출처: ${d.url}</div>` : ''}
                                     ${d.network_info && d.network_info.ip ? `<div class="netinfo">IPs: ${d.network_info.ip}</div>` : ''}
                                     ${d.network_info && d.network_info.hostname ? `<div class="netinfo">컴퓨터: ${d.network_info.hostname}</div>` : ''}
@@ -368,16 +368,19 @@ async def handle_file_collect(request: Request):
         extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
         
         try:
-            detected, _, _, _ = handle_input_raw(file_bytes, extension)
+            detected, masked_filename, _, _ = handle_input_raw(file_bytes, extension, file_name)
             
-            for item in detected:
+            # 파일도 그룹으로 저장
+            if detected:
                 detection_history.append({
                     "timestamp": processed_at,
-                    "type": item["type"],
-                    "value": item["value"],
+                    "type": "group",
+                    "items": detected,
                     "url": origin_url,
                     "network_info": network_info,
-                    "file_name": file_name
+                    "file_name": masked_filename if masked_filename else file_name,
+                    "original_file_name": file_name if masked_filename and masked_filename != file_name else None,
+                    "tab": data.get("tab", {})
                 })
             
             return JSONResponse(content={"result": {"status": "처리 완료"}}, status_code=200)
@@ -414,23 +417,43 @@ async def handle_text_event(request: Request):
         # NER 먼저 실행
         ner_results = detect_by_ner(text)
         regex_results = detect_by_regex(text)
+        quasi_results = detect_quasi_identifiers(text)
         
         # 합치기
-        detected = regex_results + ner_results
+        all_detected = regex_results + ner_results + quasi_results
+        
+        # 조합 위험도 분석 (모든 항목 포함)
+        combination_risk = analyze_combination_risk(all_detected, text)
+        
+        # 준식별자 처리: 조합 위험도가 있을 때만 포함
+        if combination_risk:
+            detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+            detected.append({
+                "type": "combination_risk",
+                "value": combination_risk['message'],
+                "risk_level": combination_risk['level'],
+                "risk_items": combination_risk['items'],
+                "counts": combination_risk['counts']
+            })
+        else:
+            # 조합 위험도 없으면 준식별자 제외 (ORG, student_id, birth, LC)
+            detected = [item for item in all_detected if item.get('type') not in ['ORG', 'OG', 'student_id', 'birth', 'LC']]
         
         print(f"[INFO] 탐지 결과: {len(detected)}개")
         
-        for item in detected:
+        # 그룹으로 저장
+        if detected:
             detection_history.append({
                 "timestamp": processed_at,
-                "type": item["type"],
-                "value": item["value"],
+                "type": "group",
+                "items": detected,
                 "url": url,
                 "network_info": network_info,
                 "tab": data.get("tab", {})
             })
-            status_info = f" [{item['status']}]" if 'status' in item else ""
-            print(f"[INFO] ✓ 탐지: {item['type']} = {item['value']}{status_info}")
+            for item in detected:
+                status_info = f" [{item['status']}]" if 'status' in item else ""
+                print(f"[INFO] ✓ 탐지: {item['type']} = {item.get('value', '')}{status_info}")
 
         return JSONResponse(content={"result": {"status": "처리 완료", "detected_count": len(detected)}}, status_code=200)
 
@@ -463,9 +486,28 @@ async def handle_combined(request: Request):
             # NER 먼저 실행
             ner_results = detect_by_ner(text)
             regex_results = detect_by_regex(text)
+            quasi_results = detect_quasi_identifiers(text)
             
             # 합치기
-            detected = regex_results + ner_results
+            all_detected = regex_results + ner_results + quasi_results
+            
+            # 조합 위험도 분석 (모든 항목 포함)
+            combination_risk = analyze_combination_risk(all_detected, text)
+            
+            # 준식별자 처리: 조합 위험도가 있을 때만 포함
+            if combination_risk:
+                detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+                detected.append({
+                    "type": "combination_risk",
+                    "value": combination_risk['message'],
+                    "risk_level": combination_risk['level'],
+                    "risk_items": combination_risk['items'],
+                    "counts": combination_risk['counts']
+                })
+            else:
+                # 조합 위험도 없으면 준식별자 제외 (ORG, student_id, birth, LC)
+                detected = [item for item in all_detected if item.get('type') not in ['ORG', 'OG', 'student_id', 'birth', 'LC']]
+            
             if detected:
                 detection_history.append({
                     "timestamp": processed_at,
@@ -477,7 +519,7 @@ async def handle_combined(request: Request):
                 })
                 for item in detected:
                     status_info = f" [{item['status']}]" if 'status' in item else ""
-                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item['value']}{status_info}")
+                    print(f"[INFO] ✓ 텍스트 탐지: {item['type']} = {item.get('value', '')}{status_info}")
 
         # 파일 탐지
         for file_info in files_data:
@@ -486,19 +528,21 @@ async def handle_combined(request: Request):
             if file_b64:
                 file_bytes = base64.b64decode(file_b64)
                 extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
-                detected, _, _, _ = handle_input_raw(file_bytes, extension)
-                for item in detected:
+                detected, masked_filename, _, _ = handle_input_raw(file_bytes, extension, file_name)
+                if detected:
                     detection_history.append({
                         "timestamp": processed_at,
-                        "type": item["type"],
-                        "value": item["value"],
+                        "type": "group",
+                        "items": detected,
                         "url": url,
                         "network_info": network_info,
-                        "file_name": file_name,
+                        "file_name": masked_filename if masked_filename else file_name,
+                        "original_file_name": file_name if masked_filename and masked_filename != file_name else None,
                         "tab": data.get("tab", {})
                     })
-                    status_info = f" [{item['status']}]" if 'status' in item else ""
-                    print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item['value']}{status_info}")
+                    for item in detected:
+                        status_info = f" [{item['status']}]" if 'status' in item else ""
+                        print(f"[INFO] ✓ 파일 탐지: {item['type']} = {item.get('value', '')}{status_info}")
 
         return JSONResponse(content={"result": {"status": "처리 완료"}}, status_code=200)
 

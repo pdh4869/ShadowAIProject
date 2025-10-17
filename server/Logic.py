@@ -734,11 +734,42 @@ def detect_by_ner(Text: str) -> list:
         if Start is None or End is None:
             continue
         
-        if Label.upper() in ["PER", "PS", "ORG", "LOC", "LC", "MISC"]:
+        if Label.upper() in ["PER", "PS", "ORG", "OG", "LOC", "LC", "MISC", "DT"]:
             # LC (주소) 병합 처리
             if Label.upper() == "LC":
                 location_parts.append(Word.strip())
                 continue
+            
+            # ORG/OG/MISC 처리 - 직책 분리
+            if Label.upper() in ["ORG", "OG", "MISC"]:
+                # 직책 키워드 체크
+                position_keywords = ["교수", "팀장", "부장", "과장", "대리", "사원", "이사", "본부장", "실장", "차장", "주임", "연구원", "박사", "석사"]
+                if any(keyword in Word for keyword in position_keywords):
+                    Detected.append({"type": "position", "value": Word, "span": (Start, End)})
+                    print(f"[INFO] ✓ NER 탐지 (position): {Word}")
+                    continue
+                
+                # 조직명 필터링 (너무 짧거나 의미없는 것 제외)
+                clean_org = Word.replace(" ", "").strip()
+                # 숫자만 있는 경우 제외 (학번 오탐지 방지)
+                if clean_org.isdigit():
+                    print(f"[INFO] ✗ NER 필터링 (ORG): {Word} (숫자만 포함)")
+                    continue
+                if len(clean_org) >= 2:  # 2글자 이상
+                    Detected.append({"type": "ORG", "value": Word, "span": (Start, End)})
+                    print(f"[INFO] ✓ NER 탐지 (ORG): {Word}")
+                else:
+                    print(f"[INFO] ✗ NER 필터링 (ORG): {Word} (너무 짧음)")
+                continue
+            
+            # DT (날짜/숫자) - 학번/사번으로 처리
+            if Label.upper() == "DT":
+                # 숫자만 있고 7자리 이상이면 학번/사번으로 간주
+                if Word.isdigit() and len(Word) >= 7:
+                    Detected.append({"type": "student_id", "value": Word, "span": (Start, End)})
+                    print(f"[INFO] ✓ NER 탐지 (student_id): {Word}")
+                continue
+            
             # PS (사람 이름) 필터링
             if Label.upper() in ["PS", "PER"]:
                 # 공백 제거 후 길이 체크
@@ -792,6 +823,128 @@ def detect_by_ner(Text: str) -> list:
     
     return Detected
 
+# ==========================
+# 준식별자 패턴 탐지
+# ==========================
+def detect_quasi_identifiers(text: str) -> list:
+    """학번/사번 등 준식별자 패턴 탐지"""
+    detected = []
+    
+    # 학번/사번 패턴 (7~10자리 숫자, 19xx 또는 20xx로 시작)
+    # 여권번호와 겹치지 않도록 숫자만 확인
+    # 2407670 같은 7자리도 탐지 (24로 시작)
+    id_pattern = re.compile(r'\b(19|20|24)\d{5,8}\b')
+    for match in id_pattern.finditer(text):
+        value = match.group()
+        # 여권번호 패턴 제외 (알파벳 포함 여부 확인)
+        start, end = match.span()
+        # 앞뒤에 알파벳이 있으면 여권번호일 가능성
+        if start > 0 and text[start-1].isalpha():
+            continue
+        if end < len(text) and text[end].isalpha():
+            continue
+        
+        detected.append({
+            "type": "student_id",
+            "value": value,
+            "span": match.span()
+        })
+    
+    # 직책 패턴 탐지
+    position_pattern = re.compile(r'\b(교수|팀장|부장|과장|대리|사원|이사|본부장|실장|차장|주임|연구원|박사|석사|회장|사장|전무|상무|부사장|대표|원장|소장|센터장)\b')
+    for match in position_pattern.finditer(text):
+        detected.append({
+            "type": "position",
+            "value": match.group(),
+            "span": match.span()
+        })
+    
+    return detected
+
+# ==========================
+# 카테고리 분류 및 위험도 분석
+# ==========================
+def categorize_detection(item):
+    """탐지 항목을 카테곣리로 분류"""
+    item_type = item.get('type', '')
+    
+    # 식별자
+    if item_type in ['PS', 'PER', 'image_face']:
+        return 'identifier'
+    
+    # 준식별자
+    if item_type in ['ORG', 'student_id', 'birth', 'LC', 'position']:
+        return 'quasi'
+    
+    return 'other'
+
+def analyze_combination_risk(detected_items, text):
+    """조합 위험도 자동 분석"""
+    print(f"[DEBUG] 조합 분석 시작: 총 {len(detected_items)}개 항목")
+    
+    if len(detected_items) < 2:
+        print(f"[DEBUG] 조합 분석 스킵: 항목이 2개 미만 ({len(detected_items)}개)")
+        return None
+    
+    # 카테고리별 분류
+    categorized = {}
+    for item in detected_items:
+        category = categorize_detection(item)
+        if category not in categorized:
+            categorized[category] = []
+        categorized[category].append(item)
+        print(f"[DEBUG] 항목 분류: type={item.get('type')}, value={item.get('value')[:20] if item.get('value') else 'N/A'} → category={category}")
+    
+    identifier_count = len(categorized.get('identifier', []))
+    quasi_count = len(categorized.get('quasi', []))
+    
+    print(f"[DEBUG] 조합 분석 결과: 식별자={identifier_count}, 준식별자={quasi_count}")
+    print(f"[DEBUG] 준식별자 항목: {[item.get('type') for item in categorized.get('quasi', [])]}") 
+    
+    # 위험도 계산
+    risk_level = None
+    risk_message = None
+    risk_items = []
+    
+    if identifier_count >= 1 and quasi_count >= 2:
+        risk_level = 'high'
+        risk_message = f'식별자 + 준식별자 {quasi_count}개 조합 → 개인 특정 가능'
+        risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
+    elif identifier_count >= 1 and quasi_count >= 1:
+        risk_level = 'medium'
+        risk_message = '식별자 + 준식별자 조합 → 개인 특정 가능성 있음'
+        risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
+    elif quasi_count >= 3:
+        # 준식별자 3개 이상
+        risk_level = 'medium'
+        risk_message = f'준식별자 {quasi_count}개 조합 → 개인 특정 가능성 있음'
+        risk_items = categorized.get('quasi', [])
+    elif quasi_count >= 2:
+        # 준식별자만 2개 이상일 때 - 조직명만 있는 경우는 제외
+        quasi_items = categorized.get('quasi', [])
+        non_org_quasi = [item for item in quasi_items if item.get('type') not in ['ORG', 'OG']]
+        
+        # 조직명이 아닌 준식별자가 최소 1개 이상 있어야 함
+        if len(non_org_quasi) >= 1:
+            risk_level = 'medium'
+            risk_message = f'준식별자 {quasi_count}개 조합 → 개인 특정 가능성 있음'
+            risk_items = quasi_items
+        else:
+            print(f"[DEBUG] 조합 위험 스킵: 조직명만 {len(quasi_items)}개 (개인 특정 불가)")
+    
+    if risk_level:
+        print(f"[WARN] ⚠️ 조합 위험 감지: {risk_level} - {risk_message}")
+        return {
+            'level': risk_level,
+            'message': risk_message,
+            'items': risk_items,
+            'counts': {
+                'identifier': identifier_count,
+                'quasi': quasi_count
+            }
+        }
+    
+    return None
 
 # ==========================
 # 얼굴 탐지 (MTCNN)
@@ -1018,10 +1171,12 @@ def scan_file_for_face_images(file_bytes, file_ext):
     else:
         return []
 
+
+
 # ==========================
 # 최종 핸들러 (마스킹 제거)
 # ==========================
-def handle_input_raw(Input_Data, Original_Format=None):
+def handle_input_raw(Input_Data, Original_Format=None, Original_Filename=None):
     """
     파일을 처리하는 메인 함수
     
@@ -1046,27 +1201,56 @@ def handle_input_raw(Input_Data, Original_Format=None):
     # 2단계: 이미지 내 얼굴 탐지
     image_detections = scan_file_for_face_images(Input_Data, Original_Format or "")
     
-    # 3단계: 텍스트에서 개인정보 탐지
+    # 3단계: 텍스트에서 개인정보 탐지 (파일명 포함)
     Detected = []
-    if Parsed_Text:
-        print(f"[INFO] 텍스트 분석 중... (길이: {len(Parsed_Text)} 글자)")
-        print(f"[DEBUG] 텍스트 샘플: {Parsed_Text[:500]}")
+    
+    # 파일명을 텍스트에 포함
+    combined_text = Parsed_Text
+    if Original_Filename:
+        filename_without_ext = Original_Filename.rsplit('.', 1)[0]
+        combined_text = filename_without_ext + " " + Parsed_Text
+    
+    if combined_text.strip():
+        print(f"[INFO] 텍스트 분석 중... (길이: {len(combined_text)} 글자)")
+        print(f"[DEBUG] 텍스트 샘플: {combined_text[:500]}")
         
         # NER 먼저 실행
-        ner_results = detect_by_ner(Parsed_Text)
+        ner_results = detect_by_ner(combined_text)
         
         # 정규식 실행
-        regex_results = detect_by_regex(Parsed_Text)
+        regex_results = detect_by_regex(combined_text)
+        
+        # 준식별자 패턴 탐지
+        quasi_results = detect_quasi_identifiers(combined_text)
         
         # 중복 제거: value 기준으로 중복 제거
+        all_detected = []
         seen = set()
-        for item in regex_results + ner_results:
+        for item in regex_results + ner_results + quasi_results:
             val = item['value'].strip().lower()
             if val not in seen:
                 seen.add(val)
-                Detected.append(item)
+                all_detected.append(item)
         
-        print(f"[INFO] ✓ 텍스트 개인정보 {len(Detected)}개 탐지 (중복 제거 완료)")
+        print(f"[INFO] ✓ 텍스트 개인정보 {len(all_detected)}개 탐지 (중복 제거 완료)")
+        
+        # 조합 위험도 분석 (모든 항목 포함)
+        combination_risk = analyze_combination_risk(all_detected, combined_text)
+        
+        # 준식별자 처리: 조합 위험도가 있을 때만 포함
+        if combination_risk:
+            Detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+            print(f"[WARN] ⚠️ 조합 위험 감지: {combination_risk['level']} - {combination_risk['message']}")
+            Detected.append({
+                "type": "combination_risk",
+                "value": combination_risk['message'],
+                "risk_level": combination_risk['level'],
+                "risk_items": combination_risk['items'],
+                "counts": combination_risk['counts']
+            })
+        else:
+            # 조합 위험도 없으면 준식별자 제외 (ORG, student_id, birth, LC)
+            Detected = [item for item in all_detected if item.get('type') not in ['ORG', 'OG', 'student_id', 'birth', 'LC']]
     else:
         print("[INFO] 추출된 텍스트 없음")
     
@@ -1086,10 +1270,45 @@ def handle_input_raw(Input_Data, Original_Format=None):
     if total_faces > 0:
         print(f"[INFO] ✓ 이미지 얼굴 총 {total_faces}개 탐지")
     
-    # 5단계: 처리 완료
+    # 5단계: 파일명 마스킹
+    masked_filename = ""
+    if Original_Filename:
+        parts = Original_Filename.rsplit('.', 1)
+        name_part = parts[0]
+        ext_part = f".{parts[1]}" if len(parts) > 1 else ""
+        
+        type_map = {
+            'PS': '이름', 'PER': '이름',
+            'phone': '전화번호',
+            'email': '이메일',
+            'ssn': '주민번호',
+            'birth': '생년월일',
+            'card': '카드번호',
+            'account': '계좌번호',
+            'passport': '여권번호',
+            'driver_license': '면허번호'
+        }
+        
+        replacements = []
+        for item in Detected:
+            value = item.get('value', '').strip()
+            item_type = item.get('type', '')
+            if value and value in name_part and item_type in type_map:
+                replacements.append((value, type_map[item_type]))
+        
+        replacements.sort(key=lambda x: len(x[0]), reverse=True)
+        
+        for original, type_name in replacements:
+            name_part = name_part.replace(original, f"({type_name})")
+        
+        masked_filename = name_part + ext_part
+        if masked_filename != Original_Filename:
+            print(f"[INFO] 파일명 변경: {Original_Filename} → {masked_filename}")
+    
+    # 6단계: 처리 완료
     if not Detected:
         print("[INFO] ========== 탐지된 민감정보 없음 ==========\n")
     else:
         print(f"[INFO] ========== 처리 완료 - 민감정보: {len(Detected)}개 ==========\n")
     
-    return Detected, "", False, image_detections
+    return Detected, masked_filename, False, image_detections
