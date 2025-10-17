@@ -86,10 +86,15 @@
       </section>
 
       <section class="grid grid-cols-2 gap-3 mb-4">
+<<<<<<< HEAD
         <div class="panel" style="padding:16px;height:350px;">
+=======
+        <div class="bg-white rounded shadow" style="padding:16px;">
+>>>>>>> parent of c5b9c93 (main graph update)
           <h2 style="margin:0 0 8px 0;font-size:16px;">탐지 유형별 분포</h2>
-          <div id="pieChartContainer" style="flex:1;display:flex;justify-content:center;align-items:center;max-width:300px;max-height:300px;margin:0 auto;"><canvas id="chartSourcePie"></canvas></div>
+          <div style="width: 270px; height: 270px; margin: 0 auto;"><canvas id="chartSourcePie"></canvas></div>
         </div>
+<<<<<<< HEAD
         <div id="rightColumn" style="display:flex;flex-direction:column;gap:12px;">
           <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
@@ -108,7 +113,18 @@
             </div>
             <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="failureList">
             </ul>
+=======
+        <div class="bg-white rounded shadow" style="padding:16px;">
+          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
+            <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
+            <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong>3</strong></p>
+>>>>>>> parent of c5b9c93 (main graph update)
           </div>
+          <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;">
+            <li style="list-style: none;">• 2025-09-20 — 사번: A1023 / secret.pdf (암호화 파일)</li>
+            <li style="list-style: none;">• 2025-09-21 — 사번: A1138 / test.docx (손상 파일)</li>
+            <li style="list-style: none;">• 2025-09-22 — 사번: B2047 / data.xlsx (빈 파일)</li>
+          </ul>
         </div>
       </section>
     </div>
@@ -194,6 +210,7 @@
       },
       options: { plugins: { legend: { display: false } } }
     });
+<<<<<<< HEAD
     // 금일 PII 탐지 데이터 생성
     const generateTodayDetections = () => {
       const today = new Date().toISOString().split('T')[0];
@@ -364,6 +381,8 @@
       document.getElementById('failureTimestamp').textContent = `${timeStr} 기준`;
     })();
 
+=======
+>>>>>>> parent of c5b9c93 (main graph update)
     // 사용자 기여도 테이블 생성 (사번만)
     (function(){
       const tbody = document.getElementById("contribTbody");
@@ -386,11 +405,7 @@
     new Chart(document.getElementById("chartSourcePie"), {
       type: "pie",
       data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count) }] },
-      options: { 
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%' } } 
-      },
+      options: { plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%' } } },
       plugins: [ChartDataLabels]
     });
 
@@ -446,6 +461,7 @@
       validDelta.textContent = (stats.valid.delta > 0 ? '+' : '') + stats.valid.delta + '%';
       validDelta.className = 'delta ' + (stats.valid.delta > 0 ? 'ok' : 'bad');
     })();
+<<<<<<< HEAD
 
     // 높이 맞춤 설정
     function adjustLayout() {
@@ -471,6 +487,8 @@
     window.addEventListener('resize', () => {
       setTimeout(adjustLayout, 50);
     });
+=======
+>>>>>>> parent of c5b9c93 (main graph update)
   </script>
 </body>
 </html>
