@@ -6,10 +6,14 @@
 
 *{ box-sizing:border-box }
 
-html,body{
+html{
+  overflow-y:scroll;
+}
+body{
   margin:0; padding:0; color:var(--text);
   background: var(--bg);
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  overflow-y:visible;
 }
 
 /* 브랜드바 */
@@ -53,7 +57,7 @@ html,body{
   background: rgba(17,45,78,0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow:0 8px 28px rgba(0,0,0,.15);
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
 }
 .pm-userbox .emp{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#fff; border:1px solid var(--border); color:var(--text); font-size:11px; }
 .pm-userbox .emp .dot{ width:6px; height:6px; border-radius:50%; background:conic-gradient(from 0deg,#3F72AF,#112D4E,#DBE2EF,#3F72AF); filter:blur(.15px); }
