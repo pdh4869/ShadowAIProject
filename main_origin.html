@@ -58,8 +58,8 @@
       </div>
     </section>
     
-    <section class="grid grid-cols-2 gap-3" style="margin-bottom:24px;">
-        <div class="panel" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+    <section class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
           <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
             <h2 style="margin:0;font-size:16px;">사용자별 탐지 빈도 (TOP 5)</h2>
             <p class="text-xs text-gray-700" style="margin:0;" id="contribTimestamp"></p>
@@ -71,7 +71,7 @@
             </table>
           </div>
         </div>
-        <div class="panel" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
           <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
             <h2 style="margin:0;font-size:16px;">금일 탐지 유형</h2>
             <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="todayTotal">0</span></strong></p>
@@ -86,12 +86,12 @@
       </section>
 
       <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="panel" style="padding:16px;height:350px;">
+        <div class="bg-white rounded shadow" style="padding:16px;height:350px;">
           <h2 style="margin:0 0 8px 0;font-size:16px;">탐지 유형별 분포</h2>
           <div id="pieChartContainer" style="flex:1;display:flex;justify-content:center;align-items:center;max-width:300px;max-height:300px;margin:0 auto;"><canvas id="chartSourcePie"></canvas></div>
         </div>
         <div id="rightColumn" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="bg-white rounded shadow" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
               <h2 style="margin:0;font-size:16px;">개인 식별 의심</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
@@ -100,7 +100,7 @@
             <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="suspiciousList">
             </ul>
           </div>
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="bg-white rounded shadow" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
               <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong><span id="totalFailures">0</span></strong></p>
@@ -282,7 +282,7 @@
       totalSuspicious.textContent = suspicious.length;
       
       // 카드의 실제 높이 측정
-      const card = suspiciousList.closest('.panel');
+      const card = suspiciousList.closest('.bg-white');
       const cardHeight = card ? card.offsetHeight : 145;
       const header = card ? card.querySelector('div:first-child') : null;
       const headerHeight = header ? header.offsetHeight : 40;
@@ -328,7 +328,7 @@
       totalFailures.textContent = failures.length;
       
       // 카드의 실제 높이 측정
-      const card = failureList.closest('.panel');
+      const card = failureList.closest('.bg-white');
       const cardHeight = card ? card.offsetHeight : 145;
       const header = card ? card.querySelector('div:first-child') : null;
       const headerHeight = header ? header.offsetHeight : 40;
@@ -453,7 +453,7 @@
       const leftHeight = 350; // 높인 고정 높이
       rightColumn.style.height = leftHeight + 'px';
       const boxHeight = (leftHeight - 12) / 2;
-      rightColumn.querySelectorAll('.panel').forEach(box => {
+      rightColumn.querySelectorAll('.bg-white').forEach(box => {
         box.style.height = boxHeight + 'px';
       });
       

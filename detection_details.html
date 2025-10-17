@@ -170,30 +170,26 @@
               </div>
               <div class="detail-item">
                 <div class="detail-item-label">URL</div>
-                <div id="detail-url" class="detail-item-url">-</div>
+                <div id="detail-url" style="font-size:13px;font-weight:500;word-break:break-all;">-</div>
               </div>
             </div>
           </div>
           
           <!-- 탐지 정보 -->
           <div class="detail-section">
-            <h4 class="detail-section-title">탐지 정보</h4>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <div class="detail-item-label">탐지 유형</div>
-                <div id="detail-source" class="detail-item-value">-</div>
+            <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">탐지 정보</h4>
+            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">탐지 유형</div>
+                <div id="detail-source" style="font-size:14px;font-weight:600;">-</div>
               </div>
-              <div class="detail-item">
-                <div class="detail-item-label">개인정보 유형</div>
-                <div id="detail-types" class="detail-item-value">-</div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">개인정보 유형</div>
+                <div id="detail-types" style="font-size:14px;font-weight:600;">-</div>
               </div>
-              <div class="detail-item">
-                <div class="detail-item-label">검증 결과</div>
-                <div id="detail-validation-info" class="detail-item-value">-</div>
-              </div>
-              <div class="detail-item" id="reason-section">
-                <div class="detail-item-label">실패 사유</div>
-                <div id="detail-reason" class="detail-item-value">-</div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;" id="reason-section">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">실패 사유</div>
+                <div id="detail-reason" style="font-size:14px;font-weight:600;">-</div>
               </div>
             </div>
           </div>
@@ -353,32 +349,13 @@ function generateDetailData(row) {
   const llms = ['GPT', 'Claude', 'Bard', 'Copilot'];
   
   const hash = row.emp.charCodeAt(0) + row.date.charCodeAt(5);
-  
-  // 검증 결과 생성 (주민등록번호, 카드번호만)
-  const validationResults = [];
-  const validationChips = [];
-  if (row.types && row.types.length > 0) {
-    row.types.forEach(type => {
-      if (type === '주민등록번호' || type === '카드번호') {
-        const isValid = Math.random() > 0.3; // 70% 성공률
-        const status = isValid ? '성공' : '실패';
-        const color = isValid ? '#10b981' : '#ef4444';
-        const bgColor = isValid ? '#d1fae5' : '#fee2e2';
-        validationResults.push(`${type}-${status}`);
-        validationChips.push(`<span style="display:inline-block;background:${bgColor};color:${color};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;">${type}-${status}</span>`);
-      }
-    });
-  }
-  
   return {
     ip: ips[hash % ips.length],
     os: oses[hash % oses.length],
     computer: computers[hash % computers.length],
     url: urls[hash % urls.length],
     browser: browsers[hash % browsers.length],
-    llm: llms[hash % llms.length],
-    validation: validationResults.join(', ') || '-',
-    validationChips: validationChips
+    llm: llms[hash % llms.length]
   };
 }
 
@@ -399,14 +376,6 @@ function openDetailModal(row) {
   $('#detail-browser').textContent = detail.browser;
   $('#detail-llm').textContent = detail.llm;
   $('#detail-source').textContent = row.source;
-  
-  // 검증 결과 칩 스타일링
-  const validationEl = $('#detail-validation-info');
-  if (detail.validationChips && detail.validationChips.length > 0) {
-    validationEl.innerHTML = detail.validationChips.join('');
-  } else {
-    validationEl.textContent = '-';
-  }
   
   // 개인정보 유형 칩 스타일링
   const typesEl = $('#detail-types');

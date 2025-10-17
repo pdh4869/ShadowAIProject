@@ -102,6 +102,7 @@ table th{ background:#112D4E !important; color:white !important; }
 
 /* 공통 카드 스타일 */
 .card{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); }
+.panel{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); }
 
 /* 공통 필터 스타일 */
 .filters{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin:16px 0; }
