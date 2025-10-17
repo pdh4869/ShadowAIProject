@@ -369,7 +369,9 @@ async def handle_file_collect(request: Request):
         
         try:
             # detected, _, _, _ = handle_input_raw(file_bytes, extension)
-            detected, parsed_text, backend_status, faces = handle_input_raw(file_bytes, extension)
+            detected, parsed_text, backend_status, faces = handle_input_raw(file_bytes,
+                                                                            extension,
+                                                                            meta_info={"filename": file_name})
             
             for item in detected:
                 detection_history.append({
@@ -554,7 +556,9 @@ async def handle_combined(request: Request):
 
                 file_bytes = base64.b64decode(file_b64)
                 extension = file_name.split('.')[-1].lower() if '.' in file_name else ""
-                detected, parsed_text, backend_status, faces = handle_input_raw(file_bytes, extension)
+                detected, parsed_text, backend_status, faces = handle_input_raw(file_bytes,
+                                                                                extension,
+                                                                                meta_info={"filename": file_name})
 
                 for item in detected:
                     detection_history.append({

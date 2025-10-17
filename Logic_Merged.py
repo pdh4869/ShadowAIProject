@@ -900,23 +900,34 @@ def detect_by_ner(Text: str) -> list:
         return []
     results = ner_pipeline(Text)
     out = []
+    # allowed = set([ # 만약 다른 NER 모델(다국어 모델 등)을 시용할 경우, 이 리스트를 사용할 것
+    #     # 인명 / 개인
+    #     "PER", "PERSON", "PS", "PEOPLE", "HUMAN", "NAME",
+    #     # 조직 / 단체 / 회사 / 기관
+    #     "ORG", "ORGANIZATION", "OG", "COMPANY", "CORP", "INSTITUTE", "UNIV",
+    #     # 장소 / 지역 / 국가
+    #     "LOC", "LC", "LOCATION", "PLACE", "CITY", "COUNTRY", "GPE", "ADDRESS", "REGION",
+    #     # 날짜 / 시간
+    #     "DATE", "DAT", "DT", "TIME", "TI", "DURATION", "EVENT",
+    #     # 기타 고유명사 / 제품명 / 문화 / 언어 / 작품
+    #     "MISC", "POH", "PRODUCT", "ART", "WORK_OF_ART", "LANGUAGE", "CULTURE",
+    #     # 숫자형 엔터티 (ID, 금액, 나이 등)
+    #     "NUM", "QUANTITY", "CARDINAL", "ORDINAL", "MONEY", "PERCENT",
+    #     # 연락처, 이메일, 웹주소
+    #     "EMAIL", "URL", "PHONE", "CONTACT",
+    #     # 법률, 기관명, 문서명
+    #     "LAW", "STATUTE", "DOCUMENT", "CASE", "LEGAL"
+    # ])
     allowed = set([
-        # 인명 / 개인
-        "PER", "PERSON", "PS", "PEOPLE", "HUMAN", "NAME",
-        # 조직 / 단체 / 회사 / 기관
-        "ORG", "ORGANIZATION", "OG", "COMPANY", "CORP", "INSTITUTE", "UNIV",
-        # 장소 / 지역 / 국가
-        "LOC", "LC", "LOCATION", "PLACE", "CITY", "COUNTRY", "GPE", "ADDRESS", "REGION",
-        # 날짜 / 시간
-        "DATE", "DAT", "DT", "TIME", "TI", "DURATION", "EVENT",
-        # 기타 고유명사 / 제품명 / 문화 / 언어 / 작품
-        "MISC", "POH", "PRODUCT", "ART", "WORK_OF_ART", "LANGUAGE", "CULTURE",
-        # 숫자형 엔터티 (ID, 금액, 나이 등)
-        "NUM", "QUANTITY", "CARDINAL", "ORDINAL", "MONEY", "PERCENT",
-        # 연락처, 이메일, 웹주소
-        "EMAIL", "URL", "PHONE", "CONTACT",
-        # 법률, 기관명, 문서명
-        "LAW", "STATUTE", "DOCUMENT", "CASE", "LEGAL"
+    # KLUE NER 공식 태그 기준
+    "PS",   # 사람 : PERSON
+    "LC",   # 장소 : LOCAL
+    "OG",   # 조직 : ORGANIZATION
+    "DT",   # 날짜 : DATE
+    "TI",   # 시간 : TIME
+    "FD",   # 문서명 : FILE ???
+    "AF",   # 인공물 : ARTIFICIAL
+    # "QT",   # 수량 : QUANTITY (오탐의 여지가 있는 듯하다)
     ])
     for ent in results:
         label = ent.get('entity_group', '')
@@ -927,9 +938,23 @@ def detect_by_ner(Text: str) -> list:
         start = ent.get('start'); end = ent.get('end')
         if start is None or end is None:
             continue
+
         word = ent.get('word', '').strip()
+        clean_word = re.sub(r"[^0-9]", "", re.sub(r"[▁#\s]+", "", word))  # 토크나이저 잔여 기호 제거 후 숫자만 추출
+
+        if word.strip().isdigit() and len(word.strip()) >= 3:
+            continue
+
+        # 기존 numeric_irrelevant_tags 부분 교체
+        if label.upper() in ["PS", "OG"]:
+            clean_word = re.sub(r"\D", "", word)
+            # pure digit tokens (3자리 이상이면 오탐 가능성 높음)
+            if clean_word.isdigit() and len(clean_word) >= 3:
+                continue
+
         if word.startswith("##") or len(word) < 2:
             continue
+
         if label.upper() in ["DATE", "DAT", "DT", "TIME", "TI"]:
             # 0 또는 9로만 구성된 비정상 날짜/시간 제거
             if re.fullmatch(r"0[\s0:시분초]*", word):
@@ -980,9 +1005,12 @@ def handle_input_raw(Input_Data, Original_Format=None, meta_info=None):
       - backend_status: str ("backend_disabled" | "no_text" | "no_detection" | "face_only")
       - image_detections: list  (face results per image)
     """
+
     # Accept bytes or str
     if isinstance(Input_Data, bytes):
         logging.info("파일 입력으로 감지됨")
+        if meta_info and "filename" in meta_info:
+            logging.info(f"처리 중인 파일명: {meta_info['filename']}")
         try:
             Parsed_Text, is_image = parse_file(Input_Data, Original_Format or "")
         except ValueError as ve:
