@@ -107,27 +107,27 @@
   </div>
 
   <!-- 세부 내용 팝업 모달 -->
-  <div id="detailModal" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;backdrop-filter:blur(2px);">
-    <div class="modal-content card" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;width:600px;max-height:85vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-      <div class="modal-header" style="background:#f8fafc;padding:20px 24px;border-bottom:1px solid #e2e8f0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h3 style="margin:0;font-size:18px;font-weight:600;color:#1e293b;">탐지 세부 내용</h3>
-          <button id="closeModal" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;font-size:16px;transition:all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
+  <div id="detailModal" class="detail-modal">
+    <div class="detail-modal-content card">
+      <div class="detail-modal-header">
+        <div class="detail-modal-header-content">
+          <h3 class="detail-modal-title">탐지 로그 상세</h3>
+          <button id="closeModal" class="detail-modal-close">&times;</button>
         </div>
       </div>
-      <div class="modal-body" style="padding:24px;max-height:calc(85vh - 120px);overflow-y:auto;">
+      <div class="modal-body" style="padding:24px;overflow:hidden;">
         <div class="detail-sections">
           <!-- 기본 정보 -->
           <div class="detail-section" style="margin-bottom:24px;">
             <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">기본 정보</h4>
-            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+            <div class="detail-grid" style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">상태</div>
-                <div id="detail-status" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-status" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">사번</div>
-                <div id="detail-emp" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-emp" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
             </div>
           </div>
@@ -135,18 +135,18 @@
           <!-- 시스템 정보 -->
           <div class="detail-section" style="margin-bottom:24px;">
             <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">시스템 정보</h4>
-            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+            <div class="detail-grid" style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">IP 주소</div>
-                <div id="detail-ip" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-ip" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">운영체제</div>
-                <div id="detail-os" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-os" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">컴퓨터 이름</div>
-                <div id="detail-computer" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-computer" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
             </div>
           </div>
@@ -154,18 +154,18 @@
           <!-- 웹 정보 -->
           <div class="detail-section" style="margin-bottom:24px;">
             <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">웹 정보</h4>
-            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+            <div class="detail-grid" style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">브라우저</div>
-                <div id="detail-browser" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-browser" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">LLM</div>
-                <div id="detail-llm" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-llm" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">URL</div>
-                <div id="detail-url" style="font-size:13px;font-weight:500;word-break:break-all;">-</div>
+                <div id="detail-url" style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">-</div>
               </div>
             </div>
           </div>
@@ -173,18 +173,22 @@
           <!-- 탐지 정보 -->
           <div class="detail-section">
             <h4 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">탐지 정보</h4>
-            <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+            <div class="detail-grid" style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">탐지 유형</div>
-                <div id="detail-source" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-source" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">개인정보 유형</div>
                 <div id="detail-types" style="font-size:14px;font-weight:600;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;grid-column:1/-1;" id="reason-section">
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">검증 결과</div>
+                <div id="detail-validation-info" style="font-size:14px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="reason-section">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:4px;">실패 사유</div>
-                <div id="detail-reason" style="font-size:14px;font-weight:600;">-</div>
+                <div id="detail-reason" style="font-size:14px;font-weight:600;white-space:nowrap;">-</div>
               </div>
             </div>
           </div>
@@ -360,13 +364,32 @@ function generateDetailData(row) {
   const llms = ['GPT', 'Claude', 'Bard', 'Copilot'];
   
   const hash = row.emp.charCodeAt(0) + row.date.charCodeAt(5);
+  
+  // 검증 결과 생성 (주민등록번호, 카드번호만)
+  const validationResults = [];
+  const validationChips = [];
+  if (row.types && row.types.length > 0) {
+    row.types.forEach(type => {
+      if (type === '주민등록번호' || type === '카드번호') {
+        const isValid = Math.random() > 0.3; // 70% 성공률
+        const status = isValid ? '성공' : '실패';
+        const color = isValid ? '#10b981' : '#ef4444';
+        const bgColor = isValid ? '#d1fae5' : '#fee2e2';
+        validationResults.push(`${type}-${status}`);
+        validationChips.push(`<span style="display:inline-block;background:${bgColor};color:${color};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;">${type}-${status}</span>`);
+      }
+    });
+  }
+  
   return {
     ip: ips[hash % ips.length],
     os: oses[hash % oses.length],
     computer: computers[hash % computers.length],
     url: urls[hash % urls.length],
     browser: browsers[hash % browsers.length],
-    llm: llms[hash % llms.length]
+    llm: llms[hash % llms.length],
+    validation: validationResults.join(', ') || '-',
+    validationChips: validationChips
   };
 }
 
@@ -387,6 +410,14 @@ function openDetailModal(row) {
   $('#detail-browser').textContent = detail.browser;
   $('#detail-llm').textContent = detail.llm;
   $('#detail-source').textContent = row.source;
+  
+  // 검증 결과 칩 스타일링
+  const validationEl = $('#detail-validation-info');
+  if (detail.validationChips && detail.validationChips.length > 0) {
+    validationEl.innerHTML = detail.validationChips.join('');
+  } else {
+    validationEl.textContent = '-';
+  }
   
   // 개인정보 유형 칩 스타일링
   const typesEl = $('#detail-types');

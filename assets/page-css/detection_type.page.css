@@ -45,5 +45,23 @@ tbody tr:hover{background:rgba(148,163,184,.05)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:12px}
 
+/* 세부 모달 스타일 */
+.detail-modal{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; backdrop-filter:blur(2px); }
+.detail-modal-content{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border-radius:12px; width:90vw; max-width:900px; min-width:600px; max-height:85vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+.detail-modal-header{ background:#f8fafc; padding:20px 24px; border-bottom:1px solid #e2e8f0; }
+.detail-modal-header-content{ display:flex; justify-content:space-between; align-items:center; }
+.detail-modal-title{ margin:0; font-size:18px; font-weight:600; color:#1e293b; }
+.detail-modal-close{ background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#64748b; font-size:16px; transition:all 0.2s; }
+.detail-modal-close:hover{ background:#e2e8f0; }
+.detail-modal-body{ padding:24px; overflow:hidden; }
+.detail-section{ margin-bottom:24px; }
+.detail-section:last-child{ margin-bottom:0; }
+.detail-section-title{ margin:0 0 12px 0; font-size:14px; font-weight:600; color:#374151; border-bottom:1px solid #e2e8f0; padding-bottom:6px; }
+.detail-grid{ display:flex; gap:16px; flex-wrap:wrap; }
+.detail-item{ background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; flex:0 0 auto; min-width:fit-content; }
+.detail-item-label{ font-size:11px; color:#64748b; font-weight:500; margin-bottom:4px; }
+.detail-item-value{ font-size:14px; font-weight:600; white-space:nowrap; }
+.detail-item-url{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+
 @media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} }
 @media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} }

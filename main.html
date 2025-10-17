@@ -59,9 +59,9 @@
     </section>
     
     <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+        <div class="panel">
           <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-            <h2 style="margin:0;font-size:16px;">사용자별 탐지 빈도 (TOP 5)</h2>
+            <h2>사용자별 탐지 빈도 (TOP 5)</h2>
             <p class="text-xs text-gray-700" style="margin:0;" id="contribTimestamp"></p>
           </div>
           <div style="display:flex;justify-content:center;align-items:center;flex:1;">
@@ -71,9 +71,9 @@
             </table>
           </div>
         </div>
-        <div class="bg-white rounded shadow" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
+        <div class="panel">
           <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-            <h2 style="margin:0;font-size:16px;">금일 탐지 유형</h2>
+            <h2>금일 탐지 유형</h2>
             <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="todayTotal">0</span></strong></p>
           </div>
           <div style="display:flex;justify-content:center;align-items:center;flex:1;">
@@ -86,27 +86,27 @@
       </section>
 
       <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="bg-white rounded shadow" style="padding:16px;height:350px;">
-          <h2 style="margin:0 0 8px 0;font-size:16px;">탐지 유형별 분포</h2>
+        <div class="panel" style="height:350px;">
+          <h2>탐지 유형별 분포</h2>
           <div id="pieChartContainer" style="flex:1;display:flex;justify-content:center;align-items:center;max-width:300px;max-height:300px;margin:0 auto;"><canvas id="chartSourcePie"></canvas></div>
         </div>
         <div id="rightColumn" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="bg-white rounded shadow" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="panel">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-              <h2 style="margin:0;font-size:16px;">개인 식별 의심</h2>
+              <h2>개인 식별 의심</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
               <p class="text-xs text-gray-700" style="margin:0;" id="suspiciousTimestamp"></p>
             </div>
-            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="suspiciousList">
+            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;padding-bottom:12px;box-sizing:border-box;" id="suspiciousList">
             </ul>
           </div>
-          <div class="bg-white rounded shadow" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="panel">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-              <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
+              <h2>탐지 실패</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong><span id="totalFailures">0</span></strong></p>
               <p class="text-xs text-gray-700" style="margin:0;" id="failureTimestamp"></p>
             </div>
-            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="failureList">
+            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;padding-bottom:12px;box-sizing:border-box;" id="failureList">
             </ul>
           </div>
         </div>
@@ -281,21 +281,20 @@
       
       totalSuspicious.textContent = suspicious.length;
       
-      // 카드의 실제 높이 측정
-      const card = suspiciousList.closest('.bg-white');
-      const cardHeight = card ? card.offsetHeight : 145;
-      const header = card ? card.querySelector('div:first-child') : null;
-      const headerHeight = header ? header.offsetHeight : 40;
-      const padding = 0; // 패딩 제거
-      const availableHeight = cardHeight - headerHeight - padding;
-      const itemHeight = 16; // 컴팩한 라인 높이
-      const maxItems = Math.max(1, Math.floor(availableHeight / itemHeight) - 1); // 여유 공간 확보
+      // 안전한 동적 계산 (1/2 화면에서도 안전)
+      const card = suspiciousList.closest('.panel');
+      const cardHeight = card ? card.offsetHeight : 169;
+      const headerHeight = 50;
+      const paddingBottom = 12;
+      const safetyMargin = 50;
+      const availableHeight = Math.max(20, cardHeight - headerHeight - paddingBottom - safetyMargin);
+      const itemHeight = 18;
+      const maxItems = Math.max(1, Math.min(4, Math.floor(availableHeight / itemHeight)));
       
       suspiciousList.innerHTML = '';
       suspicious.slice(0, maxItems).forEach(item => {
         const li = document.createElement('li');
-        li.style.listStyle = 'none';
-        li.style.lineHeight = '16px';
+        li.className = 'main-list-item';
         const shortDate = item.date.slice(2).replace(/-/g, '/');
         li.textContent = `• ${shortDate} ${item.time} - ${item.emp} / ${item.source}`;
         suspiciousList.appendChild(li);
@@ -327,21 +326,20 @@
       
       totalFailures.textContent = failures.length;
       
-      // 카드의 실제 높이 측정
-      const card = failureList.closest('.bg-white');
-      const cardHeight = card ? card.offsetHeight : 145;
-      const header = card ? card.querySelector('div:first-child') : null;
-      const headerHeight = header ? header.offsetHeight : 40;
-      const padding = 0; // 패딩 제거
-      const availableHeight = cardHeight - headerHeight - padding;
-      const itemHeight = 16; // 컴팩한 라인 높이
-      const maxItems = Math.max(1, Math.floor(availableHeight / itemHeight) - 1); // 여유 공간 확보
+      // 안전한 동적 계산 (1/2 화면에서도 안전)
+      const card = failureList.closest('.panel');
+      const cardHeight = card ? card.offsetHeight : 169;
+      const headerHeight = 50;
+      const paddingBottom = 12;
+      const safetyMargin = 50;
+      const availableHeight = Math.max(20, cardHeight - headerHeight - paddingBottom - safetyMargin);
+      const itemHeight = 18;
+      const maxItems = Math.max(1, Math.min(4, Math.floor(availableHeight / itemHeight)));
       
       failureList.innerHTML = '';
       failures.slice(0, maxItems).forEach(failure => {
         const li = document.createElement('li');
-        li.style.listStyle = 'none';
-        li.style.lineHeight = '16px';
+        li.className = 'main-list-item';
         const shortDate = failure.date.slice(2).replace(/-/g, '/');
         li.textContent = `• ${shortDate} ${failure.time} - ${failure.emp} / ${failure.file} (${failure.reason})`;
         failureList.appendChild(li);
@@ -450,18 +448,12 @@
     // 높이 맞춤 설정
     function adjustLayout() {
       const rightColumn = document.getElementById('rightColumn');
-      const leftHeight = 350; // 높인 고정 높이
-      rightColumn.style.height = leftHeight + 'px';
-      const boxHeight = (leftHeight - 12) / 2;
-      rightColumn.querySelectorAll('.bg-white').forEach(box => {
-        box.style.height = boxHeight + 'px';
+      rightColumn.style.height = '350px';
+      rightColumn.querySelectorAll('.panel').forEach(box => {
+        box.style.height = '169px';
       });
-      
-      // DOM 렌더링 완료 후 목록 다시 렌더링
-      setTimeout(() => {
-        renderSuspiciousList();
-        renderFailureList();
-      }, 10);
+      renderSuspiciousList();
+      renderFailureList();
     }
     
     // 초기 레이아웃 설정
