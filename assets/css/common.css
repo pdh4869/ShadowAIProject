@@ -71,10 +71,6 @@ table th{ background:#112D4E !important; color:white !important; }
 .tbl th, .tbl td{ border-bottom:1px solid #e2e8f0; padding:7px 5px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .tbl th{ font-weight:600; }
 
-/* 테이블 액션 버튼 */
-.table-actions{ display:flex; gap:4px; justify-content:center; }
-.table-actions .btn{ padding:4px 8px; font-size:12px; }
-
 /* 공통 칩 스타일 */
 .chip{ display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2ff; border:1px solid #e2e8f0; font-size:12px; color:#334155; }
 
@@ -99,73 +95,3 @@ table th{ background:#112D4E !important; color:white !important; }
 .text-gray-600{ color:#4b5563; }
 .mt-1{ margin-top:0.25rem; }
 .space-y-1 > * + *{ margin-top:0.25rem; }
-
-/* 공통 카드 스타일 */
-.card{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); }
-.panel{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); }
-
-/* 공통 필터 스타일 */
-.filters{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin:16px 0; }
-.field{ display:flex; flex-direction:column; }
-.field label{ font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
-.field input, .field select{ padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; }
-.field input:focus, .field select:focus{ outline:none; border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.1); }
-
-/* 공통 버튼 스타일 */
-.btn{ padding:8px 16px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid transparent; transition:all 0.2s; }
-.btn.primary{ background:#3F72AF; color:white; border-color:#3F72AF; }
-.btn.primary:hover{ background:#2563eb; }
-.btn.ghost{ background:transparent; color:#374151; border-color:#d1d5db; }
-.btn.ghost:hover{ background:#f3f4f6; }
-.btn.danger{ background:#dc2626; color:white; border-color:#dc2626; }
-.btn.danger:hover{ background:#b91c1c; }
-
-/* 공통 테이블 스타일 확장 */
-.table-wrap{ overflow-x:auto; }
-.table-wrap table{ width:100%; border-collapse:collapse; font-size:14px; }
-.table-wrap th, .table-wrap td{ padding:12px 8px; text-align:left; border-bottom:1px solid #e2e8f0; }
-.table-wrap th{ background:#f8fafc; font-weight:600; color:#374151; }
-.table-wrap tbody tr:hover{ background:#f8fafc; }
-
-/* 공통 모달 스타일 */
-.modal{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; display:none; }
-.modal.open{ display:flex; align-items:center; justify-content:center; }
-.modal .panel{ background:white; border-radius:12px; max-width:500px; width:90%; max-height:90vh; overflow:auto; }
-.modal .head{ padding:20px 24px; border-bottom:1px solid #e2e8f0; font-size:18px; font-weight:600; }
-.modal .body{ padding:24px; }
-.modal .foot{ padding:16px 24px; border-top:1px solid #e2e8f0; display:flex; gap:8px; justify-content:flex-end; }
-
-/* 공통 빠른 선택 스타일 */
-.quick{ display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
-.pill{ padding:6px 12px; border-radius:20px; border:1px solid #d1d5db; background:white; color:#374151; font-size:12px; cursor:pointer; transition:all 0.2s; }
-.pill:hover{ border-color:#3F72AF; }
-.pill.active{ background:#3F72AF; color:white; border-color:#3F72AF; }
-
-/* 공통 툴바 스타일 */
-.toolbar{ display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
-.actions{ display:flex; gap:8px; }
-
-/* 공통 빈 상태 스타일 */
-.empty{ text-align:center; padding:40px 20px; color:#6b7280; font-size:14px; }
-
-/* 공통 상태 배지 스타일 */
-.badge{ display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
-.badge.role.super{ background:#fef3c7; color:#92400e; }
-.badge.role.admin{ background:#dbeafe; color:#1e40af; }
-
-/* 공통 강도 미터 스타일 */
-.strength{ height:4px; background:#e5e7eb; border-radius:2px; margin-top:4px; }
-.strength > div{ height:100%; background:#dc2626; border-radius:2px; width:0%; transition:all 0.3s; }
-.strength.good > div{ background:#16a34a; }
-
-/* 공통 힌트 스타일 */
-.hint{ font-size:11px; color:#6b7280; margin-top:4px; }
-
-/* 공통 검색 스타일 */
-.search-wrapper{ display:flex; gap:8px; align-items:center; }
-.search{ flex:1; padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; }
-.search-btn{ padding:8px 16px; background:#3F72AF; color:white; border:none; border-radius:8px; cursor:pointer; }
-
-/* 공통 차트 카드 스타일 */
-.chart-card{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); }
-.chart-wrap{ position:relative; height:300px; }
