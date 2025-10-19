@@ -1,68 +1,78 @@
 /* ====== 샘플 데이터 ====== */
 const DATA = [
-  {emp:'S0001', status:'실패', date:'2025-10-15', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-15', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-15', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-10-14', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-10-13', types:['이메일','카드번호'], source:'PDF', filename:'cards.txt', reason:''},
-  {emp:'A1200', status:'실패', date:'2025-10-12', types:[], source:'TXT', filename:'contacts.xlsx', reason:'암호화 파일'},
-  {emp:'B3001', status:'성공', date:'2025-10-11', types:['카드번호','이메일'], source:'XLSX', filename:'report.pdf', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-10-10', types:[], source:'XLSX', filename:'invoice.pdf', reason:'암호화 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-09', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-08', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-10-07', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-10-06', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'실패', date:'2025-10-05', types:[], source:'XLSX', filename:'invoice.pdf', reason:'지원 불가 형식'},
-  {emp:'B3001', status:'성공', date:'2025-10-04', types:['IP 주소'], source:'TXT', filename:'cards.txt', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-10-03', types:[], source:'DOCX', filename:'cards.txt', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-02', types:['생년월일'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-01', types:['주민등록번호','카드번호'], source:'XLSX', filename:'data.xlsx', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-30', types:['주민등록번호','생년월일'], source:'DOCX', filename:'summary.pdf', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-29', types:[], source:'XLSX', filename:'resume.docx', reason:'손상 파일'},
-  {emp:'A1200', status:'성공', date:'2025-09-28', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-27', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-26', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-25', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
-  {emp:'A1138', status:'실패', date:'2025-09-24', types:[], source:'XLSX', filename:'summary.pdf', reason:'지원 불가 형식'},
-  {emp:'B2047', status:'성공', date:'2025-09-23', types:['IP 주소','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-09-22', types:['카드번호'], source:'TXT', filename:'summary.pdf', reason:''},
-  {emp:'A1200', status:'성공', date:'2025-09-21', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-20', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-19', types:['전화번호','이메일'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-18', types:['카드번호'], source:'TXT', filename:'apply.docx', reason:''},
-  {emp:'A1138', status:'실패', date:'2025-09-17', types:[], source:'TXT', filename:'apply.docx', reason:'지원 불가 형식'},
-  {emp:'B2047', status:'성공', date:'2025-09-16', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-15', types:[], source:'DOCX', filename:'data.xlsx', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'성공', date:'2025-09-14', types:['주민등록번호'], source:'PDF', filename:'cards.txt', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-13', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-12', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-11', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
-  {emp:'A1138', status:'성공', date:'2025-09-10', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'B2047', status:'실패', date:'2025-09-09', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'B2099', status:'성공', date:'2025-09-08', types:['전화번호'], source:'TXT', filename:'summary.pdf', reason:''},
-  {emp:'A1200', status:'성공', date:'2025-09-07', types:['전화번호'], source:'DOCX', filename:'invoice.pdf', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-06', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-05', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-04', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.pdf', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-09-22', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
-  {emp:'B2047', status:'실패', date:'2025-09-15', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
-  {emp:'B2099', status:'실패', date:'2025-09-23', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'성공', date:'2025-09-19', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'실패', date:'2025-09-23', types:[], source:'TXT', filename:'data.xlsx', reason:'손상 파일'},
-  {emp:'S0001', status:'성공', date:'2025-09-14', types:['전화번호'], source:'PDF', filename:'q3_report.pdf', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-21', types:[], source:'DOCX', filename:'analysis.xlsx', reason:'빈 파일'},
-  {emp:'A1138', status:'성공', date:'2025-09-24', types:['전화번호','IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-24', types:['이메일'], source:'XLSX', filename:'user_notes.txt', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-24', types:[], source:'텍스트', filename:'-', reason:'빈 파일'},
-  {emp:'A1200', status:'성공', date:'2025-09-24', types:['주민등록번호'], source:'TXT', filename:'notes.txt', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-10', types:['주민등록번호'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-18', types:['카드번호','주민등록번호'], source:'DOCX', filename:'summary.pdf', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-15', types:['IP 주소'], source:'TXT', filename:'apply.docx', reason:''}
+  {emp:'S0001', status:'실패', date:'2025-10-15 14:09:47', types:[], source:'DOC', filename:'analysis.doc', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-15 14:56:35', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-15 13:52:22', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-10-14 21:39:18', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-10-13 20:35:05', types:['이메일','카드번호'], source:'PDF', filename:'cards.pdf', reason:''},
+  {emp:'A1200', status:'실패', date:'2025-10-12 04:22:01', types:[], source:'TXT', filename:'contacts.txt', reason:'암호화 파일'},
+  {emp:'B3001', status:'성공', date:'2025-10-11 04:18:48', types:['카드번호','이메일'], source:'XLSX', filename:'report.xlsx', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-10-10 11:05:44', types:[], source:'HWP', filename:'invoice.hwp', reason:'암호화 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-09 11:53:31', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-08 10:48:19', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-10-07 18:36:14', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-10-06 17:32:02', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'실패', date:'2025-10-05 01:19:57', types:[], source:'PPTX', filename:'presentation.pptx', reason:'지원 불가 형식'},
+  {emp:'B3001', status:'성공', date:'2025-10-04 00:15:45', types:['IP'], source:'TXT', filename:'cards.txt', reason:''},
+  {emp:'S0001', status:'실패', date:'2025-10-03 08:02:40', types:[], source:'HWPX', filename:'cards.hwpx', reason:'빈 파일'},
+  {emp:'A1023', status:'성공', date:'2025-10-02 07:50:28', types:['생년월일'], source:'PDF', filename:'draft.pdf', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-10-01 07:45:15', types:['주민등록번호','카드번호'], source:'XLS', filename:'data.xls', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-30 14:33:11', types:['주민등록번호','생년월일'], source:'PDF', filename:'summary.pdf', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-29 14:28:59', types:[], source:'DOC', filename:'resume.doc', reason:'손상 파일'},
+  {emp:'A1200', status:'성공', date:'2025-09-28 21:16:54', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-27 21:11:42', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-26 05:59:37', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-25 04:54:25', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
+  {emp:'A1138', status:'실패', date:'2025-09-24 04:42:12', types:[], source:'XLSX', filename:'summary.xlsx', reason:'지원 불가 형식'},
+  {emp:'B2047', status:'성공', date:'2025-09-23 11:29:08', types:['IP 주소','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
+  {emp:'B2099', status:'성공', date:'2025-09-22 11:25:55', types:['카드번호'], source:'TXT', filename:'summary.txt', reason:''},
+  {emp:'A1200', status:'성공', date:'2025-09-21 18:12:51', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-20 18:08:38', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.pdf', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-19 01:56:34', types:['전화번호','이메일'], source:'PDF', filename:'draft.pdf', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-18 01:51:21', types:['카드번호'], source:'TXT', filename:'apply.txt', reason:''},
+  {emp:'A1138', status:'실패', date:'2025-09-17 00:39:09', types:[], source:'TXT', filename:'apply.txt', reason:'지원 불가 형식'},
+  {emp:'B2047', status:'성공', date:'2025-09-16 08:26:04', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-15 07:22:52', types:[], source:'DOCX', filename:'data.docx', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'성공', date:'2025-09-14 15:09:48', types:['주민등록번호'], source:'PDF', filename:'cards.pdf', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-13 14:05:35', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-12 22:52:31', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-11 22:48:18', types:[], source:'XLSX', filename:'draft.xlsx', reason:'지원 불가 형식'},
+  {emp:'A1138', status:'성공', date:'2025-09-10 21:35:06', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'B2047', status:'실패', date:'2025-09-09 05:23:01', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'B2099', status:'성공', date:'2025-09-08 04:18:49', types:['전화번호'], source:'TXT', filename:'summary.txt', reason:''},
+  {emp:'A1200', status:'성공', date:'2025-09-07 12:06:44', types:['전화번호'], source:'DOCX', filename:'invoice.docx', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-06 11:01:32', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-05 19:49:27', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-04 18:45:15', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.xlsx', reason:''},
+  {emp:'A1138', status:'성공', date:'2025-09-22 02:32:02', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
+  {emp:'B2047', status:'실패', date:'2025-09-15 01:20:58', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
+  {emp:'B2099', status:'실패', date:'2025-09-23 01:15:45', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
+  {emp:'A1200', status:'성공', date:'2025-09-19 15:41:11', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B3001', status:'실패', date:'2025-09-23 22:28:07', types:[], source:'TXT', filename:'data.txt', reason:'손상 파일'},
+  {emp:'S0001', status:'성공', date:'2025-09-14 22:24:54', types:['전화번호'], source:'PDF', filename:'q3_report.pdf', reason:''},
+  {emp:'A1023', status:'실패', date:'2025-09-21 05:12:50', types:[], source:'DOCX', filename:'analysis.docx', reason:'빈 파일'},
+  {emp:'A1138', status:'성공', date:'2025-09-24 05:59:37', types:['전화번호','IP 주소'], source:'텍스트', filename:'-', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-24 04:55:25', types:['이메일'], source:'XLSX', filename:'user_notes.xlsx', reason:''},
+  {emp:'B2099', status:'실패', date:'2025-09-24 12:42:20', types:[], source:'텍스트', filename:'-', reason:'빈 파일'},
+  {emp:'A1200', status:'성공', date:'2025-09-24 11:38:08', types:['주민등록번호'], source:'TXT', filename:'notes.txt', reason:''},
+  {emp:'B3001', status:'성공', date:'2025-09-10 19:25:04', types:['주민등록번호'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'S0001', status:'성공', date:'2025-09-18 18:21:51', types:['카드번호','주민등록번호'], source:'DOCX', filename:'summary.docx', reason:''},
+  {emp:'A1023', status:'성공', date:'2025-09-15 02:08:47', types:['IP'], source:'TXT', filename:'apply.txt', reason:''},
+  {emp:'B2047', status:'성공', date:'2025-09-14 02:04:34', types:['전화번호'], source:'PPTX', filename:'report.pptx', reason:''},
+  {emp:'A1138', status:'실패', date:'2025-09-13 01:51:22', types:[], source:'HWPX', filename:'document.hwpx', reason:'암호화 파일'},
+  {emp:'S0001', status:'성공', date:'2025-09-12 09:39:17', types:['이메일'], source:'HWP', filename:'memo.hwp', reason:''}
 ];
 
 /* ====== DOM/유틸 ====== */
 const $ = (sel) => document.querySelector(sel);
 function fmt(d){ return d.toISOString().slice(0,10); }
+function normalizeSource(source) {
+  if(['DOCX','DOC'].includes(source)) return 'DOCX/DOC';
+  if(['XLSX','XLS'].includes(source)) return 'XLSX/XLS';
+  if(['PPTX','PPT'].includes(source)) return 'PPTX';
+  if(['HWPX','HWP'].includes(source)) return 'HWPX/HWP';
+  return source;
+}
 function startOfWeek(d){ const day = d.getDay(); const diff = (day===0?-6:1-day); const r=new Date(d); r.setDate(d.getDate()+diff); r.setHours(0,0,0,0); return r; }
 function endOfWeek(d){ const s=startOfWeek(d); const r=new Date(s); r.setDate(s.getDate()+6); r.setHours(23,59,59,999); return r; }
 function startOfLastWeek(d){ const s=startOfWeek(d); s.setDate(s.getDate()-7); return s; }
@@ -123,11 +133,20 @@ function applyFilters(){
   let rows = attachEmp(DATA);
 
   let filtered = rows.filter(row => {
-    if (from && row.date < from) return false;
-    if (to && row.date > to) return false;
+    if (from && row.date.split(' ')[0] < from) return false;
+    if (to && row.date.split(' ')[0] > to) return false;
     if (type && !(row.types || []).includes(type)) return false;
-    if (source && row.source !== source) return false;
-    if (status && row.status !== status) return false;
+    if (source && normalizeSource(row.source) !== source) return false;
+    if (status) {
+      if (status === '개인 식별 의심') {
+        // 개인 식별 의심 상태는 30% 확률로 의심 판정
+        const hash = (row.emp || '').charCodeAt(0) + (row.date || '').charCodeAt(5);
+        const isSuspicious = (hash % 10) < 3; // 30% 확률
+        if (!isSuspicious) return false;
+      } else if (row.status !== status) {
+        return false;
+      }
+    }
     if (emp && !(row.emp||'').toLowerCase().includes(emp)) return false;
     if (q){
       const hay = [(row.types||[]).join(','),row.source,row.filename,row.reason,row.status,row.date,row.emp].join(' ').toLowerCase();
@@ -143,9 +162,9 @@ function applyFilters(){
 const PII_GROUPS = {
   '연락처 정보': ['전화번호', '이메일'],
   '신원 정보': ['이름', '생년월일'],
-  '위치 정보': ['장소', 'IP 주소', '조직명'],
-  '신분증/증명서': ['주민등록번호', '외국인번호', '여권', '운전면허'],
-  '금융 정보': ['카드번호', '계좌번호']
+  '위치 정보': ['IP', '직책', '조직/기관'],
+  '신분증/증명서': ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호'],
+  '금융 정보': ['계좌번호', '카드번호']
 };
 
 const GROUP_COLORS = {
@@ -211,6 +230,7 @@ function openDetailModal(row) {
   statusEl.style.color = row.status === '성공' ? '#059669' : '#dc2626';
   
   $('#detail-emp').textContent = row.emp || '-';
+  $('#detail-date').textContent = row.date || '-';
   $('#detail-ip').textContent = detail.ip;
   $('#detail-os').textContent = detail.os;
   $('#detail-computer').textContent = detail.computer;
@@ -218,6 +238,16 @@ function openDetailModal(row) {
   $('#detail-browser').textContent = detail.browser;
   $('#detail-llm').textContent = detail.llm;
   $('#detail-source').textContent = row.source;
+  
+  // 파일명 표시/숨김 (탐지 유형이 '텍스트'인 경우 숨김)
+  const filenameSection = $('#filename-section');
+  const filenameEl = $('#detail-filename');
+  if (row.source === '텍스트') {
+    filenameSection.style.display = 'none';
+  } else {
+    filenameSection.style.display = 'block';
+    filenameEl.textContent = row.filename || '-';
+  }
   
   // 개인정보 유형 칩 스타일링
   const typesEl = $('#detail-types');
@@ -248,6 +278,15 @@ function openDetailModal(row) {
     validationEl.textContent = '-';
   }
   validationSection.style.display = 'block';
+  
+  // 개인 식별 의심 설정
+  const suspiciousEl = $('#detail-suspicious');
+  const isSuspicious = Math.random() > 0.7; // 30% 확률로 의심
+  if (isSuspicious) {
+    suspiciousEl.innerHTML = '<span style="display:inline-block;background:rgba(239,68,68,0.15);color:#dc2626;padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">의심</span>';
+  } else {
+    suspiciousEl.textContent = '-';
+  }
   
   // 실패 사유 섹션 표시/숨김
   const reasonSection = $('#reason-section');
@@ -327,13 +366,35 @@ function setTodayDate() {
 
 // 페이지 로드 시 오늘 날짜 설정
 document.addEventListener('DOMContentLoaded', function() {
-  setTodayDate();
-  // 오늘 범위 표시
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
-  // 오늘 버튼 활성화
-  document.querySelector('.pill[data-range="today"]').classList.add('active');
+  const filterDate = localStorage.getItem('filterDate');
+  const filterEmp = localStorage.getItem('filterEmp');
+  const filterStatus = localStorage.getItem('filterStatus');
+  
+  if (filterDate) {
+    $('#from').value = filterDate;
+    $('#to').value = filterDate;
+    $('#quickDesc').textContent = `· 선택된 날짜: ${filterDate} ~ ${filterDate}`;
+    localStorage.removeItem('filterDate');
+  } else {
+    setTodayDate();
+    // 오늘 범위 표시
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
+    // 오늘 버튼 활성화
+    document.querySelector('.pill[data-range="today"]').classList.add('active');
+  }
+  
+  if (filterEmp) {
+    $('#emp').value = filterEmp;
+    localStorage.removeItem('filterEmp');
+  }
+  
+  if (filterStatus) {
+    $('#status').value = filterStatus;
+    localStorage.removeItem('filterStatus');
+  }
+  
   // 필터 적용
   applyFilters();
 });

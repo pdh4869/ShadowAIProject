@@ -46,4 +46,4 @@ tbody tr:hover{background:rgba(148,163,184,.05)}
 .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:12px}
 
 @media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} }
-@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} }
+@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} .field.search{grid-column:span 6} }

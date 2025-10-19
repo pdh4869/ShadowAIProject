@@ -49,6 +49,14 @@ document.addEventListener('DOMContentLoaded', function() {
         scales: { 
           y: { beginAtZero: true },
           x: { grid: { display: false } }
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const selectedDate = trendData[index].date;
+            localStorage.setItem('filterDate', selectedDate);
+            location.href = 'detection_details.html';
+          }
         }
       }
     });
@@ -73,19 +81,21 @@ document.addEventListener('DOMContentLoaded', function() {
   ];
 
   const sourceStats = [
+    { source: "텍스트", count: 25 },
     { source: "PDF", count: 50 },
-    { source: "DOCX", count: 30 },
-    { source: "XLSX", count: 22 },
-    { source: "TXT", count: 18 },
-    { source: "TEXT", count: 25 }
+    { source: "DOCX/DOC", count: 30 },
+    { source: "XLSX/XLS", count: 22 },
+    { source: "PPTX", count: 15 },
+    { source: "HWPX/HWP", count: 12 },
+    { source: "TXT", count: 18 }
   ];
   const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
 
   // 금일 PII 탐지 데이터 생성
   const generateTodayDetections = () => {
     const today = new Date().toISOString().split('T')[0];
-    const highRiskTypes = ['주민등록번호', '외국인등록번호', '여권번호', '운전면허번호', '카드번호', '계좌번호'];
-    const allTypes = ['주민등록번호', '외국인등록번호', '여권번호', '운전면허번호', '카드번호', '계좌번호', '전화번호', '이메일', 'IP주소', '생년월일'];
+    const highRiskTypes = ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호'];
+    const allTypes = ['이름', '전화번호', '이메일', '생년월일', '주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호', 'IP', '직책', '조직/기관'];
     
     const detections = [];
     for (let i = 0; i < 45; i++) {
@@ -141,6 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
       .slice(0, 5)
       .forEach(([type, count]) => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          localStorage.setItem('filterType', type);
+          location.href = 'personal_information_type.html';
+        });
         tr.innerHTML = `<td>${type}</td><td>${count}</td>`;
         todayTypeTbody.appendChild(tr);
       });
@@ -177,6 +192,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const li = document.createElement('li');
         li.style.listStyle = 'none';
         li.style.lineHeight = '16px';
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          localStorage.setItem('filterStatus', '개인 식별 의심');
+          location.href = 'detection_details.html';
+        });
         const shortDate = item.date.slice(2).replace(/-/g, '/');
         li.textContent = `• ${shortDate} ${item.time} - ${item.emp} / ${item.source}`;
         suspiciousList.appendChild(li);
@@ -215,6 +235,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const li = document.createElement('li');
         li.style.listStyle = 'none';
         li.style.lineHeight = '16px';
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          localStorage.setItem('filterStatus', '실패');
+          location.href = 'detection_details.html';
+        });
         const shortDate = failure.date.slice(2).replace(/-/g, '/');
         li.textContent = `• ${shortDate} ${failure.time} - ${failure.emp} / ${failure.file} (${failure.reason})`;
         failureList.appendChild(li);
@@ -239,6 +264,11 @@ document.addEventListener('DOMContentLoaded', function() {
     contribData.forEach(item => {
       const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
       const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => {
+        localStorage.setItem('filterEmp', item.name);
+        location.href = 'detection_details.html';
+      });
       tr.innerHTML = `<td>${item.name}</td><td>${item.count}</td><td>${highRiskPercent}%</td>`;
       tbody.appendChild(tr);
     });
@@ -252,7 +282,15 @@ document.addEventListener('DOMContentLoaded', function() {
       options: { 
         responsive: true,
         maintainAspectRatio: true,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%\n(' + v + '건)' } } 
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', font: { size: 11 }, formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%\n(' + v + '건)' } },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const selectedSource = sourceStats[index].source;
+            localStorage.setItem('filterSource', selectedSource);
+            location.href = 'detection_type.html';
+          }
+        }
       },
       plugins: [ChartDataLabels]
     });
@@ -264,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
     { type: "이메일", count: 8, isHighRisk: false, validCount: 7 },
     { type: "주민등록번호", count: 5, isHighRisk: true, validCount: 4 },
     { type: "카드번호", count: 3, isHighRisk: true, validCount: 3 },
-    { type: "IP 주소", count: 2, isHighRisk: false, validCount: 2 }
+    { type: "IP", count: 2, isHighRisk: false, validCount: 2 }
   ];
   const todayTotalStats = todayTypeStats.reduce((a,b)=>a+b.count,0);
   const highRiskCount = todayTypeStats.filter(item => item.isHighRisk).reduce((a,b)=>a+b.count,0);

@@ -48,35 +48,35 @@
           <label for="type">개인정보 유형</label>
           <select id="type">
             <option value="">전체</option>
-            <option>전화번호</option><option>이메일</option>
-            <option>주민등록번호</option><option>카드번호</option>
-            <option>IP 주소</option><option>생년월일</option>
+            <option>이름</option><option>전화번호</option><option>이메일</option><option>생년월일</option>
+            <option>주민등록번호</option><option>외국인등록번호</option><option>운전면허번호</option><option>여권번호</option>
+            <option>계좌번호</option><option>카드번호</option><option>IP</option><option>직책</option><option>조직/기관</option>
           </select>
         </div>
         <div class="field">
-          <label for="source">소스 유형</label>
+          <label for="source">탐지 유형</label>
           <select id="source">
             <option value="">전체</option>
-            <option>텍스트</option><option>PDF</option><option>DOCX</option><option>XLSX</option><option>TXT</option>
+            <option>텍스트</option><option>PDF</option><option>DOCX/DOC</option><option>XLSX/XLS</option><option>PPTX</option><option>HWPX/HWP</option><option>TXT</option>
           </select>
         </div>
         <div class="field">
-          <label for="status">성공/실패</label>
+          <label for="status">상태</label>
           <select id="status">
             <option value="">전체</option>
-            <option>성공</option><option>실패</option>
+            <option>성공</option><option>실패</option><option>개인 식별 의심</option>
           </select>
         </div>
 
         <!-- 추가: 사용자(사번) 필터 -->
         <div class="field">
-          <label for="emp">사용자</label>
+          <label for="emp">사용자(사번)</label>
           <input id="emp" placeholder="예: A1023, S0001" />
         </div>
 
         <div class="field search">
-          <label for="q">검색(파일명/유형/사유/소스)</label>
-          <input id="q" placeholder="예: secret.pdf, 전화번호, 암호화 파일..." />
+          <label for="q">검색(IP/OS/컴퓨터이름/LLM/파일명)</label>
+          <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, secret.pdf..." />
         </div>
       </div>
 
@@ -135,6 +135,10 @@
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">사번</div>
                 <div id="detail-emp" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
               </div>
+              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:140px;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">일자</div>
+                <div id="detail-date" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              </div>
             </div>
           </div>
           
@@ -184,15 +188,23 @@
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">탐지 유형</div>
                 <div id="detail-source" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
+              <div class="detail-item" id="filename-section" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">파일명</div>
+                <div id="detail-filename" style="font-size:13px;font-weight:600;word-break:break-all;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">개인정보 유형</div>
                 <div id="detail-types" style="font-size:13px;font-weight:600;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="validation-section">
+              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="validation-section">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">검증 결과</div>
                 <div id="detail-validation" style="font-size:13px;font-weight:600;">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:1 1 100%;" id="reason-section">
+              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
+                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">개인 식별 의심</div>
+                <div id="detail-suspicious" style="font-size:13px;font-weight:600;">-</div>
+              </div>
+              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="reason-section">
                 <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">실패 사유</div>
                 <div id="detail-reason" style="font-size:13px;font-weight:600;">-</div>
               </div>

@@ -46,14 +46,26 @@ tbody tr:hover{background:rgba(148,163,184,.05)}
 .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:12px}
 
 @media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} }
-@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} }
+@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} .field.search{grid-column:span 6} }
+
+/* 사용자(사번) 필드 반응형 처리 */
+@media (max-width:768px){
+  .field input[id="emp"]{ width:100% !important; min-width:0 !important; }
+}
+
+
+
+
+
+
 
 /* 페이지별 개별 스타일 */
 .filters{ display:block !important; }
 .filters-row{ display:flex !important; gap:12px; margin-bottom:12px; }
 .filters-row-wrap{ display:flex !important; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
 .field-individual{ flex:1 !important; grid-column:unset !important; }
-.field-individual-min{ flex:1 !important; grid-column:unset !important; min-width:150px; }
+.field-individual-min{ flex:0 0 auto !important; grid-column:unset !important; min-width:fit-content; width:auto; }
+.field-individual-min select{ width:auto; min-width:120px; }
 .field-search-individual{ margin-bottom:12px; grid-column:unset !important; }
 .chart-card-individual{ flex:1; display:flex; flex-direction:column; margin-top:0 !important; padding-bottom:20px; }
 .chart-title-individual{ font-size:16px; margin:6px 0 16px 0; text-align:center; }
