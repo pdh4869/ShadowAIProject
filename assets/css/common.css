@@ -38,7 +38,7 @@ body{
   display:inline-flex; align-items:center; justify-content:center;
   padding:6px 10px; min-width:100px; max-width:140px;
   border-radius:999px; border:1px solid var(--border);
-  color:#112D4E; font-size:12px; font-weight:700; text-decoration:none; background:#fff;
+  color:#112D4E; font-size:14px; font-weight:700; text-decoration:none; background:#fff;
   white-space:nowrap; flex:1 1 auto;
 }
 .pm-nav a:hover{ border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.15) inset; }
@@ -101,3 +101,72 @@ table th{ background:#112D4E !important; color:white !important; }
 .text-gray-600{ color:#4b5563; }
 .mt-1{ margin-top:0.25rem; }
 .space-y-1 > * + *{ margin-top:0.25rem; }
+
+/* 공통 모달 스타일 */
+.modal{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; backdrop-filter:blur(2px); }
+.modal-content{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border-radius:12px; width:min(90vw,900px); max-height:95vh; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+.modal-header{ background:#f8fafc; padding:16px 20px; border-bottom:1px solid #e2e8f0; }
+.modal-header > div{ display:flex; justify-content:space-between; align-items:center; }
+.modal-header h3{ margin:0; font-size:18px; font-weight:600; color:#1e293b; }
+.modal-body{ padding:20px; max-height:calc(95vh - 100px); overflow-y:auto; }
+#closeModal{ background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#64748b; font-size:16px; transition:all 0.2s; }
+#closeModal:hover{ background:#e2e8f0; }
+
+/* 공통 상세 정보 스타일 */
+.detail-section{ margin-bottom:18px; }
+.detail-section h4{ margin:0 0 10px 0; font-size:14px; font-weight:600; color:#374151; border-bottom:1px solid #e2e8f0; padding-bottom:4px; }
+.detail-grid{ display:flex; gap:12px; flex-wrap:wrap; }
+.detail-item{ background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0; flex:0 0 auto; min-width:120px; }
+.detail-item > div:first-child{ font-size:11px; color:#64748b; font-weight:500; margin-bottom:3px; }
+.detail-item > div:last-child{ font-size:13px; font-weight:600; white-space:nowrap; }
+
+/* 공통 테이블 헤더 스타일 */
+th.center{ text-align:center; }
+th.w-100{ width:100px; }
+th.w-110{ width:110px; }
+th.w-120{ width:120px; }
+th.w-140{ width:140px; }
+th.w-160{ width:160px; }
+th.w-220{ width:220px; }
+
+/* 공통 테이블 셀 스타일 */
+td.center{ text-align:center; }
+
+/* 공통 페이지 제목 클릭 스타일 */
+.page-title span[onclick]{ cursor:pointer; }
+
+/* 공통 카드 마진 스타일 */
+.card.mt-16{ margin-top:16px; }
+
+/* 공통 플렉스 스타일 */
+.flex{ display:flex; }
+.flex-1{ flex:1; }
+.gap-16{ gap:16px; }
+.mb-16{ margin-bottom:16px; }
+.align-stretch{ align-items:stretch; }
+.height-fit{ height:fit-content; }
+.flex-col{ flex-direction:column; }
+.mt-0-important{ margin-top:0 !important; }
+.text-center{ text-align:center; }
+.justify-center{ justify-content:center; }
+.items-center{ align-items:center; }
+.relative{ position:relative; }
+.w-full{ width:100%; }
+.h-full{ height:100%; }
+.max-w-400{ max-width:400px; }
+.max-h-400{ max-height:400px; }
+.p-20{ padding:20px; }
+
+/* 추가 공통 스타일 */
+.quick-desc{ font-size:12px; margin-left:16px; vertical-align:middle; text-align:center; display:block; }
+.filters-flex{ display:flex !important; gap:12px; margin-bottom:12px; }
+.filters-flex-wrap{ display:flex !important; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.field-flex{ flex:1 !important; grid-column:unset !important; }
+.field-flex-min{ flex:1 !important; grid-column:unset !important; min-width:150px; }
+.field-search{ margin-bottom:12px; grid-column:unset !important; }
+.chart-card-style{ flex:1; display:flex; flex-direction:column; margin-top:0 !important; padding-bottom:20px; }
+.chart-title{ font-size:16px; margin:6px 0 16px 0; text-align:center; }
+.chart-wrap-style{ flex:1; display:flex; align-items:center; justify-content:center; padding:20px; }
+.chart-container{ position:relative; width:100%; height:100%; max-width:400px; max-height:400px; display:flex; align-items:center; justify-content:center; }
+.tip-style{ margin-top:10px; }
+.btn-brand{ background-color:#3F72AF; color:white; }

@@ -20,3 +20,6 @@
 /* 차트 위치 조정 */
 #chartDetectionsOverTime { margin-top: 20px; }
 #chartAccountCounts { margin-top: 20px; }
+
+/* 카드 고정 높이 */
+.grid.grid-cols-2:first-of-type .panel { height: 200px !important; }

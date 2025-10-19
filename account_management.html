@@ -13,7 +13,7 @@
 <body data-page="account">
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span onclick="location.href='main.html'" style="cursor:pointer;">개인정보 탐지 대시보드</span></div>
+    <div class="page-title"><span onclick="location.href='main.html'">개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
@@ -59,7 +59,7 @@
       <div id="empty" class="empty" hidden>검색 결과가 없습니다.</div>
     </section>
 
-    <div class="tip" style="margin-top:10px">
+    <div class="tip tip-style">
       * 데모 페이지입니다. 실제 저장/인증은 백엔드 연동 필요.
     </div>
     </div>
@@ -98,7 +98,7 @@
       </div>
       <div class="foot">
         <button class="btn" data-close="#createModal">취소</button>
-        <button id="createSubmit" class="btn" style="background-color:#3F72AF;color:white;">생성</button>
+        <button id="createSubmit" class="btn btn-brand">생성</button>
       </div>
     </div>
   </div>
@@ -121,7 +121,7 @@
       </div>
       <div class="foot">
         <button class="btn" data-close="#pwModal">취소</button>
-        <button id="pwSubmit" class="btn" style="background-color:#3F72AF;color:white;">변경</button>
+        <button id="pwSubmit" class="btn btn-brand">변경</button>
       </div>
     </div>
   </div>
@@ -144,181 +144,8 @@
     </div>
   </div>
 
-<script>
-// ====== 권한 설정 ======
-let CURRENT_USER_ROLE = 'super'; // 'admin'으로 바꾸면 버튼/작업 비활성화
+<script src="assets/page-js/account_management.page.js"></script>
 
-// ====== 데모 데이터 (사번 기반) ======
-// 오늘 날짜 생성
-const now = new Date();
-const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-
-const admins = [
-  { emp:'S0001', email:'root@company.com', name:'최고관리자', role:'super', lastLogin:`${todayStr} 09:12`, created:'2024-01-03' },
-  { emp:'A1023', email:'ops1@company.com',  name:'운영1', role:'admin', lastLogin:`${todayStr} 16:41`, created:'2024-04-12' },
-  { emp:'A1138', email:'ops2@company.com',  name:'운영2', role:'admin', lastLogin:'2025-09-22 10:03', created:'2024-07-28' },
-  { emp:'B2047', email:'sec1@company.com',  name:'보안담당A', role:'admin', lastLogin:'2025-08-31 18:25', created:'2024-08-02' },
-];
-
-const $ = (sel)=>document.querySelector(sel);
-const rowsEl = $('#rows');
-const emptyEl = $('#empty');
-
-function applyPermissionUI(){
-  const isSuper = CURRENT_USER_ROLE === 'super';
-  $('#createBtn').disabled = !isSuper;
-  $('#permBanner').hidden = isSuper;
-}
-
-function renderTable(list){
-  rowsEl.innerHTML = '';
-  if (!list.length){ emptyEl.hidden = false; return; }
-  emptyEl.hidden = true;
-  list.forEach(u=>{
-    const tr = document.createElement('tr');
-    const roleBadge = `<span class="badge role ${u.role==='super'?'super':'admin'}">${u.role==='super'?'최고 관리자':'일반 관리자'}</span>`;
-    const isSuper = CURRENT_USER_ROLE === 'super';
-    const now = new Date();
-    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    const isToday = u.lastLogin && u.lastLogin.startsWith(today);
-    tr.innerHTML = `
-      <td>${u.emp}</td>
-      <td>${u.email}</td>
-      <td>${u.name}</td>
-      <td>${roleBadge}</td>
-      <td class="${isToday ? 'muted' : ''}">${u.lastLogin||'-'}</td>
-      <td>${u.created||'-'}</td>
-      <td>
-        <div class="table-actions">
-          <button class="btn" data-action="pw" data-emp="${u.emp}" ${!isSuper?'disabled':''}>비밀번호 변경</button>
-          <button class="btn danger" data-action="del" data-emp="${u.emp}" ${!isSuper?'disabled':''}>삭제</button>
-        </div>
-      </td>
-    `;
-    rowsEl.appendChild(tr);
-  });
-}
-
-function searchList(q){
-  q = q.trim().toLowerCase();
-  if(!q) return admins.slice();
-  return admins.filter(u=>[u.emp, u.email, u.name, u.role==='super'?'최고 관리자':'일반 관리자'].join(' ').toLowerCase().includes(q));
-}
-
-function openModal(id){ document.querySelector(id).classList.add('open'); }
-function closeModal(id){ document.querySelector(id).classList.remove('open'); }
-
-// strength meter
-function bindStrength(inputId, barId, hintId){
-  const input = document.getElementById(inputId);
-  const bar = document.getElementById(barId);
-  const hint = document.getElementById(hintId);
-  input.addEventListener('input', ()=>{
-    const v = input.value;
-    let score = 0;
-    if (v.length >= 8) score++;
-    if (/[A-Z]/.test(v)) score++;
-    if (/[a-z]/.test(v)) score++;
-    if (/[0-9]/.test(v)) score++;
-    if (/[^A-Za-z0-9]/.test(v)) score++;
-    const pct = Math.min(100, score*20);
-    bar.firstElementChild.style.width = pct+'%';
-    bar.classList.toggle('good', score>=3);
-    hint.textContent = score>=3 ? '양호한 비밀번호입니다.' : '8자 이상, 숫자/문자/기호 조합 권장';
-  });
-}
-
-function validateEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-function validateEmp(id){ return /^[A-Za-z0-9_-]{2,20}$/.test(id); }
-
-document.addEventListener('click', (e)=>{
-  const act = e.target.getAttribute('data-action');
-  if (act === 'pw'){
-    if (CURRENT_USER_ROLE !== 'super') return;
-    const emp = e.target.getAttribute('data-emp');
-    $('#p_emp').value = emp;
-    $('#p_pwd').value = '';
-    $('#p_strength').firstElementChild.style.width = '0%';
-    openModal('#pwModal');
-  }
-  if (act === 'del'){
-    if (CURRENT_USER_ROLE !== 'super') return;
-    const emp = e.target.getAttribute('data-emp');
-    if (emp === 'S0001'){ alert('최고 관리자 계정은 삭제할 수 없습니다.'); return; }
-    $('#d_emp').value = emp;
-    openModal('#delModal');
-  }
-  if (e.target.matches('[data-close]')){
-    closeModal(e.target.getAttribute('data-close'));
-  }
-});
-
-$('#createBtn').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  $('#c_emp').value=''; $('#c_email').value=''; $('#c_name').value=''; $('#c_pwd').value='';
-  $('#c_strength').firstElementChild.style.width = '0%';
-  openModal('#createModal');
-});
-
-$('#createSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#c_emp').value.trim();
-  const email = $('#c_email').value.trim();
-  const name = $('#c_name').value.trim();
-  const pwd  = $('#c_pwd').value;
-  if (!validateEmp(emp)){ alert('사번 형식이 올바르지 않습니다. (영숫자/언더스코어/하이픈 2~20자)'); return; }
-  if (!validateEmail(email)){ alert('올바른 이메일 주소가 아닙니다.'); return; }
-  if (!name){ alert('이름을 입력하세요.'); return; }
-  if (pwd.length < 8){ alert('비밀번호는 8자 이상이어야 합니다.'); return; }
-  if (admins.some(a=>a.emp===emp)){ alert('이미 존재하는 사번입니다.'); return; }
-  admins.push({ emp, email, name, role:'admin', lastLogin:'-', created:new Date().toISOString().slice(0,10) });
-  renderTable(searchList($('#q').value));
-  closeModal('#createModal');
-});
-
-$('#pwSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#p_emp').value;
-  const pwd = $('#p_pwd').value;
-  if (pwd.length < 8){ alert('비밀번호는 8자 이상이어야 합니다.'); return; }
-  closeModal('#pwModal');
-  alert('비밀번호가 변경되었습니다. (데모)');
-});
-
-$('#delSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#d_emp').value;
-  const idx = admins.findIndex(a=>a.emp===emp);
-  if (idx>=0){ admins.splice(idx,1); }
-  renderTable(searchList($('#q').value));
-  closeModal('#delModal');
-});
-
-// 검색 기능
-function performSearch() {
-  renderTable(searchList($('#q').value));
-}
-
-$('#searchBtn').addEventListener('click', performSearch);
-
-$('#q').addEventListener('keypress', (e)=>{
-  if (e.key === 'Enter') {
-    performSearch();
-  }
-});
-
-// init
-applyPermissionUI();
-renderTable(admins);
-bindStrength('c_pwd', 'c_strength', 'c_hint');
-bindStrength('p_pwd', 'p_strength', 'p_hint');
-
-// 네비게이션 활성화
-document.addEventListener('DOMContentLoaded', function() {
-  const navLinks = document.querySelectorAll('.pm-nav a');
-  navLinks[3].classList.add('active'); // 계정관리 버튼 활성화
-});
-</script>
   <!-- 우측 상단: 사번 + 로그아웃 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> S0001</span>

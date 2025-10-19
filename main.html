@@ -11,11 +11,13 @@
 
 <link rel="stylesheet" href="assets/css/common.css">
 <link rel="stylesheet" href="assets/page-css/main.page.css">
+<script src="assets/js/common.js"></script>
+<script src="assets/page-js/main.page.js"></script>
 </head>
 <body>
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span onclick="location.href='main.html'" style="cursor:pointer;">개인정보 탐지 대시보드</span></div>
+    <div class="page-title"><span onclick="location.href='main.html'">개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
@@ -28,17 +30,17 @@
     <!-- Indicator cards (3) -->
     <section class="grid indicators" id="cards">
       <div class="panel" data-detail="total">
-        <h2>총 탐지 수 <span class="chip">운영</span></h2>
+        <h2 style="font-size:16px;">총 탐지 수</h2>
         <div class="small">기간 내 PII 탐지 건수</div>
         <div class="ind-val"><div class="num" id="totalNum">0</div><div class="delta" id="totalDelta">0%</div></div>
       </div>
       <div class="panel" data-detail="highrisk">
-        <h2>고위험 PII 비중 <span class="chip">위험지표</span></h2>
+        <h2 style="font-size:16px;">고위험 PII 비중</h2>
         <div class="small">주민/외국인/여권/면허/카드/계좌</div>
         <div class="ind-val"><div class="num" id="highRiskNum">0%</div><div class="delta" id="highRiskDelta">0%</div></div>
       </div>
       <div class="panel" data-detail="valid">
-        <h2>검증 통과율 <span class="chip">품질지표</span></h2>
+        <h2 style="font-size:16px;">검증 통과율</h2>
         <div class="small">Luhn / 체크섬 통과율</div>
         <div class="ind-val"><div class="num" id="validNum">0%</div><div class="delta" id="validDelta">0%</div></div>
       </div>
@@ -46,7 +48,7 @@
     
     <!-- 시간 추이 그래프 -->
     <section class="panel" data-detail="trend" style="margin-bottom:24px;">
-      <h2>시간 추이(일별)</h2>
+      <h2>일별 추이</h2>
       <div style="height:220px;position:relative;">
         <canvas id="trendChart"></canvas>
       </div>
@@ -72,7 +74,7 @@
         </div>
         <div class="panel" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
           <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-            <h2 style="margin:0;font-size:16px;">금일 탐지 유형</h2>
+            <h2 style="margin:0;font-size:16px;">금일 탐지 유형 (TOP 5)</h2>
             <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="todayTotal">0</span></strong></p>
           </div>
           <div style="display:flex;justify-content:center;align-items:center;flex:1;">
@@ -90,7 +92,7 @@
           <div id="pieChartContainer" style="flex:1;display:flex;justify-content:center;align-items:center;max-width:300px;max-height:300px;margin:0 auto;"><canvas id="chartSourcePie"></canvas></div>
         </div>
         <div id="rightColumn" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;height:169px;">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
               <h2 style="margin:0;font-size:16px;">개인 식별 의심</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
@@ -99,7 +101,7 @@
             <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="suspiciousList">
             </ul>
           </div>
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;">
+          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;height:169px;">
             <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
               <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
               <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong><span id="totalFailures">0</span></strong></p>
@@ -115,374 +117,10 @@
 
   <!-- 우측 상단 유저 박스 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
-    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">A1023</span></span>
-    <button type="button" class="logout" id="accountBtn" onclick="location.href='account_management.html'" style="background:#F9F7F7;display:none;">계정 관리</button>
+    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">S0001</span></span>
+    <button type="button" class="logout" id="accountBtn" onclick="location.href='account_management.html'" style="background:#F9F7F7;">계정 관리</button>
     <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
   </div>
-<script>
-(function(){
-  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{"empId":"A1023","role":"admin"}');
-  document.getElementById('userEmp').textContent = userInfo.empId;
-  if(userInfo.role === 'super'){
-    document.getElementById('accountBtn').style.display = 'block';
-  }
-})();
-</script>
 
-  <script>
-    // 오늘 기준 7일간 시간 추이 데이터 생성
-    const generateTrendData = () => {
-      const data = [];
-      const today = new Date();
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        data.push({
-          date: dateStr,
-          total: Math.floor(Math.random() * 30) + 20,
-          highRisk: Math.floor(Math.random() * 15) + 5,
-          failed: Math.floor(Math.random() * 5) + 1
-        });
-      }
-      return data;
-    };
-    const trendData = generateTrendData();
-    
-    // 시간 추이 그래프
-    new Chart(document.getElementById("trendChart"), {
-      type: "bar",
-      data: {
-        labels: trendData.map(d => d.date.slice(5)),
-        datasets: [
-          { label: "총탐지", data: trendData.map(d => d.total), backgroundColor: "#2563eb" },
-          { label: "고위험", data: trendData.map(d => d.highRisk), backgroundColor: "#16a34a" },
-          { label: "탐지실패", data: trendData.map(d => d.failed), backgroundColor: "#dc2626" }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { 
-          y: { beginAtZero: true },
-          x: { grid: { display: false } }
-        }
-      }
-    });
-
-    // 기존 차트들
-    const detectionsOverTime = [
-      { date: "2025-09-18", count: 3 },
-      { date: "2025-09-19", count: 7 },
-      { date: "2025-09-20", count: 5 },
-      { date: "2025-09-21", count: 8 },
-      { date: "2025-09-22", count: 4 },
-    ];
-    
-    // 사용자 기여도 데이터 (사번만)
-    const contribData = [
-      { name: "A1023", count: 45, highRisk: 12 },
-      { name: "S0001", count: 38, highRisk: 8 },
-      { name: "B2047", count: 32, highRisk: 15 },
-      { name: "A1138", count: 28, highRisk: 6 },
-      { name: "B2099", count: 25, highRisk: 9 }
-    ];
-
-    const sourceStats = [
-      { source: "PDF", count: 50 },
-      { source: "DOCX", count: 30 },
-      { source: "XLSX", count: 22 },
-      { source: "TXT", count: 18 },
-      { source: "TEXT", count: 25 }
-    ];
-    const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
-
-    new Chart(document.getElementById("chartDetectionsOverTime"), {
-      type: "line",
-      data: {
-        labels: detectionsOverTime.map(d => d.date),
-        datasets: [{ label: "탐지 건수", data: detectionsOverTime.map(d => d.count), fill: true, backgroundColor: "rgba(54, 162, 235, 0.3)", borderColor: "rgba(54, 162, 235, 1)", tension: 0.3 }]
-      },
-      options: { plugins: { legend: { display: false } } }
-    });
-    // 금일 PII 탐지 데이터 생성
-    const generateTodayDetections = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const highRiskTypes = ['주민등록번호', '외국인등록번호', '여권번호', '운전면허번호', '카드번호', '계좌번호'];
-      const allTypes = ['주민등록번호', '외국인등록번호', '여권번호', '운전면허번호', '카드번호', '계좌번호', '전화번호', '이메일', 'IP주소', '생년월일'];
-      
-      const detections = [];
-      for (let i = 0; i < 45; i++) {
-        const type = allTypes[Math.floor(Math.random() * allTypes.length)];
-        const isValidated = Math.random() > 0.15; // 85% 확률로 검증 통과
-        detections.push({
-          date: today,
-          type: type,
-          emp: ['A1023', 'S0001', 'B2047', 'A1138', 'B2099'][Math.floor(Math.random() * 5)],
-          validated: isValidated
-        });
-      }
-      
-      const totalCount = detections.length;
-      const highRiskCount = detections.filter(d => highRiskTypes.includes(d.type)).length;
-      const highRiskPercentage = totalCount > 0 ? Math.round((highRiskCount / totalCount) * 100) : 0;
-      
-      // 검증 통과율 계산 (Luhn/체크섬 통과율)
-      const validatedCount = detections.filter(d => d.validated).length;
-      const validationRate = totalCount > 0 ? Math.round((validatedCount / totalCount) * 100) : 0;
-      
-      return { totalCount, highRiskCount, highRiskPercentage, validationRate, detections };
-    };
-
-    // 대시보드 지표 업데이트
-    (function(){
-      const todayData = generateTodayDetections();
-      
-      // 총 탐지 수 업데이트
-      document.getElementById('totalNum').textContent = todayData.totalCount;
-      
-      // 고위험 PII 비중 업데이트
-      document.getElementById('highRiskNum').textContent = `${todayData.highRiskPercentage}%`;
-      
-      // 검증 통과율 업데이트
-      document.getElementById('validNum').textContent = `${todayData.validationRate}%`;
-      
-      // 금일 탐지 유형 테이블 업데이트
-      const typeStats = {};
-      todayData.detections.forEach(d => {
-        typeStats[d.type] = (typeStats[d.type] || 0) + 1;
-      });
-      
-      const todayTypeTbody = document.getElementById('todayTypeTbody');
-      const todayTotal = document.getElementById('todayTotal');
-      todayTotal.textContent = todayData.totalCount;
-      
-      Object.entries(typeStats)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .forEach(([type, count]) => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${type}</td><td>${count}</td>`;
-          todayTypeTbody.appendChild(tr);
-        });
-    })();
-
-    // 금일 개인 식별 의심 데이터 생성
-    const generateSuspiciousDetections = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const sources = ['text', 'report.pdf', 'data.xlsx', 'info.docx', 'backup.txt', 'analysis.pdf'];
-      const suspicious = [
-        { date: today, time: '15:42', emp: 'A1023', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '13:28', emp: 'B2047', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '11:15', emp: 'A1138', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '09:33', emp: 'S0001', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '16:07', emp: 'B2099', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '14:51', emp: 'A1200', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '12:30', emp: 'A1500', source: sources[Math.floor(Math.random() * sources.length)] },
-        { date: today, time: '10:15', emp: 'B3000', source: sources[Math.floor(Math.random() * sources.length)] }
-      ];
-      return suspicious.sort((a, b) => b.time.localeCompare(a.time));
-    };
-
-    // 개인 식별 의심 목록 렌더링
-    function renderSuspiciousList() {
-      const suspicious = generateSuspiciousDetections();
-      const suspiciousList = document.getElementById('suspiciousList');
-      const totalSuspicious = document.getElementById('totalSuspicious');
-      
-      totalSuspicious.textContent = suspicious.length;
-      
-      // 카드의 실제 높이 측정
-      const card = suspiciousList.closest('.panel');
-      const cardHeight = card ? card.offsetHeight : 145;
-      const header = card ? card.querySelector('div:first-child') : null;
-      const headerHeight = header ? header.offsetHeight : 40;
-      const padding = 0; // 패딩 제거
-      const availableHeight = cardHeight - headerHeight - padding;
-      const itemHeight = 16; // 컴팩한 라인 높이
-      const maxItems = Math.max(1, Math.floor(availableHeight / itemHeight) - 1); // 여유 공간 확보
-      
-      suspiciousList.innerHTML = '';
-      suspicious.slice(0, maxItems).forEach(item => {
-        const li = document.createElement('li');
-        li.style.listStyle = 'none';
-        li.style.lineHeight = '16px';
-        const shortDate = item.date.slice(2).replace(/-/g, '/');
-        li.textContent = `• ${shortDate} ${item.time} - ${item.emp} / ${item.source}`;
-        suspiciousList.appendChild(li);
-      });
-    }
-    renderSuspiciousList();
-
-    // 금일 탐지 실패 데이터 생성
-    const generateTodayFailures = () => {
-      const today = new Date().toISOString().split('T')[0];
-      const failures = [
-        { date: today, time: '14:23', emp: 'A1023', file: 'secret.pdf', reason: '암호화 파일' },
-        { date: today, time: '11:45', emp: 'A1138', file: 'test.docx', reason: '손상 파일' },
-        { date: today, time: '09:12', emp: 'B2047', file: 'data.xlsx', reason: '빈 파일' },
-        { date: today, time: '16:30', emp: 'S0001', file: 'report.pdf', reason: '지원 불가 형식' },
-        { date: today, time: '13:15', emp: 'B2099', file: 'info.txt', reason: '액세스 거부' },
-        { date: today, time: '08:45', emp: 'A1200', file: 'backup.zip', reason: '암호화 파일' },
-        { date: today, time: '07:30', emp: 'C2000', file: 'data2.xlsx', reason: '권한 없음' },
-        { date: today, time: '17:15', emp: 'D3000', file: 'report2.pdf', reason: '파일 손상' }
-      ];
-      return failures.sort((a, b) => b.time.localeCompare(a.time));
-    };
-
-    // 탐지 실패 목록 렌더링
-    function renderFailureList() {
-      const failures = generateTodayFailures();
-      const failureList = document.getElementById('failureList');
-      const totalFailures = document.getElementById('totalFailures');
-      
-      totalFailures.textContent = failures.length;
-      
-      // 카드의 실제 높이 측정
-      const card = failureList.closest('.panel');
-      const cardHeight = card ? card.offsetHeight : 145;
-      const header = card ? card.querySelector('div:first-child') : null;
-      const headerHeight = header ? header.offsetHeight : 40;
-      const padding = 0; // 패딩 제거
-      const availableHeight = cardHeight - headerHeight - padding;
-      const itemHeight = 16; // 컴팩한 라인 높이
-      const maxItems = Math.max(1, Math.floor(availableHeight / itemHeight) - 1); // 여유 공간 확보
-      
-      failureList.innerHTML = '';
-      failures.slice(0, maxItems).forEach(failure => {
-        const li = document.createElement('li');
-        li.style.listStyle = 'none';
-        li.style.lineHeight = '16px';
-        const shortDate = failure.date.slice(2).replace(/-/g, '/');
-        li.textContent = `• ${shortDate} ${failure.time} - ${failure.emp} / ${failure.file} (${failure.reason})`;
-        failureList.appendChild(li);
-      });
-    }
-    renderFailureList();
-
-    // 현재 시간 설정
-    (function(){
-      const now = new Date();
-      const timeStr = now.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      document.getElementById('contribTimestamp').textContent = `${timeStr} 기준`;
-      document.getElementById('suspiciousTimestamp').textContent = `${timeStr} 기준`;
-      document.getElementById('failureTimestamp').textContent = `${timeStr} 기준`;
-    })();
-
-    // 사용자 기여도 테이블 생성 (사번만)
-    (function(){
-      const tbody = document.getElementById("contribTbody");
-      contribData.forEach(item => {
-        const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${item.name}</td><td>${item.count.toLocaleString('ko-KR')}</td><td>${highRiskPercent}%</td>`;
-        tbody.appendChild(tr);
-      });
-      
-      // 현재 시간 표시
-      const now = new Date();
-      const timestamp = now.getFullYear() + '.' + 
-                       String(now.getMonth() + 1).padStart(2, '0') + '.' + 
-                       String(now.getDate()).padStart(2, '0') + ' ' + 
-                       String(now.getHours()).padStart(2, '0') + ':' + 
-                       String(now.getMinutes()).padStart(2, '0') + ' 기준';
-      document.getElementById('contribTimestamp').textContent = timestamp;
-    })();
-    new Chart(document.getElementById("chartSourcePie"), {
-      type: "pie",
-      data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count) }] },
-      options: { 
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%' } } 
-      },
-      plugins: [ChartDataLabels]
-    });
-
-    // 금일 탐지 유형 데이터
-    (function(){
-      const todayTypeStats = [
-        { type: "전화번호", count: 10 },
-        { type: "이메일", count: 8 },
-        { type: "주민등록번호", count: 5 },
-        { type: "카드번호", count: 3 },
-        { type: "IP 주소", count: 2 }
-      ];
-      const tbody = document.getElementById("todayTypeTbody");
-      const totalSpan = document.getElementById("todayTotal");
-      const total = todayTypeStats.reduce((a,b)=>a+b.count,0);
-      tbody.innerHTML = todayTypeStats.map(r=>`<tr class="border-t"><td class="py-1">${r.type}</td><td>${r.count}</td></tr>`).join('');
-      totalSpan.textContent = total;
-    })();
-    
-    // 통계 카드 데이터 업데이트
-    (function(){
-      const todayTypeStats = [
-        { type: "전화번호", count: 10, isHighRisk: false, validCount: 9 },
-        { type: "이메일", count: 8, isHighRisk: false, validCount: 7 },
-        { type: "주민등록번호", count: 5, isHighRisk: true, validCount: 4 },
-        { type: "카드번호", count: 3, isHighRisk: true, validCount: 3 },
-        { type: "IP 주소", count: 2, isHighRisk: false, validCount: 2 }
-      ];
-      const todayTotal = todayTypeStats.reduce((a,b)=>a+b.count,0);
-      const highRiskCount = todayTypeStats.filter(item => item.isHighRisk).reduce((a,b)=>a+b.count,0);
-      const validCount = todayTypeStats.reduce((a,b)=>a+b.validCount,0);
-      const highRiskRatio = ((highRiskCount / todayTotal) * 100).toFixed(1);
-      const validRatio = ((validCount / todayTotal) * 100).toFixed(1);
-      
-      const stats = {
-        total: { num: todayTotal, delta: 12.5 },
-        highRisk: { num: parseFloat(highRiskRatio), delta: 3.2 },
-        valid: { num: parseFloat(validRatio), delta: 5.1 }
-      };
-      
-      document.getElementById('totalNum').textContent = stats.total.num;
-      const totalDelta = document.getElementById('totalDelta');
-      totalDelta.textContent = (stats.total.delta > 0 ? '+' : '') + stats.total.delta + '%';
-      totalDelta.className = 'delta ' + (stats.total.delta > 0 ? 'ok' : 'bad');
-      
-      document.getElementById('highRiskNum').textContent = stats.highRisk.num + '%';
-      const riskDelta = document.getElementById('highRiskDelta');
-      riskDelta.textContent = (stats.highRisk.delta > 0 ? '+' : '') + stats.highRisk.delta + '%';
-      riskDelta.className = 'delta ' + (stats.highRisk.delta > 0 ? 'bad' : 'ok');
-      
-      document.getElementById('validNum').textContent = stats.valid.num + '%';
-      const validDelta = document.getElementById('validDelta');
-      validDelta.textContent = (stats.valid.delta > 0 ? '+' : '') + stats.valid.delta + '%';
-      validDelta.className = 'delta ' + (stats.valid.delta > 0 ? 'ok' : 'bad');
-    })();
-
-    // 높이 맞춤 설정
-    function adjustLayout() {
-      const rightColumn = document.getElementById('rightColumn');
-      const leftHeight = 350; // 높인 고정 높이
-      rightColumn.style.height = leftHeight + 'px';
-      const boxHeight = (leftHeight - 12) / 2;
-      rightColumn.querySelectorAll('.panel').forEach(box => {
-        box.style.height = boxHeight + 'px';
-      });
-      
-      // DOM 렌더링 완료 후 목록 다시 렌더링
-      setTimeout(() => {
-        renderSuspiciousList();
-        renderFailureList();
-      }, 10);
-    }
-    
-    // 초기 레이아웃 설정
-    setTimeout(adjustLayout, 100);
-    
-    // 화면 크기 변경 시 재조정
-    window.addEventListener('resize', () => {
-      setTimeout(adjustLayout, 50);
-    });
-  </script>
 </body>
 </html>
