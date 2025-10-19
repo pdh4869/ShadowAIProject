@@ -13,15 +13,14 @@
 <link rel="stylesheet" href="assets/page-css/main.page.css">
 </head>
 <body>
-  <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
+  <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title">개인정보 탐지 대시보드</div>
+    <div class="page-title"><span onclick="location.href='main.html'" style="cursor:pointer;">개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
         <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
         <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
-        <a href="#" onclick="location.href='account_management.html'">계정 관리</a>
       </nav>
     </div>
 
@@ -116,9 +115,19 @@
 
   <!-- 우측 상단 유저 박스 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
-    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">A1023</span></span>
+    <button type="button" class="logout" id="accountBtn" onclick="location.href='account_management.html'" style="background:#F9F7F7;display:none;">계정 관리</button>
     <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
   </div>
+<script>
+(function(){
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{"empId":"A1023","role":"admin"}');
+  document.getElementById('userEmp').textContent = userInfo.empId;
+  if(userInfo.role === 'super'){
+    document.getElementById('accountBtn').style.display = 'block';
+  }
+})();
+</script>
 
   <script>
     // 오늘 기준 7일간 시간 추이 데이터 생성
@@ -142,20 +151,23 @@
     
     // 시간 추이 그래프
     new Chart(document.getElementById("trendChart"), {
-      type: "line",
+      type: "bar",
       data: {
         labels: trendData.map(d => d.date.slice(5)),
         datasets: [
-          { label: "총탐지", data: trendData.map(d => d.total), borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,0.1)", fill: true, tension: 0.3 },
-          { label: "고위험", data: trendData.map(d => d.highRisk), borderColor: "#16a34a", backgroundColor: "rgba(22,163,74,0.1)", fill: false, tension: 0.3 },
-          { label: "탐지실패", data: trendData.map(d => d.failed), borderColor: "#dc2626", backgroundColor: "rgba(220,38,38,0.1)", fill: false, tension: 0.3 }
+          { label: "총탐지", data: trendData.map(d => d.total), backgroundColor: "#2563eb" },
+          { label: "고위험", data: trendData.map(d => d.highRisk), backgroundColor: "#16a34a" },
+          { label: "탐지실패", data: trendData.map(d => d.failed), backgroundColor: "#dc2626" }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        scales: { 
+          y: { beginAtZero: true },
+          x: { grid: { display: false } }
+        }
       }
     });
 

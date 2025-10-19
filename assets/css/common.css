@@ -62,6 +62,8 @@ body{
 .pm-userbox .emp{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; background:#fff; border:1px solid var(--border); color:var(--text); font-size:11px; }
 .pm-userbox .emp .dot{ width:6px; height:6px; border-radius:50%; background:conic-gradient(from 0deg,#3F72AF,#112D4E,#DBE2EF,#3F72AF); filter:blur(.15px); }
 .pm-userbox .logout{ padding:6px 8px !important; border-radius:8px; background:#DBE2EF; color:var(--text); border:1px solid var(--border); font-weight:700 !important; cursor:pointer; font-size:12px !important; line-height:1; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+.pm-userbox .logout[onclick*="account_management"]{ background:#F9F7F7; }
+
 .pm-userbox .logout:hover{ border-color:#3F72AF; box-shadow:0 0 0 3px rgba(63,114,175,.15) inset; }
 
 /* 네비게이션 공통 스타일 */

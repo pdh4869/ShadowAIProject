@@ -12,22 +12,23 @@
 <link rel="stylesheet" href="assets/page-css/personal_information_type.page.css">
 </head>
 <body>
-  <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
+  <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title">개인정보 유형</div>
+    <div class="page-title"><span onclick="location.href='main.html'" style="cursor:pointer;">개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
         <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
         <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
-        <a href="#" onclick="location.href='account_management.html'">계정 관리</a>
       </nav>
     </div>
+
+
 
     <div class="max-w-6xl mx-auto p-4">
     <div style="display:flex;gap:16px;margin-bottom:16px;align-items:stretch;">
       <!-- 필터 카드 -->
-      <section class="card" style="flex:1;" aria-label="필터">
+      <section class="card" style="flex:1;height:fit-content;" aria-label="필터">
         <div class="quick" aria-label="빠른 기간 선택">
           <button class="pill" data-range="today">오늘</button>
           <button class="pill" data-range="lastweek">지난 주</button>
@@ -37,12 +38,12 @@
 
         <div class="filters" style="display:block !important;">
           <!-- 2줄: 시작/종료 일자 -->
-          <div style="display:flex !important;gap:12px;margin-bottom:12px;">
-            <div class="field" style="flex:1 !important;grid-column:unset !important;">
+          <div style="display:flex !important;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+            <div class="field" style="flex:1 !important;grid-column:unset !important;min-width:150px;">
               <label for="from">시작 일자</label>
               <input type="date" id="from" />
             </div>
-            <div class="field" style="flex:1 !important;grid-column:unset !important;">
+            <div class="field" style="flex:1 !important;grid-column:unset !important;min-width:150px;">
               <label for="to">종료 일자</label>
               <input type="date" id="to" />
             </div>
@@ -100,7 +101,7 @@
       </section>
 
       <!-- 차트 -->
-      <section class="card chart-card" style="flex:1;display:flex;flex-direction:column;margin-top:0 !important;" aria-label="유형별 그래프">
+      <section class="card chart-card" style="flex:1;display:flex;flex-direction:column;margin-top:0 !important;padding-bottom:20px;" aria-label="유형별 그래프">
         <h2 style="font-size:16px;margin:6px 0 16px 0;text-align:center;">개인정보 유형별 분포 (원형)</h2>
         <div class="chart-wrap" style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;">
           <div style="position:relative;width:100%;height:100%;max-width:400px;max-height:400px;display:flex;align-items:center;justify-content:center;">
@@ -556,12 +557,18 @@ function renderChart(rows){
     options: {
       responsive: true,
       maintainAspectRatio: true,
+      layout: {
+        padding: {
+          bottom: 30
+        }
+      },
       plugins: {
         legend: {
           position: 'bottom',
           labels: {
             boxWidth: 12,
-            font: { size: 11 }
+            font: { size: 11 },
+            padding: 20
           }
         },
         datalabels: {
@@ -569,7 +576,7 @@ function renderChart(rows){
           formatter: (value, ctx) => {
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return percentage + '%';
+            return percentage + '%\n(' + value + '건)';
           }
         }
       }
@@ -615,12 +622,29 @@ document.addEventListener('DOMContentLoaded', function() {
   applyFilters();
 });
 
+// 차트카드 높이 조절 함수
+function adjustChartHeight() {
+  const filterCard = document.querySelector('.card[aria-label="필터"]');
+  const chartCard = document.querySelector('.chart-card');
+  
+  setTimeout(() => {
+    const filterHeight = filterCard.offsetHeight;
+    const minHeight = 400;
+    const finalHeight = Math.max(filterHeight, minHeight);
+    chartCard.style.height = finalHeight + 'px';
+  }, 10);
+}
+
 // 화면 크기 변경 시 차트 업데이트
 window.addEventListener('resize', () => {
   if (pieChartInstance) {
     pieChartInstance.resize();
   }
+  adjustChartHeight();
 });
+
+// 초기 높이 설정
+window.addEventListener('load', adjustChartHeight);
 
 // 네비게이션 활성화
 document.addEventListener('DOMContentLoaded', function() {
@@ -642,8 +666,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- (선택) 우측 상단 유저 박스 -->
 <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
-  <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+  <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">A1023</span></span>
+  <button type="button" class="logout" id="accountBtn" onclick="location.href='account_management.html'" style="background:#F9F7F7;display:none;">계정 관리</button>
   <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
 </div>
+<script>
+(function(){
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{"empId":"A1023","role":"admin"}');
+  document.getElementById('userEmp').textContent = userInfo.empId;
+  if(userInfo.role === 'super'){
+    document.getElementById('accountBtn').style.display = 'block';
+  }
+})();
+</script>
 </body>
 </html>

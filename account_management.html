@@ -8,17 +8,17 @@
 
 <link rel="stylesheet" href="assets/css/common.css">
 <link rel="stylesheet" href="assets/page-css/account_management.page.css">
+<script src="assets/js/common.js"></script>
 </head>
 <body data-page="account">
-  <div class="brandbar" onclick="location.href='main.html'" style="cursor:pointer"><div class="dot"></div> Privacy Monitor</div>
+  <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title">계정 관리</div>
+    <div class="page-title"><span onclick="location.href='main.html'" style="cursor:pointer;">개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
         <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
         <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
         <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
-        <a href="#" onclick="location.href='account_management.html'">계정 관리</a>
       </nav>
     </div>
 
@@ -321,7 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
   <!-- 우측 상단: 사번 + 로그아웃 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
-  <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
+  <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> S0001</span>
+  <button type="button" class="logout" onclick="location.href='account_management.html'">계정 관리</button>
   <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
 </body>
 </html>

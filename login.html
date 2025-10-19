@@ -60,15 +60,18 @@ togglePwd.addEventListener('click', ()=>{
 form.addEventListener('submit', (e)=>{
   e.preventDefault();
   err.textContent = '';
-  // const id = emp.value.trim();
-  // const pw = pwd.value;
-  // if (!validEmp(id)){ err.textContent = 'ID(사번) 형식이 올바르지 않습니다.'; emp.focus(); return; }
-  // if (pw.length < 8){ err.textContent = '비밀번호는 8자 이상이어야 합니다.'; pwd.focus(); return; }
+  const id = emp.value.trim();
 
   submitBtn.disabled = true;
-  // TODO: 실제 서비스에서는 여기서 API 호출(fetch)로 인증 처리
+  
+  // 로그인 사용자 정보 저장
+  const userInfo = {
+    empId: id === 'S0001' ? 'S0001' : (id || 'A1023'),
+    role: id === 'S0001' ? 'super' : 'admin'
+  };
+  localStorage.setItem('userInfo', JSON.stringify(userInfo));
+  
   setTimeout(()=>{
-    // 데모: main.html로 이동
     location.href = 'main.html';
   }, 700);
 });
