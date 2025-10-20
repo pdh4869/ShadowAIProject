@@ -679,8 +679,6 @@ def detect_by_regex(Text: str) -> list:
 # ==========================
 # NER 탐지 (조직명 제외)
 # ==========================
-NAME_WHITELIST = set()
-
 def detect_by_ner(Text: str) -> list:
     if not Text.strip():
         return []
@@ -693,22 +691,8 @@ def detect_by_ner(Text: str) -> list:
         extracted_name = name_match.group(1)
         print(f"[INFO] ✓ 정규식으로 이름 추출: {extracted_name}")
     
-    # 한글 단일 글자 띄어쓰기 병합 (예: "이 무 송" -> "이무송")
-    normalized_text = Text
-    
-    # 패턴: 2~4글자 한글 이름 (각 글자 사이 공백)
-    # "이 무 송" -> "이무송", "선 우 성 민" -> "선우성민"
-    normalized_text = re.sub(r'\b([가-힣])\s+([가-힣])\s+([가-힣])\s+([가-힣])\b', r'\1\2\3\4', normalized_text)
-    normalized_text = re.sub(r'\b([가-힣])\s+([가-힣])\s+([가-힣])\b', r'\1\2\3', normalized_text)
-    normalized_text = re.sub(r'\b([가-힣])\s+([가-힣])\b', r'\1\2', normalized_text)
-    
-    if normalized_text != Text:
-        print(f"[INFO] ⚠ 한글 띄어쓰기 정규화 적용")
-        print(f"[DEBUG] 원본: {Text[:200]}")
-        print(f"[DEBUG] 정규화: {normalized_text[:200]}")
-    
-    print(f"[DEBUG] NER 입력: {normalized_text[:100]}")
-    Results = ner_pipeline(normalized_text)
+    print(f"[DEBUG] NER 입력: {Text[:100]}")
+    Results = ner_pipeline(Text)
     print(f"[DEBUG] NER 원본 결과: {Results}")
     
     Detected = []
@@ -734,82 +718,96 @@ def detect_by_ner(Text: str) -> list:
         if Start is None or End is None:
             continue
         
-        if Label.upper() in ["PER", "PS", "ORG", "OG", "LOC", "LC", "MISC", "DT"]:
+        if Label.upper() in ["PER", "PS", "ORG", "OG", "LC", "DT"]:
             # LC (주소) 병합 처리
             if Label.upper() == "LC":
                 location_parts.append(Word.strip())
                 continue
             
-            # ORG/OG/MISC 처리 - 직책 분리
-            if Label.upper() in ["ORG", "OG", "MISC"]:
-                # 직책 키워드 체크
-                position_keywords = ["교수", "팀장", "부장", "과장", "대리", "사원", "이사", "본부장", "실장", "차장", "주임", "연구원", "박사", "석사", "선생님", "교사", "강사", "교장", "교감"]
-                if any(keyword in Word for keyword in position_keywords):
-                    Detected.append({"type": "position", "value": Word, "span": (Start, End)})
-                    print(f"[INFO] ✓ NER 탐지 (position): {Word}")
-                    continue
-                
-                # 조직명 필터링 (너무 짧거나 의미없는 것 제외)
+            # ORG/OG (조직명) 처리
+            if Label.upper() in ["ORG", "OG"]:
                 clean_org = Word.replace(" ", "").strip()
-                # 숫자만 있는 경우 제외 (학번 오탐지 방지)
-                if clean_org.isdigit():
-                    print(f"[INFO] ✗ NER 필터링 (ORG): {Word} (숫자만 포함)")
-                    continue
-                if len(clean_org) >= 2:  # 2글자 이상
-                    Detected.append({"type": "ORG", "value": Word, "span": (Start, End)})
-                    print(f"[INFO] ✓ NER 탐지 (ORG): {Word}")
+                if len(clean_org) >= 2:
+                    # 조직명 분리: "삼성전자 개발팀" → "삼성전자", "개발팀"
+                    org_split_keywords = ['팀', '부', '부서', '본부', '지점', '센터', '연구소']
+                    split_orgs = []
+                    
+                    # 공백으로 분리 먼저 시도
+                    if ' ' in Word:
+                        parts = Word.split(' ', 1)
+                        if len(parts) == 2:
+                            split_orgs = [parts[0].strip(), parts[1].strip()]
+                            print(f"[INFO] ⚠ 조직명 분리 (공백): '{Word}' → {split_orgs}")
+                    
+                    # 공백 없으면 키워드로 분리
+                    if not split_orgs:
+                        for keyword in org_split_keywords:
+                            if keyword in Word and not Word.endswith(keyword):
+                                idx = Word.find(keyword)
+                                if idx > 0:
+                                    part1 = Word[:idx].strip()
+                                    part2 = Word[idx:].strip()
+                                    if part1 and part2:
+                                        split_orgs = [part1, part2]
+                                        print(f"[INFO] ⚠ 조직명 분리 (키워드): '{Word}' → {split_orgs}")
+                                        break
+                    
+                    if split_orgs:
+                        for org in split_orgs:
+                            if len(org.replace(" ", "")) >= 2:
+                                Detected.append({"type": "ORG", "value": org, "span": (Start, End)})
+                                print(f"[INFO] ✓ NER 탐지 (ORG 분리): {org}")
+                    else:
+                        Detected.append({"type": "ORG", "value": Word, "span": (Start, End)})
+                        print(f"[INFO] ✓ NER 탐지 (ORG): {Word}")
                 else:
                     print(f"[INFO] ✗ NER 필터링 (ORG): {Word} (너무 짧음)")
                 continue
             
             # DT (날짜/숫자) - 학번/사번으로 처리
             if Label.upper() == "DT":
-                # 숫자만 있고 7자리 이상이면 학번/사번으로 간주
-                if Word.isdigit() and len(Word) >= 7:
+                # 숫자만 있고 8자리 이상이면 학번/사번으로 간주
+                if Word.isdigit() and len(Word) >= 8:
                     Detected.append({"type": "student_id", "value": Word, "span": (Start, End)})
                     print(f"[INFO] ✓ NER 탐지 (student_id): {Word}")
                 continue
             
             # PS (사람 이름) 필터링
             if Label.upper() in ["PS", "PER"]:
-                # 공백 제거 후 길이 체크
-                clean_word = Word.replace(" ", "").strip()
+                # 특수문자 제거 (앞뒤만)
+                Word = re.sub(r'^[^가-힣a-zA-Z]+', '', Word)
+                Word = re.sub(r'[^가-힣a-zA-Z]+$', '', Word)
+                Word = Word.strip()
                 
-                # 너무 짧은 이름 제외 (2글자 이하)
-                if len(clean_word) <= 2:
-                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (2글자 이하)")
+                if not Word:
                     continue
+                
+                clean_word = Word.replace(" ", "").strip()
                 
                 # 한글 포함 여부 확인
                 has_korean = any('\uac00' <= c <= '\ud7a3' for c in Word)
+                if not has_korean:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (한글 없음)")
+                    continue
+                
+                # 조직명 키워드 체크 (PS로 잘못 탐지된 경우)
+                org_keywords = ['회사', '전자', '그룹', '기업', '주식회사', '(주)', '㈜', 
+                               '학교', '대학교', '대학', '고등학교', '중학교', '초등학교',
+                               '병원', '의원', '센터', '연구소', '재단', '협회', '은행']
+                if any(keyword in Word for keyword in org_keywords):
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (조직명 키워드) → ORG로 재분류")
+                    Detected.append({"type": "ORG", "value": Word, "span": (Start, End)})
+                    continue
+                
+                # 2글자 이하 제외
+                if len(clean_word) <= 2:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (2글자 이하)")
+                    continue
                 
                 # 숫자만 있는 경우 제외
                 if clean_word.isdigit():
                     print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (숫자만 포함)")
                     continue
-                
-                # 한글이 없고 특수문자만 있는 경우 제외
-                if not has_korean and any(c in Word for c in "#@$%^&*()_+=[]{}|\\;:'\",.<>?/~`"):
-                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (한글 없이 특수문자 포함)")
-                    continue
-                
-
-                # 불필요한 접두사 제거 (저는, 나는, 제가, 내가 등)
-                prefixes_to_remove = ["저는", "나는", "제가", "내가", "저의", "나의", "제", "내"]
-                cleaned_name = Word
-                for prefix in prefixes_to_remove:
-                    if Word.startswith(prefix):
-                        cleaned_name = Word[len(prefix):].strip()
-                        print(f"[INFO] ⚠ NER 접두사 제거: '{Word}' → '{cleaned_name}'")
-                        break
-                
-                # 정리된 이름이 너무 짧으면 제외
-                if len(cleaned_name.replace(" ", "")) <= 1:
-                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (접두사 제거 후 너무 짧음)")
-                    continue
-                
-                # 정리된 이름 저장
-                Word = cleaned_name
             
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
             print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
@@ -827,15 +825,25 @@ def detect_by_ner(Text: str) -> list:
 # 준식별자 패턴 탐지
 # ==========================
 def detect_quasi_identifiers(text: str) -> list:
-    """준식별자 패턴 탐지 (단어 기반만)"""
+    """학번/사번 등 준식별자 패턴 탐지"""
     detected = []
     
-    # 직책 패턴 탐지 (교육 관련 직책 포함)
-    position_pattern = re.compile(r'\b(교수|팀장|부장|과장|대리|사원|이사|본부장|실장|차장|주임|연구원|박사|석사|회장|사장|전무|상무|부사장|대표|원장|소장|센터장|선생님|교사|강사|교장|교감|학생부장|체육교사|국어교사|수학교사|영어교사|과학교사|사회교사|음악교사|미술교사|체육선생님|국어선생님|수학선생님|영어선생님)\b')
-    for match in position_pattern.finditer(text):
+    # 학번/사번 패턴 (8~10자리 숫자, 19xx 또는 20xx로 시작)
+    # 여권번호와 겹치지 않도록 숫자만 확인
+    id_pattern = re.compile(r'\b(19|20)\d{6,8}\b')
+    for match in id_pattern.finditer(text):
+        value = match.group()
+        # 여권번호 패턴 제외 (알파벳 포함 여부 확인)
+        start, end = match.span()
+        # 앞뒤에 알파벳이 있으면 여권번호일 가능성
+        if start > 0 and text[start-1].isalpha():
+            continue
+        if end < len(text) and text[end].isalpha():
+            continue
+        
         detected.append({
-            "type": "position",
-            "value": match.group(),
+            "type": "student_id",
+            "value": value,
             "span": match.span()
         })
     
@@ -849,25 +857,25 @@ def categorize_detection(item):
     item_type = item.get('type', '')
     
     # 식별자 (개인을 직접 특정 가능)
-    if item_type in ['PS', 'PER', 'ssn', 'phone', 'email', 'card', 'account', 'passport', 'driver_license', 'alien_reg']:
+    if item_type in ['PS', 'PER', 'ssn', 'phone', 'email', 'card', 'account', 'passport', 'driver_license']:
         return 'identifier'
     
-    # 민감정보 (얼굴사진만)
+    # 민감정보 (얼굴사진)
     if item_type in ['image_face']:
         return 'sensitive'
     
-    # 준식별자 (조직명, 주소, 직책)
-    if item_type in ['ORG', 'OG', 'LC', 'position']:
+    # 준식별자 (조합시 특정 가능)
+    if item_type in ['ORG', 'OG', 'student_id', 'birth', 'LC']:
         return 'quasi'
     
     return 'other'
 
 def analyze_combination_risk(detected_items, text):
-    """조합 위험도 분석 (단어 기반 조합만)"""
+    """조합 위험도 자동 분석"""
     print(f"[DEBUG] 조합 분석 시작: 총 {len(detected_items)}개 항목")
     
     if len(detected_items) < 2:
-        print(f"[DEBUG] 조합 분석 스킵: 항목이 2개 미만")
+        print(f"[DEBUG] 조합 분석 스킵: 항목이 2개 미만 ({len(detected_items)}개)")
         return None
     
     # 카테고리별 분류
@@ -877,105 +885,56 @@ def analyze_combination_risk(detected_items, text):
         if category not in categorized:
             categorized[category] = []
         categorized[category].append(item)
+        print(f"[DEBUG] 항목 분류: type={item.get('type')}, value={item.get('value')[:20] if item.get('value') else 'N/A'} → category={category}")
     
     identifier_count = len(categorized.get('identifier', []))
     quasi_count = len(categorized.get('quasi', []))
+    sensitive_count = len(categorized.get('sensitive', []))
     
-    print(f"[DEBUG] 조합: 식별자={identifier_count}, 준식별자={quasi_count}")
+    print(f"[DEBUG] 조합 분석 결과: 식별자={identifier_count}, 준식별자={quasi_count}, 민감정보={sensitive_count}")
+    print(f"[DEBUG] 준식별자 항목: {[item.get('type') for item in categorized.get('quasi', [])]}") 
     
-    # 카테고리별 항목 분류
-    identifier_items = categorized.get('identifier', [])
-    sensitive_items = categorized.get('sensitive', [])
-    quasi_items = categorized.get('quasi', [])
-    
-    has_name = any(item.get('type') in ['PS', 'PER'] for item in identifier_items)
-    has_phone = any(item.get('type') == 'phone' for item in identifier_items)
-    has_email = any(item.get('type') == 'email' for item in identifier_items)
-    has_org = any(item.get('type') in ['ORG', 'OG'] for item in quasi_items)
-    has_position = any(item.get('type') == 'position' for item in quasi_items)
-    has_address = any(item.get('type') == 'LC' for item in quasi_items)
-    
+    # 위험도 계산
     risk_level = None
     risk_message = None
     risk_items = []
     
-    # 고위험: 이름 + 전화번호
-    if has_name and has_phone:
+    if sensitive_count > 0 and identifier_count > 0:
+        risk_level = 'critical'
+        risk_message = '민감정보 + 식별자 조합 → 개인 완전 특정 가능!'
+        risk_items = categorized.get('identifier', []) + categorized.get('sensitive', [])
+    elif identifier_count >= 1 and quasi_count >= 2:
         risk_level = 'high'
-        risk_message = '이름+전화번호 조합 → 개인 특정 가능'
-        risk_items = identifier_items
-    
-    # 고위험: 이름 + 이메일
-    elif has_name and has_email:
-        risk_level = 'high'
-        risk_message = '이름+이메일 조합 → 개인 특정 가능'
-        risk_items = identifier_items
-    
-    # 고위험: 이름 + 주소
-    elif has_name and has_address:
-        risk_level = 'high'
-        risk_message = '이름+주소 조합 → 개인 특정 가능'
-        risk_items = identifier_items + quasi_items
-    
-    # 고위험: 이름 + 조직명 + (직책 or 주소)
-    elif has_name and has_org and (has_position or has_address):
-        risk_level = 'high'
-        risk_message = '이름+조직명+직책/주소 조합 → 개인 특정 가능'
-        risk_items = identifier_items + quasi_items
-    
-    # 중위험: 이름 + 조직명
-    elif has_name and has_org:
+        risk_message = f'식별자 + 준식별자 {quasi_count}개 조합 → 개인 특정 가능'
+        risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
+    elif identifier_count >= 1 and quasi_count >= 1:
         risk_level = 'medium'
-        risk_message = '이름+조직명 조합 → 개인 특정 가능성'
-        risk_items = identifier_items + quasi_items
-    
-    # 중위험: 이름 + 직책
-    elif has_name and has_position:
-        risk_level = 'medium'
-        risk_message = '이름+직책 조합 → 개인 특정 가능성'
-        risk_items = identifier_items + quasi_items
-    
-    # 중위험: 전화번호 + 조직명 + 직책
-    elif has_phone and has_org and has_position:
-        risk_level = 'medium'
-        risk_message = '전화번호+조직명+직책 조합 → 개인 특정 가능성'
-        risk_items = identifier_items + quasi_items
-    
-    # 중위험: 조직명 + 직책 + 주소
-    elif has_org and has_position and has_address:
-        risk_level = 'medium'
-        risk_message = '조직명+직책+주소 조합 → 개인 특정 가능성'
-        risk_items = quasi_items
+        risk_message = '식별자 + 준식별자 조합 → 개인 특정 가능성 있음'
+        risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
+    elif quasi_count >= 2:
+        # 준식별자만 2개 이상일 때 - 조직명만 있는 경우는 제외
+        quasi_items = categorized.get('quasi', [])
+        non_org_quasi = [item for item in quasi_items if item.get('type') not in ['ORG', 'OG']]
+        
+        # 조직명이 아닌 준식별자가 최소 1개 이상 있어야 함
+        if len(non_org_quasi) >= 1:
+            risk_level = 'medium'
+            risk_message = f'준식별자 {quasi_count}개 조합 → 개인 특정 가능성 있음'
+            risk_items = quasi_items
+        else:
+            print(f"[DEBUG] 조합 위험 스킵: 조직명만 {len(quasi_items)}개 (개인 특정 불가)")
     
     if risk_level:
-        type_korean = {
-            'PS': '이름', 'PER': '이름', 'image_face': '얼굴사진',
-            'phone': '전화번호', 'email': '이메일', 'ssn': '주민번호',
-            'card': '카드번호', 'account': '계좌번호',
-            'passport': '여권번호', 'driver_license': '운전면허',
-            'alien_reg': '외국인등록번호',
-            'ORG': '조직명', 'OG': '조직명',
-            'LC': '주소', 'position': '직책'
-        }
-        
-        # 상세 메시지 생성
-        identifier_types = list(set([type_korean.get(item.get('type'), item.get('type')) for item in identifier_items]))
-        quasi_types = list(set([type_korean.get(item.get('type'), item.get('type')) for item in quasi_items]))
-        
-        parts = []
-        if identifier_count > 0:
-            parts.append(f"식별자({','.join(identifier_types)}){identifier_count}건")
-        if quasi_count > 0:
-            parts.append(f"준식별자({','.join(quasi_types)}){quasi_count}건")
-        
-        detailed_message = ' + '.join(parts) + ' → 개인 특정 가능성'
-        
-        print(f"[WARN] ⚠️ 조합 위험: {risk_level} - {detailed_message}")
+        print(f"[WARN] ⚠️ 조합 위험 감지: {risk_level} - {risk_message}")
         return {
             'level': risk_level,
-            'message': detailed_message,
+            'message': risk_message,
             'items': risk_items,
-            'counts': {'identifier': identifier_count, 'quasi': quasi_count}
+            'counts': {
+                'identifier': identifier_count,
+                'quasi': quasi_count,
+                'sensitive': sensitive_count
+            }
         }
     
     return None
@@ -1271,9 +1230,9 @@ def handle_input_raw(Input_Data, Original_Format=None, Original_Filename=None):
         # 조합 위험도 분석 (모든 항목 포함)
         combination_risk = analyze_combination_risk(all_detected, combined_text)
         
-        # 준식별자 처리: 조합 위험도가 있을 때만 포함
+        # 식별자와 민감정보는 항상 포함, 준식별자는 조합 위험도 있을 때만 포함
         if combination_risk:
-            Detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+            Detected = all_detected  # 조합 위험도 있으면 모두 포함
             print(f"[WARN] ⚠️ 조합 위험 감지: {combination_risk['level']} - {combination_risk['message']}")
             Detected.append({
                 "type": "combination_risk",
@@ -1283,8 +1242,8 @@ def handle_input_raw(Input_Data, Original_Format=None, Original_Filename=None):
                 "counts": combination_risk['counts']
             })
         else:
-            # 조합 위험도 없으면 준식별자(조직명, 주소, 직책) 제외
-            Detected = [item for item in all_detected if item.get('type') not in ['ORG', 'OG', 'LC', 'position']]
+            # 조합 위험도 없으면: 식별자/민감정보만 포함, 준식별자(조직명 등) 제외
+            Detected = [item for item in all_detected if categorize_detection(item) in ['identifier', 'sensitive']]
     else:
         print("[INFO] 추출된 텍스트 없음")
     
