@@ -89,7 +89,7 @@ def root():
 
 @app.get("/dashboard")
 async def dashboard():
-    html_content = """
+    html_content = r"""
     <!DOCTYPE html>
     <html lang="ko">
     <head>

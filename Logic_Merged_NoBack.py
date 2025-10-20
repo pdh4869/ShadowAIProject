@@ -85,7 +85,8 @@ if HF_TOKEN:
 else:
     ner_tokenizer = AutoTokenizer.from_pretrained(NER_MODEL_NAME)
     ner_model = AutoModelForTokenClassification.from_pretrained(NER_MODEL_NAME)
-ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, grouped_entities=True)
+ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, aggregation_strategy="simple")
+# -> 원래 쓰던 것 : grouped_entities=True. 하지만 이거 transformers 5.0.0부터 지원 안 함.
 logging.info("NER 모델 로딩 완료")
 
 # ==========================
