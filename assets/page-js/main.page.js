@@ -10,20 +10,24 @@ document.addEventListener('DOMContentLoaded', function() {
     accountBtnEl.style.display = 'block';
   }
 
-  // 오늘 기준 7일간 시간 추이 데이터 생성
+  // 공통 데이터에서 7일간 시간 추이 데이터 생성
   const generateTrendData = () => {
+    const commonData = window.COMMON_DATA || [];
+    const highRiskTypes = ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호'];
     const data = [];
     const today = new Date();
+    
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      data.push({
-        date: dateStr,
-        total: Math.floor(Math.random() * 30) + 20,
-        highRisk: Math.floor(Math.random() * 15) + 5,
-        failed: Math.floor(Math.random() * 5) + 1
-      });
+      
+      const dayData = commonData.filter(d => d.date.split(' ')[0] === dateStr);
+      const total = dayData.length;
+      const highRisk = dayData.filter(d => d.status === '성공' && (d.types || []).some(type => highRiskTypes.includes(type))).length;
+      const failed = dayData.filter(d => d.status === '실패').length;
+      
+      data.push({ date: dateStr, total, highRisk, failed });
     }
     return data;
   };
@@ -71,61 +75,118 @@ document.addEventListener('DOMContentLoaded', function() {
     { date: "2025-09-22", count: 4 },
   ];
 
-  // 사용자 기여도 데이터 (IP)
-  const contribData = [
-    { name: "192.168.1.100", count: 45, highRisk: 12 },
-    { name: "192.168.1.101", count: 38, highRisk: 8 },
-    { name: "192.168.1.102", count: 32, highRisk: 15 },
-    { name: "192.168.1.103", count: 28, highRisk: 6 },
-    { name: "192.168.1.104", count: 25, highRisk: 9 }
-  ];
+  // 오늘 날짜 기준 사용자별 탐지 빈도 계산
+  const calculateContribData = () => {
+    const commonData = window.COMMON_DATA || [];
+    const today = new Date().toISOString().split('T')[0];
+    const highRiskTypes = ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호'];
+    const userStats = {};
+    
+    // 오늘 날짜 데이터만 필터링
+    const todayData = commonData.filter(row => row.date.split(' ')[0] === today);
+    
+    todayData.forEach(row => {
+      if (row.status === '성공' && row.emp) {
+        if (!userStats[row.emp]) {
+          userStats[row.emp] = { count: 0, highRisk: 0 };
+        }
+        userStats[row.emp].count += (row.types || []).length;
+        userStats[row.emp].highRisk += (row.types || []).filter(type => highRiskTypes.includes(type)).length;
+      }
+    });
+    
+    return Object.entries(userStats)
+      .map(([name, stats]) => ({ name, count: stats.count, highRisk: stats.highRisk }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  };
+  
+  const contribData = calculateContribData();
 
-  const sourceStats = [
-    { source: "텍스트", count: 25 },
-    { source: "PDF", count: 50 },
-    { source: ["DOCX", "DOC"], count: 30 },
-    { source: ["XLSX", "XLS"], count: 22 },
-    { source: "PPTX", count: 15 },
-    { source: ["HWPX", "HWP"], count: 12 },
-    { source: "TXT", count: 18 }
-  ];
+  // 금일 기준 소스 통계 계산
+  const calculateSourceStats = () => {
+    const commonData = window.COMMON_DATA || [];
+    const today = new Date().toISOString().split('T')[0];
+    const sourceMap = {
+      '텍스트': 0, 'PDF': 0, 'DOCX': 0, 'DOC': 0, 'HWPX': 0, 'HWP': 0, 'XLSX': 0, 'XLS': 0, 'PPTX': 0, 'TXT': 0, 'PNG': 0, 'JPG': 0, 'JPEG': 0, 'BMP': 0, 'WEBP': 0, 'GIF': 0, 'TIFF': 0
+    };
+    
+    commonData.forEach(row => {
+      if (row.date.split(' ')[0] === today && row.status === '성공' && sourceMap.hasOwnProperty(row.source)) {
+        sourceMap[row.source]++;
+      }
+    });
+    
+    return [
+      { source: '텍스트', count: sourceMap['텍스트'] },
+      { source: 'PDF', count: sourceMap['PDF'] },
+      { source: 'DOC/DOCX', count: sourceMap['DOCX'] + sourceMap['DOC'] },
+      { source: 'HWP/HWPX', count: sourceMap['HWPX'] + sourceMap['HWP'] },
+      { source: 'XLS/XLSX', count: sourceMap['XLSX'] + sourceMap['XLS'] },
+      { source: 'PPTX', count: sourceMap['PPTX'] },
+      { source: 'TXT', count: sourceMap['TXT'] },
+      { source: 'PNG', count: sourceMap['PNG'] },
+      { source: 'JPG/JPEG', count: sourceMap['JPG'] + sourceMap['JPEG'] },
+      { source: 'BMP', count: sourceMap['BMP'] },
+      { source: 'WEBP', count: sourceMap['WEBP'] },
+      { source: 'GIF', count: sourceMap['GIF'] },
+      { source: 'TIFF', count: sourceMap['TIFF'] }
+    ];
+  };
+  
+  const sourceStats = calculateSourceStats();
   const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
 
-  // 금일 PII 탐지 데이터 생성
+  // 오늘 날짜 기준 금일 데이터 추출
   const generateTodayDetections = () => {
     const today = new Date().toISOString().split('T')[0];
     const highRiskTypes = ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호'];
-    const allTypes = ['이름', '전화번호', '이메일', '생년월일', '주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호', 'IP', '직책', '조직/기관'];
+    const validationTypes = ['주민등록번호', '카드번호']; // 검증 가능한 타입
+    
+    // 오늘 날짜 전체 데이터 (성공+실패)
+    const commonData = window.COMMON_DATA || [];
+    const todayAllData = commonData.filter(d => d.date.split(' ')[0] === today);
+    const todaySuccessData = todayAllData.filter(d => d.status === '성공');
     
     const detections = [];
-    for (let i = 0; i < 45; i++) {
-      const type = allTypes[Math.floor(Math.random() * allTypes.length)];
-      const isValidated = Math.random() > 0.15; // 85% 확률로 검증 통과
-      detections.push({
-        date: today,
-        type: type,
-        emp: ['192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104'][Math.floor(Math.random() * 5)],
-        validated: isValidated
+    const validationDetections = []; // 검증 대상 PII만 저장
+    
+    todaySuccessData.forEach(row => {
+      (row.types || []).forEach(type => {
+        detections.push({
+          date: today,
+          type: type,
+          emp: row.emp
+        });
+        
+        // 검증 가능한 타입만 별도 저장
+        if (validationTypes.includes(type) && row.validation && row.validation[type]) {
+          validationDetections.push({
+            type: type,
+            validated: row.validation[type] === 'valid'
+          });
+        }
       });
-    }
+    });
     
     const totalCount = detections.length;
+    const totalRecords = todayAllData.length; // 전체 레코드 수 (성공+실패)
     const highRiskCount = detections.filter(d => highRiskTypes.includes(d.type)).length;
     const highRiskPercentage = totalCount > 0 ? Math.round((highRiskCount / totalCount) * 100) : 0;
     
-    // 검증 통과율 계산 (Luhn/체크섬 통과율)
-    const validatedCount = detections.filter(d => d.validated).length;
-    const validationRate = totalCount > 0 ? Math.round((validatedCount / totalCount) * 100) : 0;
+    // 검증 통과율 계산 (카드번호, 주민등록번호만 대상)
+    const validatedCount = validationDetections.filter(d => d.validated).length;
+    const validationRate = validationDetections.length > 0 ? Math.round((validatedCount / validationDetections.length) * 100) : 0;
     
-    return { totalCount, highRiskCount, highRiskPercentage, validationRate, detections };
+    return { totalCount, totalRecords, highRiskCount, highRiskPercentage, validationRate, detections };
   };
 
   // 대시보드 지표 업데이트
   const todayData = generateTodayDetections();
   
-  // 총 탐지 수 업데이트
+  // 총 탐지 수 업데이트 (전체 레코드 수)
   const totalNumEl = document.getElementById('totalNum');
-  if(totalNumEl) totalNumEl.textContent = todayData.totalCount;
+  if(totalNumEl) totalNumEl.textContent = todayData.totalRecords;
   
   // 고위험 PII 비중 업데이트
   const highRiskNumEl = document.getElementById('highRiskNum');
@@ -135,15 +196,21 @@ document.addEventListener('DOMContentLoaded', function() {
   const validNumEl = document.getElementById('validNum');
   if(validNumEl) validNumEl.textContent = `${todayData.validationRate}%`;
   
-  // 금일 탐지 유형 테이블 업데이트
+  // 오늘 날짜 기준 탐지 유형 테이블 업데이트
   const typeStats = {};
-  todayData.detections.forEach(d => {
-    typeStats[d.type] = (typeStats[d.type] || 0) + 1;
+  const today = new Date().toISOString().split('T')[0];
+  const commonData = window.COMMON_DATA || [];
+  const todaySuccessData = commonData.filter(row => row.date.split(' ')[0] === today && row.status === '성공');
+  
+  todaySuccessData.forEach(row => {
+    (row.types || []).forEach(type => {
+      typeStats[type] = (typeStats[type] || 0) + 1;
+    });
   });
   
   const todayTypeTbody = document.getElementById('todayTypeTbody');
   const todayTotal = document.getElementById('todayTotal');
-  if(todayTotal) todayTotal.textContent = todayData.totalCount;
+  if(todayTotal) todayTotal.textContent = Object.values(typeStats).reduce((a, b) => a + b, 0);
   
   if(todayTypeTbody) {
     const sortedTypes = Object.entries(typeStats).sort((a, b) => b[1] - a[1]);
@@ -164,21 +231,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // 금일 개인 식별 의심 데이터 생성
+  // 공통 데이터에서 개인 식별 의심 데이터 추출 (최신 날짜순)
   const generateSuspiciousDetections = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const sources = ['text', 'report.pdf', 'data.xlsx', 'info.docx', 'backup.txt', 'analysis.pdf'];
-    const suspicious = [
-      { date: today, time: '15:42', emp: '192.168.1.100', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '13:28', emp: '192.168.1.102', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '11:15', emp: '192.168.1.103', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '09:33', emp: '192.168.1.101', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '16:07', emp: '192.168.1.104', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '14:51', emp: '192.168.1.105', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '12:30', emp: '192.168.1.106', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '10:15', emp: '192.168.1.107', source: sources[Math.floor(Math.random() * sources.length)] }
-    ];
-    return suspicious.sort((a, b) => b.time.localeCompare(a.time));
+    const commonData = window.COMMON_DATA || [];
+    const suspicious = commonData
+      .filter(row => row.suspicious && row.status === '성공')
+      .map(row => ({
+        date: row.date.split(' ')[0],
+        time: row.date.split(' ')[1].substring(0, 5),
+        emp: row.emp,
+        source: row.filename || row.source,
+        fullDate: row.date
+      }))
+      .sort((a, b) => new Date(b.fullDate) - new Date(a.fullDate));
+    return suspicious;
   };
 
   // 개인 식별 의심 목록 렌더링
@@ -208,20 +274,21 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   renderSuspiciousList();
 
-  // 금일 탐지 실패 데이터 생성
+  // 공통 데이터에서 탐지 실패 데이터 추출 (최신 날짜순)
   const generateTodayFailures = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const failures = [
-      { date: today, time: '14:23', emp: '192.168.1.100', file: 'secret.pdf', reason: '암호화 파일' },
-      { date: today, time: '11:45', emp: '192.168.1.103', file: 'test.docx', reason: '손상 파일' },
-      { date: today, time: '09:12', emp: '192.168.1.102', file: 'data.xlsx', reason: '빈 파일' },
-      { date: today, time: '16:30', emp: '192.168.1.101', file: 'report.pdf', reason: '지원 불가 형식' },
-      { date: today, time: '13:15', emp: '192.168.1.104', file: 'info.txt', reason: '액세스 거부' },
-      { date: today, time: '08:45', emp: '192.168.1.105', file: 'backup.zip', reason: '암호화 파일' },
-      { date: today, time: '07:30', emp: '192.168.1.108', file: 'data2.xlsx', reason: '권한 없음' },
-      { date: today, time: '17:15', emp: '192.168.1.109', file: 'report2.pdf', reason: '파일 손상' }
-    ];
-    return failures.sort((a, b) => b.time.localeCompare(a.time));
+    const commonData = window.COMMON_DATA || [];
+    const failures = commonData
+      .filter(row => row.status === '실패')
+      .map(row => ({
+        date: row.date.split(' ')[0],
+        time: row.date.split(' ')[1].substring(0, 5),
+        emp: row.emp,
+        file: row.filename || '-',
+        reason: row.reason,
+        fullDate: row.date
+      }))
+      .sort((a, b) => new Date(b.fullDate) - new Date(a.fullDate));
+    return failures;
   };
 
   // 탐지 실패 목록 렌더링
@@ -255,9 +322,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const now = new Date();
   const timeStr = now.getFullYear() + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ' 기준';
   const contribTimestamp = document.getElementById('contribTimestamp');
+  const typeTimestamp = document.getElementById('typeTimestamp');
   const suspiciousTimestamp = document.getElementById('suspiciousTimestamp');
   const failureTimestamp = document.getElementById('failureTimestamp');
   if(contribTimestamp) contribTimestamp.textContent = timeStr;
+  if(typeTimestamp) typeTimestamp.textContent = timeStr;
   if(suspiciousTimestamp) suspiciousTimestamp.textContent = timeStr;
   if(failureTimestamp) failureTimestamp.textContent = timeStr;
 
@@ -272,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
           localStorage.setItem('filterEmp', item.name);
-          location.href = 'detection_details.html';
+          location.href = 'user_type.html';
         });
         tr.innerHTML = `<td>${item.name}</td><td>${item.count}</td><td>${highRiskPercent}%</td>`;
       } else {
@@ -323,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedSource = filteredSourceStats[index].source;
             const filterValue = Array.isArray(selectedSource) ? selectedSource.join('/') : selectedSource;
             localStorage.setItem('filterSource', filterValue);
-            location.href = 'detection_type.html';
+            location.href = 'detection_details.html';
           }
         }
       },
@@ -331,25 +400,82 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // 통계 카드 데이터 업데이트
-  const todayTypeStats = [
-    { type: "전화번호", count: 10, isHighRisk: false, validCount: 9 },
-    { type: "이메일", count: 8, isHighRisk: false, validCount: 7 },
-    { type: "주민등록번호", count: 5, isHighRisk: true, validCount: 4 },
-    { type: "카드번호", count: 3, isHighRisk: true, validCount: 3 },
-    { type: "IP", count: 2, isHighRisk: false, validCount: 2 }
-  ];
-  const todayTotalStats = todayTypeStats.reduce((a,b)=>a+b.count,0);
-  const highRiskCount = todayTypeStats.filter(item => item.isHighRisk).reduce((a,b)=>a+b.count,0);
-  const validCount = todayTypeStats.reduce((a,b)=>a+b.validCount,0);
-  const highRiskRatio = ((highRiskCount / todayTotalStats) * 100).toFixed(1);
-  const validRatio = ((validCount / todayTotalStats) * 100).toFixed(1);
-  
-  const stats = {
-    total: { num: todayTotalStats, delta: 12.5 },
-    highRisk: { num: parseFloat(highRiskRatio), delta: 3.2 },
-    valid: { num: parseFloat(validRatio), delta: 5.1 }
+  // 전날 대비 증감률 계산
+  const calculateDeltaStats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    const commonData = window.COMMON_DATA || [];
+    const highRiskTypes = ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호', '계좌번호', '카드번호'];
+    
+    // 오늘 데이터
+    const todayAllData = commonData.filter(d => d.date.split(' ')[0] === today);
+    const todaySuccessData = todayAllData.filter(d => d.status === '성공');
+    const todayDetections = [];
+    const todayValidationDetections = [];
+    const validationTypes = ['주민등록번호', '카드번호'];
+    
+    todaySuccessData.forEach(row => {
+      (row.types || []).forEach(type => {
+        todayDetections.push({ type });
+        
+        if (validationTypes.includes(type) && row.validation && row.validation[type]) {
+          todayValidationDetections.push({
+            type: type,
+            validated: row.validation[type] === 'valid'
+          });
+        }
+      });
+    });
+    
+    // 어제 데이터
+    const yesterdayAllData = commonData.filter(d => d.date.split(' ')[0] === yesterdayStr);
+    const yesterdaySuccessData = yesterdayAllData.filter(d => d.status === '성공');
+    const yesterdayDetections = [];
+    const yesterdayValidationDetections = [];
+    
+    yesterdaySuccessData.forEach(row => {
+      (row.types || []).forEach(type => {
+        yesterdayDetections.push({ type });
+        
+        if (validationTypes.includes(type) && row.validation && row.validation[type]) {
+          yesterdayValidationDetections.push({
+            type: type,
+            validated: row.validation[type] === 'valid'
+          });
+        }
+      });
+    });
+    
+    // 통계 계산
+    const todayTotal = todayAllData.length; // 전체 레코드 수
+    const yesterdayTotal = yesterdayAllData.length; // 전체 레코드 수
+    const todayDetectionCount = todayDetections.length; // 실제 탐지된 개인정보 건수
+    const yesterdayDetectionCount = yesterdayDetections.length; // 실제 탐지된 개인정보 건수
+    const totalDelta = yesterdayTotal > 0 ? ((todayTotal - yesterdayTotal) / yesterdayTotal * 100) : 0;
+    
+    const todayHighRisk = todayDetections.filter(d => highRiskTypes.includes(d.type)).length;
+    const yesterdayHighRisk = yesterdayDetections.filter(d => highRiskTypes.includes(d.type)).length;
+    const todayHighRiskRatio = todayDetectionCount > 0 ? (todayHighRisk / todayDetectionCount * 100) : 0;
+    const yesterdayHighRiskRatio = yesterdayDetectionCount > 0 ? (yesterdayHighRisk / yesterdayDetectionCount * 100) : 0;
+    const highRiskDelta = yesterdayHighRiskRatio > 0 ? (todayHighRiskRatio - yesterdayHighRiskRatio) : 0;
+    
+    const todayValid = todayValidationDetections.filter(d => d.validated).length;
+    const yesterdayValid = yesterdayValidationDetections.filter(d => d.validated).length;
+    const todayValidRatio = todayValidationDetections.length > 0 ? (todayValid / todayValidationDetections.length * 100) : 0;
+    const yesterdayValidRatio = yesterdayValidationDetections.length > 0 ? (yesterdayValid / yesterdayValidationDetections.length * 100) : 0;
+    const validDelta = yesterdayValidRatio > 0 ? (todayValidRatio - yesterdayValidRatio) : 0;
+    
+    return {
+      total: { num: todayTotal, delta: Math.round(totalDelta * 10) / 10 },
+      highRisk: { num: Math.round(todayHighRiskRatio * 10) / 10, delta: Math.round(highRiskDelta * 10) / 10 },
+      valid: { num: Math.round(todayValidRatio * 10) / 10, delta: Math.round(validDelta * 10) / 10 }
+    };
   };
+  
+  const stats = calculateDeltaStats();
   
   const totalDelta = document.getElementById('totalDelta');
   if(totalDelta) {

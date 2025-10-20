@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="assets/css/common.css">
 <link rel="stylesheet" href="assets/page-css/main.page.css">
 <script src="assets/js/common.js"></script>
+<script src="assets/js/data.js"></script>
 <script src="assets/page-js/main.page.js"></script>
 </head>
 <body>
@@ -74,8 +75,8 @@
         </div>
         <div class="panel user-panel">
           <div class="user-panel-header">
-            <h2>금일 탐지 유형 (TOP 5)</h2>
-            <p class="text-xs text-gray-700">총 건수: <strong><span id="todayTotal">0</span></strong></p>
+            <h2>탐지 유형 (TOP 5)</h2>
+            <p class="text-xs text-gray-700" id="typeTimestamp"></p>
           </div>
           <div class="user-panel-content">
             <table class="tbl" id="todayTypeTable">

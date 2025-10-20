@@ -1,5 +1,5 @@
-/* ====== 샘플 데이터 ====== */
-const DATA = [
+/* ====== 공통 데이터 사용 ====== */
+const DATA = window.COMMON_DATA || [
   {emp:'192.168.1.100', status:'실패', date:'2025-10-15 14:09:47', types:[], source:'DOC', filename:'analysis.doc', reason:'빈 파일'},
   {emp:'192.168.1.101', status:'성공', date:'2025-10-15 14:56:35', types:['IP'], source:'텍스트', filename:'-', reason:'', suspicious: true},
   {emp:'192.168.1.102', status:'성공', date:'2025-10-15 13:52:22', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
@@ -267,19 +267,29 @@ function openDetailModal(row) {
   const validationTypes = ['주민등록번호', '카드번호'];
   const hasValidationType = row.types && row.types.some(type => validationTypes.includes(type));
   
-  if (hasValidationType) {
+  if (hasValidationType && row.validation) {
     const validationResults = row.types.filter(type => validationTypes.includes(type))
       .map(type => {
-        const status = row.status === '성공' ? '성공' : '실패';
-        const bgColor = status === '성공' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-        const textColor = status === '성공' ? '#059669' : '#dc2626';
-        return `<span style="display:inline-block;background:${bgColor};color:${textColor};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}-${status}</span>`;
-      }).join('');
-    validationEl.innerHTML = validationResults;
+        const validationStatus = row.validation[type];
+        if (validationStatus) {
+          const isValid = validationStatus === 'valid';
+          const bgColor = isValid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+          const textColor = isValid ? '#059669' : '#dc2626';
+          const statusText = isValid ? '성공' : '실패';
+          return `<span style="display:inline-block;background:${bgColor};color:${textColor};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}: ${statusText}</span>`;
+        }
+        return null;
+      }).filter(Boolean).join('');
+    
+    if (validationResults) {
+      validationEl.innerHTML = validationResults;
+      validationSection.style.display = 'block';
+    } else {
+      validationSection.style.display = 'none';
+    }
   } else {
-    validationEl.textContent = '-';
+    validationSection.style.display = 'none';
   }
-  validationSection.style.display = 'block';
   
   // 개인 식별 의심 설정
   const suspiciousEl = $('#detail-suspicious');
@@ -351,10 +361,12 @@ function adjustTableFontSize() {
       // 상태와 개인정보 유형 칩 내부 텍스트 폰트 크기 조절
       if (index % 7 === 0) { // 상태 열
         const statusSpan = td.querySelector('.status');
-        if (statusSpan) statusSpan.style.fontSize = fontSize;
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        if (statusSpan) statusSpan.style.fontSize = chipFontSize;
       } else if (index % 7 === 3) { // 개인정보 유형 열
         const chips = td.querySelectorAll('.chip');
-        chips.forEach(chip => chip.style.fontSize = fontSize);
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        chips.forEach(chip => chip.style.fontSize = chipFontSize);
       }
     });
   }
@@ -464,8 +476,10 @@ function renderChart(rows){
         x: {
           grid: { display: false },
           ticks: {
-            font: { size: 12 },
-            color: '#000000'
+            font: { size: window.innerWidth < 768 ? 8 : window.innerWidth < 1024 ? 10 : 12 },
+            color: '#000000',
+            maxRotation: window.innerWidth < 768 ? 45 : 0,
+            autoSkip: false
           }
         }
       }
@@ -480,7 +494,8 @@ function renderChart(rows){
       
       const ctx = chart.ctx;
       ctx.save();
-      ctx.font = '12px Arial';
+      const fontSize = window.innerWidth < 768 ? 8 : window.innerWidth < 1024 ? 10 : 12;
+      ctx.font = `${fontSize}px Arial`;
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       
@@ -523,6 +538,7 @@ function setTodayDate() {
 document.addEventListener('DOMContentLoaded', function() {
   const filterDate = localStorage.getItem('filterDate');
   const filterStatus = localStorage.getItem('filterStatus');
+  const filterEmp = localStorage.getItem('filterEmp');
   
   if (filterDate) {
     $('#from').value = filterDate;
@@ -542,6 +558,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (filterStatus) {
     $('#status').value = filterStatus;
     localStorage.removeItem('filterStatus');
+  }
+  
+  if (filterEmp) {
+    $('#q').value = filterEmp;
+    localStorage.removeItem('filterEmp');
   }
   
   // 필터 적용
@@ -581,7 +602,12 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 화면 크기 변경 시 차트 다시 그리기 및 테이블 폰트 조절
   window.addEventListener('resize', () => {
-    if(barChart) barChart.resize();
+    if(barChart) {
+      barChart.destroy();
+      setTimeout(() => {
+        applyFilters();
+      }, 100);
+    }
     adjustTableFontSize();
   });
 });

@@ -1,7 +1,7 @@
 // personal_information_type.html 전용 JavaScript
 
-/* 샘플 데이터 (IP 포함) */
-const DATA = [
+/* 공통 데이터 사용 */
+const DATA = window.COMMON_DATA || [
   {emp:'192.168.1.100', status:'실패', date:'2025-10-15 11:25:55', types:[], source:'DOC', filename:'analysis.doc', reason:'빈 파일'},
   {emp:'192.168.1.101', status:'성공', date:'2025-10-15 10:13:43', types:['IP'], source:'텍스트', filename:'-', reason:'', suspicious: true},
   {emp:'192.168.1.102', status:'성공', date:'2025-10-15 18:00:39', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
@@ -154,7 +154,8 @@ const PII_GROUPS = {
   '신원 정보': ['이름', '생년월일'],
   '위치 정보': ['IP', '직책', '조직/기관'],
   '신분증/증명서': ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호'],
-  '금융 정보': ['계좌번호', '카드번호']
+  '금융 정보': ['계좌번호', '카드번호'],
+  '생체 정보': ['얼굴이미지']
 };
 
 const GROUP_COLORS = {
@@ -162,7 +163,8 @@ const GROUP_COLORS = {
   '신원 정보': 'rgba(6,182,212,0.15)',
   '위치 정보': 'rgba(245,158,11,0.15)',
   '신분증/증명서': 'rgba(236,72,153,0.15)',
-  '금융 정보': 'rgba(139,92,246,0.15)'
+  '금융 정보': 'rgba(139,92,246,0.15)',
+  '생체 정보': 'rgba(34,197,94,0.15)'
 };
 
 const GROUP_TEXT_COLORS = {
@@ -170,7 +172,8 @@ const GROUP_TEXT_COLORS = {
   '신원 정보': '#0891b2',
   '위치 정보': '#d97706',
   '신분증/증명서': '#be185d',
-  '금융 정보': '#7c3aed'
+  '금융 정보': '#7c3aed',
+  '생체 정보': '#15803d'
 };
 
 function getTypeGroup(type) {
@@ -256,19 +259,29 @@ function openDetailModal(row) {
   const validationTypes = ['주민등록번호', '카드번호'];
   const hasValidationType = row.types && row.types.some(type => validationTypes.includes(type));
   
-  if (hasValidationType) {
+  if (hasValidationType && row.validation) {
     const validationResults = row.types.filter(type => validationTypes.includes(type))
       .map(type => {
-        const status = row.status === '성공' ? '성공' : '실패';
-        const bgColor = status === '성공' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-        const textColor = status === '성공' ? '#059669' : '#dc2626';
-        return `<span style="display:inline-block;background:${bgColor};color:${textColor};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}-${status}</span>`;
-      }).join('');
-    validationEl.innerHTML = validationResults;
+        const validationStatus = row.validation[type];
+        if (validationStatus) {
+          const isValid = validationStatus === 'valid';
+          const bgColor = isValid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
+          const textColor = isValid ? '#059669' : '#dc2626';
+          const statusText = isValid ? '성공' : '실패';
+          return `<span style="display:inline-block;background:${bgColor};color:${textColor};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}: ${statusText}</span>`;
+        }
+        return null;
+      }).filter(Boolean).join('');
+    
+    if (validationResults) {
+      validationEl.innerHTML = validationResults;
+      validationSection.style.display = 'block';
+    } else {
+      validationSection.style.display = 'none';
+    }
   } else {
-    validationEl.textContent = '-';
+    validationSection.style.display = 'none';
   }
-  validationSection.style.display = 'block';
   
   // 개인 식별 의심 설정
   const suspiciousEl = $('#detail-suspicious');
@@ -340,10 +353,12 @@ function adjustTableFontSize() {
       // 상태와 개인정보 유형 칩 내부 텍스트 폰트 크기 조절
       if (index % 7 === 0) { // 상태 열
         const statusSpan = td.querySelector('.status');
-        if (statusSpan) statusSpan.style.fontSize = fontSize;
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        if (statusSpan) statusSpan.style.fontSize = chipFontSize;
       } else if (index % 7 === 3) { // 개인정보 유형 열
         const chips = td.querySelectorAll('.chip');
-        chips.forEach(chip => chip.style.fontSize = fontSize);
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        chips.forEach(chip => chip.style.fontSize = chipFontSize);
       }
     });
   }
@@ -383,10 +398,21 @@ function renderRows(rows){
 let barChartInstance = null;
 
 function renderChart(rows){
-  const keys = ["이름","전화번호","이메일","생년월일","주민등록번호","외국인등록번호","운전면허번호","여권번호","계좌번호","카드번호","IP","직책","조직/기관"];
+  const keys = ["이름","전화번호","이메일","생년월일","주민번호","외국인","운전번호","여권번호","계좌","카드","IP","직책","조직/기관","얼굴이미지"];
+  const keyMapping = {
+    "주민등록번호": "주민번호",
+    "외국인등록번호": "외국인", 
+    "운전면허번호": "운전번호",
+    "계좌번호": "계좌",
+    "카드번호": "카드",
+    "얼굴이미지": "얼굴"
+  };
   const counts = Object.fromEntries(keys.map(k=>[k,0]));
   rows.forEach(r=>{
-    if (r.status === '성공') (r.types||[]).forEach(t => { if (counts.hasOwnProperty(t)) counts[t]++; });
+    if (r.status === '성공') (r.types||[]).forEach(t => { 
+      const mappedKey = keyMapping[t] || t;
+      if (counts.hasOwnProperty(mappedKey)) counts[mappedKey]++; 
+    });
   });
 
   const data = keys.map(k=>counts[k]);
@@ -396,7 +422,7 @@ function renderChart(rows){
   const filteredData = [];
   const filteredLabels = [];
   const filteredColors = [];
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#06b6d4', '#8b5cf6', '#f59e0b', '#ef4444'];
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#22c55e', '#9333ea', '#0ea5e9', '#eab308', '#ef4444', '#14b8a6'];
   
   for(let i = 0; i < keys.length; i++) {
     if(data[i] > 0) {
@@ -451,10 +477,11 @@ function renderChart(rows){
         x: {
           grid: { display: false },
           ticks: {
-            font: { size: 12 },
+            font: { size: window.innerWidth < 768 ? 8 : window.innerWidth < 1024 ? 10 : 12 },
             color: '#000000',
             padding: 0,
-            maxRotation: 0
+            maxRotation: window.innerWidth < 768 ? 45 : 0,
+            autoSkip: false
           }
         }
       },
@@ -477,7 +504,8 @@ function renderChart(rows){
       
       const ctx = chart.ctx;
       ctx.save();
-      ctx.font = '12px Arial';
+      const fontSize = window.innerWidth < 768 ? 8 : window.innerWidth < 1024 ? 10 : 12;
+      ctx.font = `${fontSize}px Arial`;
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       
@@ -549,7 +577,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // 화면 크기 변경 시 차트 업데이트 및 테이블 폰트 조절
 window.addEventListener('resize', () => {
   if (barChartInstance) {
-    barChartInstance.resize();
+    barChartInstance.destroy();
+    setTimeout(() => {
+      applyFilters();
+    }, 100);
   }
   adjustTableFontSize();
 });
