@@ -88,15 +88,16 @@ document.addEventListener('DOMContentLoaded', function() {
     todayData.forEach(row => {
       if (row.status === '성공' && row.emp) {
         if (!userStats[row.emp]) {
-          userStats[row.emp] = { count: 0, highRisk: 0 };
+          userStats[row.emp] = { count: 0, highRisk: 0, totalTypes: 0 };
         }
-        userStats[row.emp].count += (row.types || []).length;
+        userStats[row.emp].count += 1;
         userStats[row.emp].highRisk += (row.types || []).filter(type => highRiskTypes.includes(type)).length;
+        userStats[row.emp].totalTypes += (row.types || []).length;
       }
     });
     
     return Object.entries(userStats)
-      .map(([name, stats]) => ({ name, count: stats.count, highRisk: stats.highRisk }))
+      .map(([name, stats]) => ({ name, count: stats.count, highRisk: stats.highRisk, totalTypes: stats.totalTypes }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
   };
@@ -136,6 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   const sourceStats = calculateSourceStats();
   const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
+  
+  // 총 건수 업데이트
+  const totalSourcesEl = document.getElementById('totalSources');
+  if(totalSourcesEl) totalSourcesEl.textContent = totalSources;
 
   // 오늘 날짜 기준 금일 데이터 추출
   const generateTodayDetections = () => {
@@ -350,10 +355,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const typeTimestamp = document.getElementById('typeTimestamp');
   const suspiciousTimestamp = document.getElementById('suspiciousTimestamp');
   const failureTimestamp = document.getElementById('failureTimestamp');
+  const sourceTimestamp = document.getElementById('sourceTimestamp');
   if(contribTimestamp) contribTimestamp.textContent = timeStr;
   if(typeTimestamp) typeTimestamp.textContent = timeStr;
   if(suspiciousTimestamp) suspiciousTimestamp.textContent = timeStr;
   if(failureTimestamp) failureTimestamp.textContent = timeStr;
+  if(sourceTimestamp) sourceTimestamp.textContent = timeStr;
 
   function getLabelFontSize() {
     const w = window.innerWidth;
@@ -367,7 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const tr = document.createElement('tr');
       if(i < contribData.length) {
         const item = contribData[i];
-        const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
+        const highRiskPercent = Math.round((item.highRisk / item.totalTypes) * 100);
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
           localStorage.setItem('filterEmp', item.name);

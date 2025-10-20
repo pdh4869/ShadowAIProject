@@ -32,7 +32,7 @@
     <section class="grid indicators" id="cards">
       <div class="panel" data-detail="total">
         <h2 class="card-title">총 탐지 수</h2>
-        <div class="small">기간 내 PII 탐지 건수</div>
+        <div class="small">금일 PII 탐지 건수</div>
         <div class="ind-val"><div class="num" id="totalNum">0</div><div class="delta" id="totalDelta">0%</div></div>
       </div>
       <div class="panel" data-detail="highrisk">
@@ -89,7 +89,11 @@
 
       <section class="grid grid-cols-2 gap-3 mb-4">
         <div class="panel chart-panel">
-          <h2>탐지 유형별 분포</h2>
+          <div class="info-panel-header">
+            <h2>탐지 유형별 분포</h2>
+            <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSources">0</span></strong></p>
+            <p class="text-xs text-gray-700" id="sourceTimestamp"></p>
+          </div>
           <div id="barChartContainer" class="chart-container"><canvas id="chartSourceBar"></canvas></div>
         </div>
         <div id="rightColumn" class="right-column">
