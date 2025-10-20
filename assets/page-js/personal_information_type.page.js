@@ -407,6 +407,14 @@ function renderChart(rows){
     "카드번호": "카드",
     "얼굴이미지": "얼굴"
   };
+  const LABEL_TO_ORIGINAL = {
+    '주민번호': '주민등록번호',
+    '외국인':   '외국인등록번호',
+    '운전번호': '운전면허번호',
+    '계좌':     '계좌번호',
+    '카드':     '카드번호',
+    '얼굴':     '얼굴이미지'
+  };
   const counts = Object.fromEntries(keys.map(k=>[k,0]));
   rows.forEach(r=>{
     if (r.status === '성공') (r.types||[]).forEach(t => { 
@@ -489,7 +497,8 @@ function renderChart(rows){
         if (elements.length > 0) {
           const index = elements[0].index;
           const selectedType = filteredLabels[index];
-          $('#type').value = selectedType;
+          const originalType = LABEL_TO_ORIGINAL[selectedType] || selectedType;
+          $('#type').value = originalType;
           applyFilters();
         }
       }

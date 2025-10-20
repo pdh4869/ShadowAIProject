@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
   };
   const trendData = generateTrendData();
 
-  // 시간 추이 그래프
+  // 일별 추이 그래프
   const trendChartEl = document.getElementById("trendChart");
   if(trendChartEl) {
     new Chart(trendChartEl, {
@@ -120,9 +120,9 @@ document.addEventListener('DOMContentLoaded', function() {
     return [
       { source: '텍스트', count: sourceMap['텍스트'] },
       { source: 'PDF', count: sourceMap['PDF'] },
-      { source: 'DOC/DOCX', count: sourceMap['DOCX'] + sourceMap['DOC'] },
-      { source: 'HWP/HWPX', count: sourceMap['HWPX'] + sourceMap['HWP'] },
-      { source: 'XLS/XLSX', count: sourceMap['XLSX'] + sourceMap['XLS'] },
+      { source: 'DOCX/DOC', count: sourceMap['DOCX'] + sourceMap['DOC'] },
+      { source: 'HWPX/HWP', count: sourceMap['HWPX'] + sourceMap['HWP'] },
+      { source: 'XLSX/XLS', count: sourceMap['XLSX'] + sourceMap['XLS'] },
       { source: 'PPTX', count: sourceMap['PPTX'] },
       { source: 'TXT', count: sourceMap['TXT'] },
       { source: 'PNG', count: sourceMap['PNG'] },
@@ -252,12 +252,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const suspicious = generateSuspiciousDetections();
     const suspiciousList = document.getElementById('suspiciousList');
     const totalSuspicious = document.getElementById('totalSuspicious');
+    const displayCount = getDisplayCount();
     
     if(totalSuspicious) totalSuspicious.textContent = suspicious.length;
     
     if(suspiciousList) {
       suspiciousList.innerHTML = '';
-      suspicious.slice(0, 8).forEach(item => {
+      suspicious.slice(0, displayCount).forEach(item => {
         const li = document.createElement('li');
         li.style.listStyle = 'none';
         li.style.lineHeight = '16px';
@@ -291,17 +292,41 @@ document.addEventListener('DOMContentLoaded', function() {
     return failures;
   };
 
+  // 화면 크기에 따른 표시 개수 계산
+  function getDisplayCount() {
+    const screenWidth = window.innerWidth;
+    
+    if (screenWidth < 1200) {
+      return 5;
+    } else {
+      return 8;
+    }
+  }
+
+  function getFailureDisplayCount() {
+    const screenWidth = window.innerWidth;
+    
+    if (screenWidth < 900) {
+      return 3;
+    } else if (screenWidth < 1200) {
+      return 5;
+    } else {
+      return 8;
+    }
+  }
+
   // 탐지 실패 목록 렌더링
   function renderFailureList() {
     const failures = generateTodayFailures();
     const failureList = document.getElementById('failureList');
     const totalFailures = document.getElementById('totalFailures');
+    const displayCount = getFailureDisplayCount();
     
     if(totalFailures) totalFailures.textContent = failures.length;
     
     if(failureList) {
       failureList.innerHTML = '';
-      failures.slice(0, 8).forEach(failure => {
+      failures.slice(0, displayCount).forEach(failure => {
         const li = document.createElement('li');
         li.style.listStyle = 'none';
         li.style.lineHeight = '16px';
@@ -330,6 +355,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if(suspiciousTimestamp) suspiciousTimestamp.textContent = timeStr;
   if(failureTimestamp) failureTimestamp.textContent = timeStr;
 
+  function getLabelFontSize() {
+    const w = window.innerWidth;
+    return w < 768 ? 8 : (w < 1024 ? 10 : 12);
+  }
+
   // 사용자 기여도 테이블 생성 (IP)
   const tbody = document.getElementById("contribTbody");
   if(tbody) {
@@ -357,13 +387,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const filteredSourceStats = sourceStats.filter(s => s.count > 0);
     const filteredTotal = filteredSourceStats.reduce((sum, s) => sum + s.count, 0);
     
+    const sortedStats = [...filteredSourceStats].sort(
+      (a, b) => (b.count - a.count) || a.source.localeCompare(b.source)
+    );
+
     new Chart(barChartEl, {
       type: "bar",
       data: { 
-        labels: filteredSourceStats.map(s => s.source), 
+        labels: sortedStats.map(s => s.source),
         datasets: [{ 
-          data: filteredSourceStats.map(s => s.count), 
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'].slice(0, filteredSourceStats.length), 
+          data: sortedStats.map(s => s.count),
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'].slice(0, sortedStats.length),
           barThickness: 'flex', 
           categoryPercentage: 0.8 
         }] 
@@ -378,13 +412,13 @@ document.addEventListener('DOMContentLoaded', function() {
           datalabels: { display: false }
         },
         scales: { 
-          y: { beginAtZero: true, grid: { display: false }, ticks: { display: true, autoskip: false, font: { size: 8 }, padding: 0, color: '#000000' }, border: { display: true, tickLength: 0 } }, 
-          x: { display: false, grid: { display: false }, ticks: { font: { size: 10 }, padding: 0, maxRotation: 0 } } 
+          y: { beginAtZero: true, grid: { display: false }, ticks: { display: true, autoskip: false, font: { size: getLabelFontSize() }, padding: 0, color: '#000000' }, border: { display: true, tickLength: 0 } }, 
+          x: { display: true, drawBorder: true, lineWidth: 1, grid: { display: true }, ticks: { precision: 0, font: { size: getLabelFontSize() }, padding: 0, maxRotation: 0 } } 
         },
         onClick: (event, elements) => {
           if (elements.length > 0) {
             const index = elements[0].index;
-            const selectedSource = filteredSourceStats[index].source;
+            const selectedSource = sortedStats[index].source;
             const filterValue = Array.isArray(selectedSource) ? selectedSource.join('/') : selectedSource;
             localStorage.setItem('filterSource', filterValue);
             location.href = 'detection_details.html';
@@ -489,4 +523,10 @@ document.addEventListener('DOMContentLoaded', function() {
     validDelta.textContent = (stats.valid.delta > 0 ? '+' : '') + stats.valid.delta + '%';
     validDelta.className = 'delta ' + (stats.valid.delta > 0 ? 'ok' : 'bad');
   }
+
+  // 화면 크기 변경 시 목록 재렌더링
+  window.addEventListener('resize', function() {
+    renderSuspiciousList();
+    renderFailureList();
+  });
 });

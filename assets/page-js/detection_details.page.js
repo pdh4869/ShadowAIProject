@@ -15,14 +15,23 @@ function setTodayDate() {
 document.addEventListener('DOMContentLoaded', function() {
   const filterSource = localStorage.getItem('filterSource');
   const filterStatus = localStorage.getItem('filterStatus');
+  const filterDate = localStorage.getItem('filterDate');
   
-  setTodayDate();
-  // 오늘 범위 표시
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
-  // 오늘 버튼 활성화
-  document.querySelector('.pill[data-range="today"]').classList.add('active');
+  if (filterDate) {
+    $('#from').value = filterDate;
+    $('#to').value = filterDate;
+    $('#quickDesc').textContent = `· 선택된 날짜: ${filterDate}`;
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+    localStorage.removeItem('filterDate');
+  } else {
+    setTodayDate();
+    // 오늘 범위 표시
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
+    // 오늘 버튼 활성화
+    document.querySelector('.pill[data-range="today"]').classList.add('active');
+  }
   
   if (filterSource) {
     $('#source').value = filterSource;
