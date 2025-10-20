@@ -16,12 +16,12 @@
 <body>
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span>개인정보 탐직 대시보드</span></div>
+    <div class="page-title"><span>개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
-        <a href="#">탐지 현황</a>
-        <a href="#">탐직 유형</a>
-        <a href="#">개인정보 유형</a>
+        <a href="detection_details.html">탐지 현황</a>
+        <a href="personal_information_type.html">개인정보 유형</a>
+        <a href="user_type.html">사용자별 현황</a>
       </nav>
     </div>
 
@@ -55,7 +55,7 @@
           </select>
         </div>
         <div class="field">
-          <label for="source">탐직 유형</label>
+          <label for="source">탐지 유형</label>
           <select id="source">
             <option value="">전체</option>
             <option>텍스트</option><option>PDF</option><option>DOCX/DOC</option><option>XLSX/XLS</option><option>PPTX</option><option>HWPX/HWP</option><option>TXT</option>
@@ -85,7 +85,7 @@
     </section>
 
     <section class="card chart-card" aria-label="개인정보 유형 그래프">
-      <h2 class="chart-title">개인정보 유형별 분포</h2>
+      <h2 class="chart-title">개인정보 유형 분포</h2>
       <div class="chart-height">
         <canvas id="barChart"></canvas>
       </div>
@@ -195,7 +195,7 @@
                 <div id="detail-filename" class="break-all">-</div>
               </div>
               <div class="detail-item padded fit-content">
-                <div>개인정보 유형</div>
+                <div>탐지 결과</div>
                 <div id="detail-types">-</div>
               </div>
               <div class="detail-item padded fit-content" id="validation-section">

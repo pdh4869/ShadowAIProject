@@ -13,6 +13,7 @@
 .btn{ padding:10px 14px; border:1px solid var(--border); background:var(--brand); color:#fff; border-radius:10px; cursor:pointer; font-weight:700; white-space:nowrap; }
 .btn.primary{ background:#F9F7F7; border-color:var(--border); color:var(--text); }
 .btn.danger{ background:#F9F7F7; color:var(--fail); border-color:var(--fail); }
+.modal .btn.danger{ background:#ef4444; color:white; border-color:#ef4444; }
 .btn:disabled{ opacity:.5; cursor:not-allowed; }
 .tools{ display:flex; gap:8px; align-items:center; }
 .search-wrapper{ display:flex; gap:8px; align-items:center; }

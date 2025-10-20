@@ -242,9 +242,10 @@ function openDetailModal(row) {
   // 개인정보 유형 칩 스타일링
   const typesEl = $('#detail-types');
   if (row.types && row.types.length > 0) {
-    typesEl.innerHTML = row.types.map(type => 
-      `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}</span>`
-    ).join('');
+    typesEl.innerHTML = row.types.map(type => {
+      const count = row.typeCounts ? row.typeCounts[type] || 1 : Math.floor(Math.random() * 5) + 1;
+      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${type}: ${count}</span>`;
+    }).join('');
   } else {
     typesEl.textContent = '-';
   }
@@ -555,10 +556,15 @@ window.addEventListener('resize', () => {
 
 
 
-// 네비게이션 활성화
+// 네비게이션 활성화 및 클릭 이벤트
 document.addEventListener('DOMContentLoaded', function() {
   const navLinks = document.querySelectorAll('.pm-nav a');
-  navLinks[2].classList.add('active'); // 개인정보 유형별 현황 버튼 활성화
+  navLinks[1].classList.add('active'); // 개인정보 유형 버튼 활성화
+  
+  // 네비게이션 클릭 이벤트
+  navLinks[0].addEventListener('click', (e) => { e.preventDefault(); location.href = 'detection_details.html'; });
+  navLinks[1].addEventListener('click', (e) => { e.preventDefault(); location.href = 'personal_information_type.html'; });
+  navLinks[2].addEventListener('click', (e) => { e.preventDefault(); location.href = 'user_type.html'; });
 });
 
 /* 모달 이벤트 리스너 */

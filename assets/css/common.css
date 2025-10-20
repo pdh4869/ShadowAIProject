@@ -210,6 +210,7 @@ td.center{ text-align:center; }
 .chart-container{ position:relative; width:100%; height:100%; max-width:400px; max-height:400px; display:flex; align-items:center; justify-content:center; }
 .tip-style{ margin-top:10px; }
 .btn-brand{ background-color:#3F72AF; color:white; }
+.btn.btn-brand{ background:#3F72AF !important; color:white !important; }
 
 /* 공통 인라인 스타일 클래스 */
 .chart-height{ height:260px; }

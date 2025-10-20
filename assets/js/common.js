@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 네비게이션 메뉴 클릭 이벤트
   const navLinks = document.querySelectorAll('.pm-nav a');
   navLinks.forEach((link, index) => {
-    const urls = ['detection_details.html', 'detection_type.html', 'personal_information_type.html'];
+    const urls = ['detection_details.html', 'personal_information_type.html', 'user_type.html'];
     if (urls[index]) {
       link.addEventListener('click', (e) => {
         e.preventDefault();

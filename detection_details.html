@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>탐지 현황 상세</title>
-
+  <title>탐지 유형 상세</title>
   
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="assets/css/common.css">
 <link rel="stylesheet" href="assets/page-css/detection_details.page.css">
 <script src="assets/js/common.js"></script>
@@ -14,14 +14,13 @@
 </head>
 <body>
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
-
   <div class="pm-container">
     <div class="page-title"><span>개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
-        <a href="#">탐지 현황</a>
-        <a href="#">탐지 유형</a>
-        <a href="#">개인정보 유형</a>
+        <a href="detection_details.html">탐지 현황</a>
+        <a href="personal_information_type.html">개인정보 유형</a>
+        <a href="user_type.html">사용자별 현황</a>
       </nav>
     </div>
 
@@ -34,7 +33,6 @@
         <button class="pill" data-range="lastmonth">지난 달</button>
         <span class="muted quick-desc" id="quickDesc"></span>
       </div>
-
       <div class="filters">
         <div class="field">
           <label for="from">시작 일자</label>
@@ -70,11 +68,10 @@
           </div>
           <div class="field search">
             <label for="q">검색(IP/OS/컴퓨터이름/LLM/파일명)</label>
-            <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, secret.pdf..." />
+            <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, report.pdf..." />
           </div>
         </div>
       </div>
-
       <div class="toolbar">
         <div class="muted" id="summary">총 0건</div>
         <div class="actions">
@@ -84,19 +81,26 @@
       </div>
     </section>
 
-    <!-- 목록 카드 -->
+    <section class="card chart-card" aria-label="탐지 유형 그래프">
+      <h2 class="chart-title">탐지 유형 분포</h2>
+      <div class="chart-height">
+        <canvas id="barChart"></canvas>
+      </div>
+    </section>
+
+    <!-- 목록: 요청한 순서대로 열 구성 -->
     <section class="card mt-16" aria-label="목록">
       <div class="table-wrap">
         <table aria-describedby="summary">
           <thead>
             <tr>
-              <th class="table-header-status">상태</th>
-              <th class="table-header-date">일자</th>
-              <th class="table-header-ip">IP</th><!-- 추가 열 -->
-              <th class="table-header-type">개인정보 유형</th>
-              <th class="table-header-source">소스 유형</th>
-              <th class="table-header-file">파일명</th>
-              <th class="table-header-reason">실패 사유</th>
+              <th class="table-header-100">상태</th>
+              <th class="table-header-120">일자</th>
+              <th class="table-header-110">IP</th><!-- 추가 열 -->
+              <th class="table-header-220">개인정보 유형</th>
+              <th class="table-header-140">탐지 유형</th>
+              <th class="table-header-center">파일명</th>
+              <th class="table-header-center">실패 사유</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -188,7 +192,7 @@
                 <div id="detail-filename" class="break-all">-</div>
               </div>
               <div class="detail-item padded fit-content">
-                <div>개인정보 유형</div>
+                <div>탐지 결과</div>
                 <div id="detail-types">-</div>
               </div>
               <div class="detail-item padded fit-content" id="validation-section">
@@ -210,11 +214,11 @@
     </div>
   </div>
 
-<!-- (선택) 우측 상단 유저 박스가 있다면 유지 -->
+<!-- (선택) 우측 상단 유저 박스 -->
 <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
   <button type="button" class="logout account-btn" id="accountBtn">계정 관리</button>
-  <button type="button" class="logout logout-btn">로그아웃</button>
+  <button type="button" class="logout">로그아웃</button>
 </div>
 </body>
 </html>
