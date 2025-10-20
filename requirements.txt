@@ -11,3 +11,4 @@ python-docx
 olefile
 openpyxl
 python-pptx
+pywin32

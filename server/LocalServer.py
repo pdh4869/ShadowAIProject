@@ -428,12 +428,43 @@ async def handle_text_event(request: Request):
         # 준식별자 처리: 조합 위험도가 있을 때만 포함
         if combination_risk:
             detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+            counts = combination_risk['counts']
+            
+            # 카테고리별 타입 수집
+            type_map = {'PS': '이름', 'PER': '이름', 'phone': '전화번호', 'email': '이메일', 
+                       'ssn': '주민번호', 'card': '카드번호', 'account': '계좌번호',
+                       'ORG': '조직명', 'OG': '조직명', 'LC': '주소', 'student_id': '학번',
+                       'image_face': '얼굴사진'}
+            
+            identifier_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                              if item['type'] in ['PS', 'PER', 'phone', 'email', 'ssn', 'card', 'account', 'passport', 'driver_license']]
+            quasi_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                          if item['type'] in ['ORG', 'OG', 'LC', 'student_id', 'birth']]
+            sensitive_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                             if item['type'] == 'image_face']
+            
+            summary_parts = []
+            if identifier_types:
+                summary_parts.append(f"식별자({','.join(set(identifier_types))}) {counts['identifier']}건")
+            if quasi_types:
+                summary_parts.append(f"준식별자({','.join(set(quasi_types))}) {counts['quasi']}건")
+            if sensitive_types:
+                summary_parts.append(f"민감정보({','.join(set(sensitive_types))}) {counts['sensitive']}건")
+            
+            risk_suffix = {
+                'critical': '→ 개인 완전 특정 가능',
+                'high': '→ 개인 특정 가능',
+                'medium': '→ 개인 특정 가능성 있음'
+            }
+            
+            summary_msg = ', '.join(summary_parts) + ' ' + risk_suffix.get(combination_risk['level'], '')
+            
             detected.append({
                 "type": "combination_risk",
-                "value": combination_risk['message'],
+                "value": summary_msg,
                 "risk_level": combination_risk['level'],
                 "risk_items": combination_risk['items'],
-                "counts": combination_risk['counts']
+                "counts": counts
             })
         else:
             # 조합 위험도 없으면 준식별자 제외 (ORG, student_id, birth, LC)
@@ -497,12 +528,43 @@ async def handle_combined(request: Request):
             # 준식별자 처리: 조합 위험도가 있을 때만 포함
             if combination_risk:
                 detected = all_detected  # 조합 위험도 있으면 모든 항목 포함
+                counts = combination_risk['counts']
+                
+                # 카테고리별 타입 수집
+                type_map = {'PS': '이름', 'PER': '이름', 'phone': '전화번호', 'email': '이메일', 
+                           'ssn': '주민번호', 'card': '카드번호', 'account': '계좌번호',
+                           'ORG': '조직명', 'OG': '조직명', 'LC': '주소', 'student_id': '학번',
+                           'image_face': '얼굴사진'}
+                
+                identifier_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                                  if item['type'] in ['PS', 'PER', 'phone', 'email', 'ssn', 'card', 'account', 'passport', 'driver_license']]
+                quasi_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                              if item['type'] in ['ORG', 'OG', 'LC', 'student_id', 'birth']]
+                sensitive_types = [type_map.get(item['type'], item['type']) for item in combination_risk['items'] 
+                                 if item['type'] == 'image_face']
+                
+                summary_parts = []
+                if identifier_types:
+                    summary_parts.append(f"식별자({','.join(set(identifier_types))}) {counts['identifier']}건")
+                if quasi_types:
+                    summary_parts.append(f"준식별자({','.join(set(quasi_types))}) {counts['quasi']}건")
+                if sensitive_types:
+                    summary_parts.append(f"민감정보({','.join(set(sensitive_types))}) {counts['sensitive']}건")
+                
+                risk_suffix = {
+                    'critical': '→ 개인 완전 특정 가능',
+                    'high': '→ 개인 특정 가능',
+                    'medium': '→ 개인 특정 가능성 있음'
+                }
+                
+                summary_msg = ', '.join(summary_parts) + ' ' + risk_suffix.get(combination_risk['level'], '')
+                
                 detected.append({
                     "type": "combination_risk",
-                    "value": combination_risk['message'],
+                    "value": summary_msg,
                     "risk_level": combination_risk['level'],
                     "risk_items": combination_risk['items'],
-                    "counts": combination_risk['counts']
+                    "counts": counts
                 })
             else:
                 # 조합 위험도 없으면 준식별자 제외 (ORG, student_id, birth, LC)
