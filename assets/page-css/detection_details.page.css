@@ -25,6 +25,9 @@
 .field input:focus,.field select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(59,130,246,.15);}
 .field input[type="date"]{min-height:40px}
 .field.search{grid-column:span 6}
+.status-search-row{display:flex;gap:12px;grid-column:span 12}
+.status-search-row .field:first-child{flex:0 0 200px}
+.status-search-row .field:last-child{flex:1}
 
 /* 버튼 */
 .actions{display:flex;gap:8px;align-items:end}
@@ -41,7 +44,7 @@
 .table-wrap{overflow:auto}
 table{width:100%;border-collapse:collapse}
 thead th{position:sticky;top:0;background:#3F72AF;border-bottom:1px solid var(--border);font-size:12px;color:#ffffff;text-align:left;padding:10px}
-tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:top;background:#F9F7F7}
+tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:middle;text-align:center;background:#F9F7F7}
 tbody tr:hover{background:#111827}
 .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}
 .status.ok{background:rgba(16,185,129,.15);color:var(--ok)}
@@ -50,5 +53,17 @@ tbody tr:hover{background:#111827}
 .chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:12px}
 .empty{padding:28px;text-align:center;color:var(--muted);background:#F9F7F7}
 
-@media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} }
-@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} }
+@media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} .status-search-row .field:first-child{flex:1} .status-search-row .field:last-child{flex:1} }
+@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} .status-search-row{flex-direction:column} .status-search-row .field:first-child{flex:1} }
+
+/* 인라인 스타일을 클래스로 이동 */
+.quick-desc { text-align: center; display: block; }
+.table-header-status { width: 100px; text-align: center; }
+.table-header-date { width: 120px; text-align: center; }
+.table-header-ip { width: 110px; text-align: center; }
+.table-header-type { width: 220px; text-align: center; }
+.table-header-source { width: 140px; text-align: center; }
+.table-header-file { text-align: center; }
+.table-header-reason { text-align: center; }
+.account-btn { background: #F9F7F7; }
+.logout-btn { font-size: 12px !important; font-weight: 700 !important; padding: 6px 8px !important; }

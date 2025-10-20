@@ -102,6 +102,62 @@ window.Common = {
   }
 };
 
+// 공통 네비게이션 및 이벤트 핸들러
+window.CommonEvents = {
+  // 페이지 네비게이션
+  navigateTo: (url) => {
+    location.href = url;
+  },
+  
+  // 모달 버튼 호버 효과
+  setupModalButtonHover: (buttonId, hoverColor = '#e2e8f0', normalColor = '#f1f5f9') => {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.addEventListener('mouseover', () => {
+        button.style.background = hoverColor;
+      });
+      button.addEventListener('mouseout', () => {
+        button.style.background = normalColor;
+      });
+    }
+  }
+};
+
+// DOM 로드 시 공통 이벤트 바인딩
+document.addEventListener('DOMContentLoaded', function() {
+  // 페이지 제목 클릭 이벤트
+  const pageTitle = document.querySelector('.page-title span');
+  if (pageTitle) {
+    pageTitle.addEventListener('click', () => CommonEvents.navigateTo('main.html'));
+    pageTitle.style.cursor = 'pointer';
+  }
+  
+  // 네비게이션 메뉴 클릭 이벤트
+  const navLinks = document.querySelectorAll('.pm-nav a');
+  navLinks.forEach((link, index) => {
+    const urls = ['detection_details.html', 'detection_type.html', 'personal_information_type.html'];
+    if (urls[index]) {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        CommonEvents.navigateTo(urls[index]);
+      });
+    }
+  });
+  
+  // 로그아웃 버튼 클릭 이벤트
+  const logoutBtns = document.querySelectorAll('.logout');
+  logoutBtns.forEach(btn => {
+    if (btn.textContent.includes('로그아웃')) {
+      btn.addEventListener('click', () => CommonEvents.navigateTo('login.html'));
+    } else if (btn.textContent.includes('계정 관리')) {
+      btn.addEventListener('click', () => CommonEvents.navigateTo('account_management.html'));
+    }
+  });
+  
+  // 모달 닫기 버튼 호버 효과
+  CommonEvents.setupModalButtonHover('closeModal');
+});
+
 // 공통 사용자 관리 스크립트
 (function() {
   // 사용자 정보 가져오기
@@ -125,25 +181,16 @@ window.Common = {
         empSpan.innerHTML = `<span class="dot" aria-hidden="true"></span> ${userInfo.empId}`;
       }
 
-      // 계정 관리 버튼 처리
-      let accountBtn = userBox.querySelector('.logout[onclick*="account_management"]');
+      // 계정 관리 버튼 처리 (HTML에 이미 존재하는 버튼 제어)
+      const accountBtn = userBox.querySelector('#accountBtn');
       
-      if (userInfo.role === 'super') {
-        // 최고 관리자: 계정 관리 버튼 표시
-        if (!accountBtn) {
-          const logoutBtn = userBox.querySelector('.logout[onclick*="login.html"]');
-          accountBtn = document.createElement('button');
-          accountBtn.type = 'button';
-          accountBtn.className = 'logout';
-          accountBtn.onclick = () => location.href = 'account_management.html';
-          accountBtn.textContent = '계정 관리';
-          accountBtn.style.background = '#F9F7F7';
-          userBox.insertBefore(accountBtn, logoutBtn);
-        }
-      } else {
-        // 일반 관리자: 계정 관리 버튼 숨김
-        if (accountBtn) {
-          accountBtn.remove();
+      if (accountBtn) {
+        if (userInfo.role === 'super') {
+          // 최고 관리자: 계정 관리 버튼 표시
+          accountBtn.style.display = '';
+        } else {
+          // 일반 관리자: 계정 관리 버튼 숨김
+          accountBtn.style.display = 'none';
         }
       }
     }

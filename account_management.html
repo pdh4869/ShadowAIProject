@@ -13,12 +13,12 @@
 <body data-page="account">
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span onclick="location.href='main.html'">개인정보 탐지 대시보드</span></div>
+    <div class="page-title"><span>개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
-        <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
-        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
+        <a href="#">탐지 현황</a>
+        <a href="#">탐지 유형</a>
+        <a href="#">개인정보 유형</a>
       </nav>
     </div>
 
@@ -44,13 +44,13 @@
         <table>
           <thead>
             <tr>
-              <th style="width:160px;text-align:center;">사번</th>
-              <th style="width:220px;text-align:center;">이메일</th>
-              <th style="width:160px;text-align:center;">이름</th>
-              <th style="width:120px;text-align:center;">역할</th>
-              <th style="width:160px;text-align:center;">최근 로그인</th>
-              <th style="width:160px;text-align:center;">생성일</th>
-              <th style="width:220px;text-align:center;">작업</th>
+              <th>사번</th>
+              <th>이메일</th>
+              <th>이름</th>
+              <th>역할</th>
+              <th>최근 로그인</th>
+              <th>생성일</th>
+              <th>작업</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -144,12 +144,12 @@
     </div>
   </div>
 
-<script src="assets/page-js/account_management.page.js"></script>
-
   <!-- 우측 상단: 사번 + 로그아웃 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> S0001</span>
-  <button type="button" class="logout" onclick="location.href='account_management.html'">계정 관리</button>
-  <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
+  <button type="button" class="logout">계정 관리</button>
+  <button type="button" class="logout">로그아웃</button>
+
+<script src="assets/page-js/account_management.page.js"></script>
 </body>
 </html>

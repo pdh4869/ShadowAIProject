@@ -15,12 +15,12 @@
 <body>
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span onclick="location.href='main.html'">개인정보 탐지 대시보드</span></div>
+    <div class="page-title"><span>개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
-        <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
-        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
+        <a href="#">탐지 현황</a>
+        <a href="#">탐지 유형</a>
+        <a href="#">개인정보 유형</a>
       </nav>
     </div>
 
@@ -31,7 +31,7 @@
         <button class="pill" data-range="today">오늘</button>
         <button class="pill" data-range="lastweek">지난 주</button>
         <button class="pill" data-range="lastmonth">지난 달</button>
-        <span class="muted" id="quickDesc" style="text-align:center;display:block;"></span>
+        <span class="muted quick-desc" id="quickDesc"></span>
       </div>
       <div class="filters">
         <div class="field">
@@ -58,22 +58,18 @@
             <option>텍스트</option><option>PDF</option><option>DOCX/DOC</option><option>XLSX/XLS</option><option>PPTX</option><option>HWPX/HWP</option><option>TXT</option>
           </select>
         </div>
-        <div class="field">
-          <label for="status">상태</label>
-          <select id="status">
-            <option value="">전체</option>
-            <option>성공</option><option>실패</option><option>개인 식별 의심</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="emp">사용자(사번)</label>
-          <input id="emp" placeholder="예: A1023, S0001" />
-        </div>
-
-        <div class="field search">
-          <label for="q">검색(IP/OS/컴퓨터이름/LLM/파일명)</label>
-          <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, report.pdf..." />
+        <div class="status-search-row">
+          <div class="field">
+            <label for="status">상태</label>
+            <select id="status">
+              <option value="">전체</option>
+              <option>성공</option><option>실패</option><option>개인 식별 의심</option>
+            </select>
+          </div>
+          <div class="field search">
+            <label for="q">검색(IP/OS/컴퓨터이름/LLM/파일명)</label>
+            <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, report.pdf..." />
+          </div>
         </div>
       </div>
       <div class="toolbar">
@@ -86,8 +82,8 @@
     </section>
 
     <section class="card chart-card" aria-label="탐지 유형 그래프">
-      <h2 style="font-size:16px;margin:6px 0 0 0;">탐지 유형 분포 (막대)</h2>
-      <div style="height:260px;">
+      <h2 class="chart-title">탐지 유형 분포</h2>
+      <div class="chart-height">
         <canvas id="barChart"></canvas>
       </div>
     </section>
@@ -98,13 +94,13 @@
         <table aria-describedby="summary">
           <thead>
             <tr>
-              <th style="width:100px;text-align:center;">상태</th>
-              <th style="width:120px;text-align:center;">일자</th>
-              <th style="width:110px;text-align:center;">사번</th><!-- 추가 열 -->
-              <th style="width:220px;text-align:center;">개인정보 유형</th>
-              <th style="width:140px;text-align:center;">탐지 유형</th>
-              <th style="text-align:center;">파일명</th>
-              <th style="text-align:center;">실패 사유</th>
+              <th class="table-header-100">상태</th>
+              <th class="table-header-120">일자</th>
+              <th class="table-header-110">IP</th><!-- 추가 열 -->
+              <th class="table-header-220">개인정보 유형</th>
+              <th class="table-header-140">탐지 유형</th>
+              <th class="table-header-center">파일명</th>
+              <th class="table-header-center">실패 사유</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -117,99 +113,99 @@
 
   <!-- 세부 내용 팝업 모달 -->
   <div id="detailModal" class="modal">
-    <div class="modal-content card" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;width:min(90vw,900px);max-height:95vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
-      <div class="modal-header" style="background:#f8fafc;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h3 style="margin:0;font-size:18px;font-weight:600;color:#1e293b;">탐지 결과 상세</h3>
-          <button id="closeModal" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;font-size:16px;transition:all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">&times;</button>
+    <div class="modal-content card">
+      <div class="modal-header">
+        <div>
+          <h3>탐지 결과 상세</h3>
+          <button id="closeModal" class="modal-close-btn">&times;</button>
         </div>
       </div>
-      <div class="modal-body" style="padding:20px;max-height:calc(95vh - 100px);overflow-y:auto;">
+      <div class="modal-body">
         <div class="detail-sections">
           <!-- 기본 정보 -->
-          <div class="detail-section" style="margin-bottom:18px;">
-            <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">기본 정보</h4>
-            <div class="detail-grid" style="display:flex;gap:12px;flex-wrap:wrap;">
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">상태</div>
-                <div id="detail-status" style="font-size:13px;font-weight:700;white-space:nowrap;">-</div>
+          <div class="detail-section">
+            <h4>기본 정보</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <div>상태</div>
+                <div id="detail-status">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">사번</div>
-                <div id="detail-emp" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              <div class="detail-item">
+                <div>IP</div>
+                <div id="detail-emp">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:140px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">일자</div>
-                <div id="detail-date" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              <div class="detail-item wide">
+                <div>일자</div>
+                <div id="detail-date">-</div>
               </div>
             </div>
           </div>
           
           <!-- 시스템 정보 -->
-          <div class="detail-section" style="margin-bottom:18px;">
-            <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">시스템 정보</h4>
-            <div class="detail-grid" style="display:flex;gap:12px;flex-wrap:wrap;">
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:140px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">IP 주소</div>
-                <div id="detail-ip" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+          <div class="detail-section">
+            <h4>시스템 정보</h4>
+            <div class="detail-grid">
+              <div class="detail-item wide">
+                <div>IP 주소</div>
+                <div id="detail-ip">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:140px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">운영체제</div>
-                <div id="detail-os" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              <div class="detail-item wide">
+                <div>운영체제</div>
+                <div id="detail-os">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">컴퓨터 이름</div>
-                <div id="detail-computer" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              <div class="detail-item fit-content">
+                <div>컴퓨터 이름</div>
+                <div id="detail-computer">-</div>
               </div>
             </div>
           </div>
           
           <!-- 웹 정보 -->
-          <div class="detail-section" style="margin-bottom:18px;">
-            <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">웹 정보</h4>
-            <div class="detail-grid" style="display:flex;gap:12px;flex-wrap:wrap;">
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:100px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">브라우저</div>
-                <div id="detail-browser" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+          <div class="detail-section">
+            <h4>웹 정보</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <div>브라우저</div>
+                <div id="detail-browser">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:80px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">LLM</div>
-                <div id="detail-llm" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+              <div class="detail-item">
+                <div>LLM</div>
+                <div id="detail-llm">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;max-width:400px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">URL</div>
-                <div id="detail-url" style="font-size:12px;font-weight:700;word-break:break-all;overflow-wrap:break-word;">-</div>
+              <div class="detail-item fit-content max-width">
+                <div>URL</div>
+                <div id="detail-url" class="url-text">-</div>
               </div>
             </div>
           </div>
           
           <!-- 탐지 정보 -->
           <div class="detail-section">
-            <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;color:#374151;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">탐지 정보</h4>
-            <div class="detail-grid" style="display:flex;gap:12px;flex-wrap:wrap;">
-              <div class="detail-item" style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:120px;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">탐지 유형</div>
-                <div id="detail-source" style="font-size:13px;font-weight:600;white-space:nowrap;">-</div>
+            <h4>탐지 정보</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <div>탐지 유형</div>
+                <div id="detail-source">-</div>
               </div>
-              <div class="detail-item" id="filename-section" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">파일명</div>
-                <div id="detail-filename" style="font-size:13px;font-weight:600;word-break:break-all;">-</div>
+              <div class="detail-item padded fit-content" id="filename-section">
+                <div>파일명</div>
+                <div id="detail-filename" class="break-all">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">개인정보 유형</div>
-                <div id="detail-types" style="font-size:13px;font-weight:600;">-</div>
+              <div class="detail-item padded fit-content">
+                <div>개인정보 유형</div>
+                <div id="detail-types">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="validation-section">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">검증 결과</div>
-                <div id="detail-validation" style="font-size:13px;font-weight:600;">-</div>
+              <div class="detail-item padded fit-content" id="validation-section">
+                <div>검증 결과</div>
+                <div id="detail-validation">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">개인 식별 의심</div>
-                <div id="detail-suspicious" style="font-size:13px;font-weight:600;">-</div>
+              <div class="detail-item padded fit-content">
+                <div>개인 식별 의심</div>
+                <div id="detail-suspicious">-</div>
               </div>
-              <div class="detail-item" style="background:#f8fafc;padding:10px 16px 10px 10px;border-radius:6px;border:1px solid #e2e8f0;flex:0 0 auto;min-width:fit-content;" id="reason-section">
-                <div style="font-size:11px;color:#64748b;font-weight:500;margin-bottom:3px;">실패 사유</div>
-                <div id="detail-reason" style="font-size:13px;font-weight:600;">-</div>
+              <div class="detail-item padded fit-content" id="reason-section">
+                <div>실패 사유</div>
+                <div id="detail-reason">-</div>
               </div>
             </div>
           </div>
@@ -221,7 +217,8 @@
 <!-- (선택) 우측 상단 유저 박스 -->
 <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
   <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> A1023</span>
-  <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
+  <button type="button" class="logout account-btn" id="accountBtn">계정 관리</button>
+  <button type="button" class="logout">로그아웃</button>
 </div>
 </body>
 </html>

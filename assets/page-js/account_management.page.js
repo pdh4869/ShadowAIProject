@@ -1,173 +1,114 @@
-// ====== 권한 설정 ======
-let CURRENT_USER_ROLE = 'super'; // 'admin'으로 바꾸면 버튼/작업 비활성화
+// account_management.html 전용 JavaScript
 
-// ====== 데모 데이터 (사번 기반) ======
-// 오늘 날짜 생성
-const now = new Date();
-const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-
-const admins = [
-  { emp:'S0001', email:'root@company.com', name:'최고관리자', role:'super', lastLogin:`${todayStr} 09:12`, created:'2024-01-03' },
-  { emp:'A1023', email:'ops1@company.com',  name:'운영1', role:'admin', lastLogin:`${todayStr} 16:41`, created:'2024-04-12' },
-  { emp:'A1138', email:'ops2@company.com',  name:'운영2', role:'admin', lastLogin:'2025-09-22 10:03', created:'2024-07-28' },
-  { emp:'B2047', email:'sec1@company.com',  name:'보안담당A', role:'admin', lastLogin:'2025-08-31 18:25', created:'2024-08-02' },
+// 임시 데이터
+const today = new Date().toISOString().split('T')[0];
+const mockAccounts = [
+  { empId: 'S0001', email: 'super@company.com', name: '최고관리자', role: 'super', lastLogin: `${today} 09:30`, createdAt: '2023-01-01' },
+  { empId: 'A1023', email: 'admin1@company.com', name: '김관리', role: 'admin', lastLogin: `${today} 16:45`, createdAt: '2023-06-15' },
+  { empId: 'A1024', email: 'admin2@company.com', name: '이담당', role: 'admin', lastLogin: '2024-01-13 11:20', createdAt: '2023-08-20' },
+  { empId: 'A1025', email: 'admin3@company.com', name: '박매니저', role: 'admin', lastLogin: '2024-01-12 14:10', createdAt: '2023-10-05' }
 ];
 
-const $ = (sel)=>document.querySelector(sel);
-const rowsEl = $('#rows');
-const emptyEl = $('#empty');
+let accounts = [...mockAccounts];
 
-function applyPermissionUI(){
-  const isSuper = CURRENT_USER_ROLE === 'super';
-  $('#createBtn').disabled = !isSuper;
-  $('#permBanner').hidden = isSuper;
+document.addEventListener('DOMContentLoaded', function() {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{"empId":"S0001","role":"super"}');
+  const userEmpEl = document.querySelector('.pm-userbox .emp');
+  if(userEmpEl) {
+    userEmpEl.innerHTML = `<span class="dot" aria-hidden="true"></span> ${userInfo.empId}`;
+  }
+
+  checkPermissions(userInfo.role);
+  renderAccounts();
+  setupEventListeners();
+});
+
+function checkPermissions(role) {
+  const permBanner = document.getElementById('permBanner');
+  const createBtn = document.getElementById('createBtn');
+  
+  if (role !== 'super') {
+    permBanner.hidden = false;
+    createBtn.disabled = true;
+    createBtn.style.opacity = '0.5';
+  }
 }
 
-function renderTable(list){
-  rowsEl.innerHTML = '';
-  if (!list.length){ emptyEl.hidden = false; return; }
-  emptyEl.hidden = true;
-  list.forEach(u=>{
-    const tr = document.createElement('tr');
-    const roleBadge = `<span class="badge role ${u.role==='super'?'super':'admin'}">${u.role==='super'?'최고 관리자':'일반 관리자'}</span>`;
-    const isSuper = CURRENT_USER_ROLE === 'super';
-    const now = new Date();
-    const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    const isToday = u.lastLogin && u.lastLogin.startsWith(today);
-    tr.innerHTML = `
-      <td>${u.emp}</td>
-      <td>${u.email}</td>
-      <td>${u.name}</td>
-      <td>${roleBadge}</td>
-      <td class="${isToday ? 'muted' : ''}">${u.lastLogin||'-'}</td>
-      <td>${u.created||'-'}</td>
+function renderAccounts(filteredAccounts = accounts) {
+  const tbody = document.getElementById('rows');
+  const empty = document.getElementById('empty');
+  
+  if (filteredAccounts.length === 0) {
+    tbody.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  
+  empty.hidden = true;
+  tbody.innerHTML = filteredAccounts.map(account => {
+    const isToday = account.lastLogin.startsWith(today);
+    return `
+    <tr>
+      <td>${account.empId}</td>
+      <td>${account.email}</td>
+      <td>${account.name}</td>
+      <td>
+        <span class="badge role ${account.role}">
+          ${account.role === 'super' ? '최고 관리자' : '일반 관리자'}
+        </span>
+      </td>
+      <td class="${isToday ? 'today-login' : ''}">${account.lastLogin}</td>
+      <td>${account.createdAt}</td>
       <td>
         <div class="table-actions">
-          <button class="btn" data-action="pw" data-emp="${u.emp}" ${!isSuper?'disabled':''}>비밀번호 변경</button>
-          <button class="btn danger" data-action="del" data-emp="${u.emp}" ${!isSuper?'disabled':''}>삭제</button>
+          ${account.role === 'super' ? `
+            <button class="btn" onclick="openPasswordModal('${account.empId}')">비밀번호 변경</button>
+          ` : `
+            <button class="btn" onclick="openPasswordModal('${account.empId}')">비밀번호 변경</button>
+            <button class="btn danger" onclick="openDeleteModal('${account.empId}')">삭제</button>
+          `}
         </div>
       </td>
-    `;
-    rowsEl.appendChild(tr);
+    </tr>
+  `}).join('');
+}
+
+function setupEventListeners() {
+  document.getElementById('searchBtn').addEventListener('click', handleSearch);
+  document.getElementById('q').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSearch();
+  });
+  
+  document.getElementById('createBtn').addEventListener('click', () => {
+    document.getElementById('createModal').classList.add('open');
+  });
+  
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const modalId = e.target.getAttribute('data-close');
+      document.querySelector(modalId).classList.remove('open');
+    });
   });
 }
 
-function searchList(q){
-  q = q.trim().toLowerCase();
-  if(!q) return admins.slice();
-  return admins.filter(u=>[u.emp, u.email, u.name, u.role==='super'?'최고 관리자':'일반 관리자'].join(' ').toLowerCase().includes(q));
+function handleSearch() {
+  const query = document.getElementById('q').value.toLowerCase();
+  const filtered = accounts.filter(account => 
+    account.empId.toLowerCase().includes(query) ||
+    account.name.toLowerCase().includes(query) ||
+    (account.role === 'super' ? '최고 관리자' : '일반 관리자').toLowerCase().includes(query)
+  );
+  renderAccounts(filtered);
 }
 
-function openModal(id){ document.querySelector(id).classList.add('open'); }
-function closeModal(id){ document.querySelector(id).classList.remove('open'); }
-
-// strength meter
-function bindStrength(inputId, barId, hintId){
-  const input = document.getElementById(inputId);
-  const bar = document.getElementById(barId);
-  const hint = document.getElementById(hintId);
-  input.addEventListener('input', ()=>{
-    const v = input.value;
-    let score = 0;
-    if (v.length >= 8) score++;
-    if (/[A-Z]/.test(v)) score++;
-    if (/[a-z]/.test(v)) score++;
-    if (/[0-9]/.test(v)) score++;
-    if (/[^A-Za-z0-9]/.test(v)) score++;
-    const pct = Math.min(100, score*20);
-    bar.firstElementChild.style.width = pct+'%';
-    bar.classList.toggle('good', score>=3);
-    hint.textContent = score>=3 ? '양호한 비밀번호입니다.' : '8자 이상, 숫자/문자/기호 조합 권장';
-  });
+function openPasswordModal(empId) {
+  document.getElementById('p_emp').value = empId;
+  document.getElementById('pwModal').classList.add('open');
 }
 
-function validateEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-function validateEmp(id){ return /^[A-Za-z0-9_-]{2,20}$/.test(id); }
-
-document.addEventListener('click', (e)=>{
-  const act = e.target.getAttribute('data-action');
-  if (act === 'pw'){
-    if (CURRENT_USER_ROLE !== 'super') return;
-    const emp = e.target.getAttribute('data-emp');
-    $('#p_emp').value = emp;
-    $('#p_pwd').value = '';
-    $('#p_strength').firstElementChild.style.width = '0%';
-    openModal('#pwModal');
-  }
-  if (act === 'del'){
-    if (CURRENT_USER_ROLE !== 'super') return;
-    const emp = e.target.getAttribute('data-emp');
-    if (emp === 'S0001'){ alert('최고 관리자 계정은 삭제할 수 없습니다.'); return; }
-    $('#d_emp').value = emp;
-    openModal('#delModal');
-  }
-  if (e.target.matches('[data-close]')){
-    closeModal(e.target.getAttribute('data-close'));
-  }
-});
-
-$('#createBtn').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  $('#c_emp').value=''; $('#c_email').value=''; $('#c_name').value=''; $('#c_pwd').value='';
-  $('#c_strength').firstElementChild.style.width = '0%';
-  openModal('#createModal');
-});
-
-$('#createSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#c_emp').value.trim();
-  const email = $('#c_email').value.trim();
-  const name = $('#c_name').value.trim();
-  const pwd  = $('#c_pwd').value;
-  if (!validateEmp(emp)){ alert('사번 형식이 올바르지 않습니다. (영숫자/언더스코어/하이픈 2~20자)'); return; }
-  if (!validateEmail(email)){ alert('올바른 이메일 주소가 아닙니다.'); return; }
-  if (!name){ alert('이름을 입력하세요.'); return; }
-  if (pwd.length < 8){ alert('비밀번호는 8자 이상이어야 합니다.'); return; }
-  if (admins.some(a=>a.emp===emp)){ alert('이미 존재하는 사번입니다.'); return; }
-  admins.push({ emp, email, name, role:'admin', lastLogin:'-', created:new Date().toISOString().slice(0,10) });
-  renderTable(searchList($('#q').value));
-  closeModal('#createModal');
-});
-
-$('#pwSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#p_emp').value;
-  const pwd = $('#p_pwd').value;
-  if (pwd.length < 8){ alert('비밀번호는 8자 이상이어야 합니다.'); return; }
-  closeModal('#pwModal');
-  alert('비밀번호가 변경되었습니다. (데모)');
-});
-
-$('#delSubmit').addEventListener('click', ()=>{
-  if (CURRENT_USER_ROLE !== 'super') return;
-  const emp = $('#d_emp').value;
-  const idx = admins.findIndex(a=>a.emp===emp);
-  if (idx>=0){ admins.splice(idx,1); }
-  renderTable(searchList($('#q').value));
-  closeModal('#delModal');
-});
-
-// 검색 기능
-function performSearch() {
-  renderTable(searchList($('#q').value));
+function openDeleteModal(empId) {
+  document.getElementById('d_emp').value = empId;
+  document.getElementById('delModal').classList.add('open');
 }
-
-$('#searchBtn').addEventListener('click', performSearch);
-
-$('#q').addEventListener('keypress', (e)=>{
-  if (e.key === 'Enter') {
-    performSearch();
-  }
-});
-
-// init
-applyPermissionUI();
-renderTable(admins);
-bindStrength('c_pwd', 'c_strength', 'c_hint');
-bindStrength('p_pwd', 'p_strength', 'p_hint');
-
-// 네비게이션 활성화
-document.addEventListener('DOMContentLoaded', function() {
-  const navLinks = document.querySelectorAll('.pm-nav a');
-  navLinks[3].classList.add('active'); // 계정관리 버튼 활성화
-});

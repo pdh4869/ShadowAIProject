@@ -71,22 +71,22 @@ document.addEventListener('DOMContentLoaded', function() {
     { date: "2025-09-22", count: 4 },
   ];
 
-  // 사용자 기여도 데이터 (사번만)
+  // 사용자 기여도 데이터 (IP)
   const contribData = [
-    { name: "A1023", count: 45, highRisk: 12 },
-    { name: "S0001", count: 38, highRisk: 8 },
-    { name: "B2047", count: 32, highRisk: 15 },
-    { name: "A1138", count: 28, highRisk: 6 },
-    { name: "B2099", count: 25, highRisk: 9 }
+    { name: "192.168.1.100", count: 45, highRisk: 12 },
+    { name: "192.168.1.101", count: 38, highRisk: 8 },
+    { name: "192.168.1.102", count: 32, highRisk: 15 },
+    { name: "192.168.1.103", count: 28, highRisk: 6 },
+    { name: "192.168.1.104", count: 25, highRisk: 9 }
   ];
 
   const sourceStats = [
     { source: "텍스트", count: 25 },
     { source: "PDF", count: 50 },
-    { source: "DOCX/DOC", count: 30 },
-    { source: "XLSX/XLS", count: 22 },
+    { source: ["DOCX", "DOC"], count: 30 },
+    { source: ["XLSX", "XLS"], count: 22 },
     { source: "PPTX", count: 15 },
-    { source: "HWPX/HWP", count: 12 },
+    { source: ["HWPX", "HWP"], count: 12 },
     { source: "TXT", count: 18 }
   ];
   const totalSources = sourceStats.reduce((sum, s) => sum + s.count, 0);
@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
       detections.push({
         date: today,
         type: type,
-        emp: ['A1023', 'S0001', 'B2047', 'A1138', 'B2099'][Math.floor(Math.random() * 5)],
+        emp: ['192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104'][Math.floor(Math.random() * 5)],
         validated: isValidated
       });
     }
@@ -146,19 +146,22 @@ document.addEventListener('DOMContentLoaded', function() {
   if(todayTotal) todayTotal.textContent = todayData.totalCount;
   
   if(todayTypeTbody) {
-    Object.entries(typeStats)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .forEach(([type, count]) => {
-        const tr = document.createElement('tr');
+    const sortedTypes = Object.entries(typeStats).sort((a, b) => b[1] - a[1]);
+    for(let i = 0; i < 5; i++) {
+      const tr = document.createElement('tr');
+      if(i < sortedTypes.length) {
+        const [type, count] = sortedTypes[i];
         tr.style.cursor = 'pointer';
         tr.addEventListener('click', () => {
           localStorage.setItem('filterType', type);
           location.href = 'personal_information_type.html';
         });
         tr.innerHTML = `<td>${type}</td><td>${count}</td>`;
-        todayTypeTbody.appendChild(tr);
-      });
+      } else {
+        tr.innerHTML = `<td>-</td><td>-</td>`;
+      }
+      todayTypeTbody.appendChild(tr);
+    }
   }
 
   // 금일 개인 식별 의심 데이터 생성
@@ -166,14 +169,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     const sources = ['text', 'report.pdf', 'data.xlsx', 'info.docx', 'backup.txt', 'analysis.pdf'];
     const suspicious = [
-      { date: today, time: '15:42', emp: 'A1023', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '13:28', emp: 'B2047', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '11:15', emp: 'A1138', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '09:33', emp: 'S0001', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '16:07', emp: 'B2099', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '14:51', emp: 'A1200', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '12:30', emp: 'A1500', source: sources[Math.floor(Math.random() * sources.length)] },
-      { date: today, time: '10:15', emp: 'B3000', source: sources[Math.floor(Math.random() * sources.length)] }
+      { date: today, time: '15:42', emp: '192.168.1.100', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '13:28', emp: '192.168.1.102', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '11:15', emp: '192.168.1.103', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '09:33', emp: '192.168.1.101', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '16:07', emp: '192.168.1.104', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '14:51', emp: '192.168.1.105', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '12:30', emp: '192.168.1.106', source: sources[Math.floor(Math.random() * sources.length)] },
+      { date: today, time: '10:15', emp: '192.168.1.107', source: sources[Math.floor(Math.random() * sources.length)] }
     ];
     return suspicious.sort((a, b) => b.time.localeCompare(a.time));
   };
@@ -209,14 +212,14 @@ document.addEventListener('DOMContentLoaded', function() {
   const generateTodayFailures = () => {
     const today = new Date().toISOString().split('T')[0];
     const failures = [
-      { date: today, time: '14:23', emp: 'A1023', file: 'secret.pdf', reason: '암호화 파일' },
-      { date: today, time: '11:45', emp: 'A1138', file: 'test.docx', reason: '손상 파일' },
-      { date: today, time: '09:12', emp: 'B2047', file: 'data.xlsx', reason: '빈 파일' },
-      { date: today, time: '16:30', emp: 'S0001', file: 'report.pdf', reason: '지원 불가 형식' },
-      { date: today, time: '13:15', emp: 'B2099', file: 'info.txt', reason: '액세스 거부' },
-      { date: today, time: '08:45', emp: 'A1200', file: 'backup.zip', reason: '암호화 파일' },
-      { date: today, time: '07:30', emp: 'C2000', file: 'data2.xlsx', reason: '권한 없음' },
-      { date: today, time: '17:15', emp: 'D3000', file: 'report2.pdf', reason: '파일 손상' }
+      { date: today, time: '14:23', emp: '192.168.1.100', file: 'secret.pdf', reason: '암호화 파일' },
+      { date: today, time: '11:45', emp: '192.168.1.103', file: 'test.docx', reason: '손상 파일' },
+      { date: today, time: '09:12', emp: '192.168.1.102', file: 'data.xlsx', reason: '빈 파일' },
+      { date: today, time: '16:30', emp: '192.168.1.101', file: 'report.pdf', reason: '지원 불가 형식' },
+      { date: today, time: '13:15', emp: '192.168.1.104', file: 'info.txt', reason: '액세스 거부' },
+      { date: today, time: '08:45', emp: '192.168.1.105', file: 'backup.zip', reason: '암호화 파일' },
+      { date: today, time: '07:30', emp: '192.168.1.108', file: 'data2.xlsx', reason: '권한 없음' },
+      { date: today, time: '17:15', emp: '192.168.1.109', file: 'report2.pdf', reason: '파일 손상' }
     ];
     return failures.sort((a, b) => b.time.localeCompare(a.time));
   };
@@ -258,36 +261,68 @@ document.addEventListener('DOMContentLoaded', function() {
   if(suspiciousTimestamp) suspiciousTimestamp.textContent = timeStr;
   if(failureTimestamp) failureTimestamp.textContent = timeStr;
 
-  // 사용자 기여도 테이블 생성 (사번만)
+  // 사용자 기여도 테이블 생성 (IP)
   const tbody = document.getElementById("contribTbody");
   if(tbody) {
-    contribData.forEach(item => {
-      const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
+    for(let i = 0; i < 5; i++) {
       const tr = document.createElement('tr');
-      tr.style.cursor = 'pointer';
-      tr.addEventListener('click', () => {
-        localStorage.setItem('filterEmp', item.name);
-        location.href = 'detection_details.html';
-      });
-      tr.innerHTML = `<td>${item.name}</td><td>${item.count}</td><td>${highRiskPercent}%</td>`;
+      if(i < contribData.length) {
+        const item = contribData[i];
+        const highRiskPercent = Math.round((item.highRisk / item.count) * 100);
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          localStorage.setItem('filterEmp', item.name);
+          location.href = 'detection_details.html';
+        });
+        tr.innerHTML = `<td>${item.name}</td><td>${item.count}</td><td>${highRiskPercent}%</td>`;
+      } else {
+        tr.innerHTML = `<td>-</td><td>-</td><td>-</td>`;
+      }
       tbody.appendChild(tr);
-    });
+    }
   }
 
-  const pieChartEl = document.getElementById("chartSourcePie");
-  if(pieChartEl) {
-    new Chart(pieChartEl, {
-      type: "pie",
-      data: { labels: sourceStats.map(s => s.source), datasets: [{ data: sourceStats.map(s => s.count) }] },
+  const barChartEl = document.getElementById("chartSourceBar");
+  if(barChartEl) {
+    // 데이터가 0보다 큰 항목만 필터링
+    const filteredSourceStats = sourceStats.filter(s => s.count > 0);
+    const filteredTotal = filteredSourceStats.reduce((sum, s) => sum + s.count, 0);
+    
+    new Chart(barChartEl, {
+      type: "bar",
+      data: { 
+        labels: filteredSourceStats.map(s => s.source), 
+        datasets: [{ 
+          data: filteredSourceStats.map(s => s.count), 
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'].slice(0, filteredSourceStats.length), 
+          barThickness: 'flex', 
+          categoryPercentage: 0.8 
+        }] 
+      },
       options: { 
         responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { color: '#fff', font: { size: 11 }, formatter: (v) => ((v/totalSources)*100).toFixed(1)+'%\n(' + v + '건)' } },
+        maintainAspectRatio: false,
+        layout: { padding: { top: 40, bottom: 0 } },
+        plugins: { 
+          legend: { display: false }, 
+          datalabels: { 
+            anchor: 'end', 
+            align: 'top', 
+            color: '#374151', 
+            font: { size: 10 }, 
+            formatter: (v) => filteredTotal > 0 ? ((v/filteredTotal)*100).toFixed(1)+'%\n(' + v + '건)' : '0%\n(0건)'
+          } 
+        },
+        scales: { 
+          y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } }, 
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, padding: 0, maxRotation: 0 } } 
+        },
         onClick: (event, elements) => {
           if (elements.length > 0) {
             const index = elements[0].index;
-            const selectedSource = sourceStats[index].source;
-            localStorage.setItem('filterSource', selectedSource);
+            const selectedSource = filteredSourceStats[index].source;
+            const filterValue = Array.isArray(selectedSource) ? selectedSource.join('/') : selectedSource;
+            localStorage.setItem('filterSource', filterValue);
             location.href = 'detection_type.html';
           }
         }

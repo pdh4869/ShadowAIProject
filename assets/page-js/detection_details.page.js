@@ -1,70 +1,75 @@
 /* ====== 샘플 데이터 ====== */
 const DATA = [
-  {emp:'S0001', status:'실패', date:'2025-10-15 14:09:47', types:[], source:'DOC', filename:'analysis.doc', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-15 14:56:35', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-15 13:52:22', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-10-14 21:39:18', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-10-13 20:35:05', types:['이메일','카드번호'], source:'PDF', filename:'cards.pdf', reason:''},
-  {emp:'A1200', status:'실패', date:'2025-10-12 04:22:01', types:[], source:'TXT', filename:'contacts.txt', reason:'암호화 파일'},
-  {emp:'B3001', status:'성공', date:'2025-10-11 04:18:48', types:['카드번호','이메일'], source:'XLSX', filename:'report.xlsx', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-10-10 11:05:44', types:[], source:'HWP', filename:'invoice.hwp', reason:'암호화 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-09 11:53:31', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-08 10:48:19', types:['전화번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-10-07 18:36:14', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-10-06 17:32:02', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'실패', date:'2025-10-05 01:19:57', types:[], source:'PPTX', filename:'presentation.pptx', reason:'지원 불가 형식'},
-  {emp:'B3001', status:'성공', date:'2025-10-04 00:15:45', types:['IP'], source:'TXT', filename:'cards.txt', reason:''},
-  {emp:'S0001', status:'실패', date:'2025-10-03 08:02:40', types:[], source:'HWPX', filename:'cards.hwpx', reason:'빈 파일'},
-  {emp:'A1023', status:'성공', date:'2025-10-02 07:50:28', types:['생년월일'], source:'PDF', filename:'draft.pdf', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-10-01 07:45:15', types:['주민등록번호','카드번호'], source:'XLS', filename:'data.xls', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-30 14:33:11', types:['주민등록번호','생년월일'], source:'PDF', filename:'summary.pdf', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-29 14:28:59', types:[], source:'DOC', filename:'resume.doc', reason:'손상 파일'},
-  {emp:'A1200', status:'성공', date:'2025-09-28 21:16:54', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-27 21:11:42', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-26 05:59:37', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-25 04:54:25', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
-  {emp:'A1138', status:'실패', date:'2025-09-24 04:42:12', types:[], source:'XLSX', filename:'summary.xlsx', reason:'지원 불가 형식'},
-  {emp:'B2047', status:'성공', date:'2025-09-23 11:29:08', types:['IP 주소','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
-  {emp:'B2099', status:'성공', date:'2025-09-22 11:25:55', types:['카드번호'], source:'TXT', filename:'summary.txt', reason:''},
-  {emp:'A1200', status:'성공', date:'2025-09-21 18:12:51', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-20 18:08:38', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.pdf', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-19 01:56:34', types:['전화번호','이메일'], source:'PDF', filename:'draft.pdf', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-18 01:51:21', types:['카드번호'], source:'TXT', filename:'apply.txt', reason:''},
-  {emp:'A1138', status:'실패', date:'2025-09-17 00:39:09', types:[], source:'TXT', filename:'apply.txt', reason:'지원 불가 형식'},
-  {emp:'B2047', status:'성공', date:'2025-09-16 08:26:04', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-15 07:22:52', types:[], source:'DOCX', filename:'data.docx', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'성공', date:'2025-09-14 15:09:48', types:['주민등록번호'], source:'PDF', filename:'cards.pdf', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-13 14:05:35', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-12 22:52:31', types:['IP 주소'], source:'XLSX', filename:'contacts.xlsx', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-11 22:48:18', types:[], source:'XLSX', filename:'draft.xlsx', reason:'지원 불가 형식'},
-  {emp:'A1138', status:'성공', date:'2025-09-10 21:35:06', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
-  {emp:'B2047', status:'실패', date:'2025-09-09 05:23:01', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
-  {emp:'B2099', status:'성공', date:'2025-09-08 04:18:49', types:['전화번호'], source:'TXT', filename:'summary.txt', reason:''},
-  {emp:'A1200', status:'성공', date:'2025-09-07 12:06:44', types:['전화번호'], source:'DOCX', filename:'invoice.docx', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-06 11:01:32', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-05 19:49:27', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-04 18:45:15', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.xlsx', reason:''},
-  {emp:'A1138', status:'성공', date:'2025-09-22 02:32:02', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
-  {emp:'B2047', status:'실패', date:'2025-09-15 01:20:58', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
-  {emp:'B2099', status:'실패', date:'2025-09-23 01:15:45', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
-  {emp:'A1200', status:'성공', date:'2025-09-19 15:41:11', types:['IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B3001', status:'실패', date:'2025-09-23 22:28:07', types:[], source:'TXT', filename:'data.txt', reason:'손상 파일'},
-  {emp:'S0001', status:'성공', date:'2025-09-14 22:24:54', types:['전화번호'], source:'PDF', filename:'q3_report.pdf', reason:''},
-  {emp:'A1023', status:'실패', date:'2025-09-21 05:12:50', types:[], source:'DOCX', filename:'analysis.docx', reason:'빈 파일'},
-  {emp:'A1138', status:'성공', date:'2025-09-24 05:59:37', types:['전화번호','IP 주소'], source:'텍스트', filename:'-', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-24 04:55:25', types:['이메일'], source:'XLSX', filename:'user_notes.xlsx', reason:''},
-  {emp:'B2099', status:'실패', date:'2025-09-24 12:42:20', types:[], source:'텍스트', filename:'-', reason:'빈 파일'},
-  {emp:'A1200', status:'성공', date:'2025-09-24 11:38:08', types:['주민등록번호'], source:'TXT', filename:'notes.txt', reason:''},
-  {emp:'B3001', status:'성공', date:'2025-09-10 19:25:04', types:['주민등록번호'], source:'PDF', filename:'draft.docx', reason:''},
-  {emp:'S0001', status:'성공', date:'2025-09-18 18:21:51', types:['카드번호','주민등록번호'], source:'DOCX', filename:'summary.docx', reason:''},
-  {emp:'A1023', status:'성공', date:'2025-09-15 02:08:47', types:['IP'], source:'TXT', filename:'apply.txt', reason:''},
-  {emp:'B2047', status:'성공', date:'2025-09-14 02:04:34', types:['전화번호'], source:'PPTX', filename:'report.pptx', reason:''},
-  {emp:'A1138', status:'실패', date:'2025-09-13 01:51:22', types:[], source:'HWPX', filename:'document.hwpx', reason:'암호화 파일'},
-  {emp:'S0001', status:'성공', date:'2025-09-12 09:39:17', types:['이메일'], source:'HWP', filename:'memo.hwp', reason:''}
+  {emp:'192.168.1.100', status:'실패', date:'2025-10-15 14:09:47', types:[], source:'DOC', filename:'analysis.doc', reason:'빈 파일'},
+  {emp:'192.168.1.101', status:'성공', date:'2025-10-15 14:56:35', types:['IP'], source:'텍스트', filename:'-', reason:'', suspicious: true},
+  {emp:'192.168.1.102', status:'성공', date:'2025-10-15 13:52:22', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.103', status:'성공', date:'2025-10-14 21:39:18', types:['IP'], source:'텍스트', filename:'-', reason:'', suspicious: true},
+  {emp:'192.168.1.104', status:'성공', date:'2025-10-13 20:35:05', types:['이메일','카드번호'], source:'PDF', filename:'cards.pdf', reason:''},
+  {emp:'192.168.1.105', status:'실패', date:'2025-10-12 04:22:01', types:[], source:'TXT', filename:'contacts.txt', reason:'암호화 파일'},
+  {emp:'192.168.1.106', status:'성공', date:'2025-10-11 04:18:48', types:['카드번호','이메일'], source:'XLSX', filename:'report.xlsx', reason:'', suspicious: true},
+  {emp:'192.168.1.100', status:'실패', date:'2025-10-10 11:05:44', types:[], source:'HWP', filename:'invoice.hwp', reason:'암호화 파일'},
+  {emp:'192.168.1.101', status:'성공', date:'2025-10-09 11:53:31', types:['IP'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.102', status:'성공', date:'2025-10-08 10:48:19', types:['전화번호'], source:'텍스트', filename:'-', reason:'', suspicious: true},
+  {emp:'192.168.1.103', status:'성공', date:'2025-10-07 18:36:14', types:['주민등록번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.104', status:'실패', date:'2025-10-06 17:32:02', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'192.168.1.105', status:'실패', date:'2025-10-05 01:19:57', types:[], source:'PPTX', filename:'presentation.pptx', reason:'지원 불가 형식'},
+  {emp:'192.168.1.106', status:'성공', date:'2025-10-04 00:15:45', types:['IP'], source:'TXT', filename:'cards.txt', reason:''},
+  {emp:'192.168.1.100', status:'실패', date:'2025-10-03 08:02:40', types:[], source:'HWPX', filename:'cards.hwpx', reason:'빈 파일'},
+  {emp:'192.168.1.101', status:'성공', date:'2025-10-02 07:50:28', types:['생년월일'], source:'PDF', filename:'draft.pdf', reason:'', suspicious: true},
+  {emp:'192.168.1.102', status:'성공', date:'2025-10-01 07:45:15', types:['주민등록번호','카드번호'], source:'XLS', filename:'data.xls', reason:''},
+  {emp:'192.168.1.103', status:'성공', date:'2025-09-30 14:33:11', types:['주민등록번호','생년월일'], source:'PDF', filename:'summary.pdf', reason:''},
+  {emp:'192.168.1.104', status:'실패', date:'2025-09-29 14:28:59', types:[], source:'DOC', filename:'resume.doc', reason:'손상 파일'},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-28 21:16:54', types:['생년월일'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.106', status:'성공', date:'2025-09-27 21:11:42', types:['카드번호'], source:'텍스트', filename:'-', reason:'', suspicious: true},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-26 05:59:37', types:['이메일','주민등록번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'192.168.1.101', status:'실패', date:'2025-09-25 04:54:25', types:[], source:'DOCX', filename:'draft.docx', reason:'빈 파일'},
+  {emp:'192.168.1.102', status:'실패', date:'2025-09-24 04:42:12', types:[], source:'XLSX', filename:'summary.xlsx', reason:'지원 불가 형식'},
+  {emp:'192.168.1.103', status:'성공', date:'2025-09-23 11:29:08', types:['IP','전화번호'], source:'TXT', filename:'user_notes.txt', reason:''},
+  {emp:'192.168.1.104', status:'성공', date:'2025-09-22 11:25:55', types:['카드번호'], source:'TXT', filename:'summary.txt', reason:'', suspicious: true},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-21 18:12:51', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.106', status:'성공', date:'2025-09-20 18:08:38', types:['주민등록번호','카드번호'], source:'PDF', filename:'draft.pdf', reason:''},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-19 01:56:34', types:['전화번호','이메일'], source:'PDF', filename:'draft.pdf', reason:'', suspicious: true},
+  {emp:'192.168.1.101', status:'성공', date:'2025-09-18 01:51:21', types:['카드번호'], source:'TXT', filename:'apply.txt', reason:''},
+  {emp:'192.168.1.102', status:'실패', date:'2025-09-17 00:39:09', types:[], source:'TXT', filename:'apply.txt', reason:'지원 불가 형식'},
+  {emp:'192.168.1.103', status:'성공', date:'2025-09-16 08:26:04', types:['전화번호'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'192.168.1.104', status:'실패', date:'2025-09-15 07:22:52', types:[], source:'DOCX', filename:'data.docx', reason:'지원 불가 형식'},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-14 15:09:48', types:['주민등록번호'], source:'PDF', filename:'cards.pdf', reason:''},
+  {emp:'192.168.1.106', status:'성공', date:'2025-09-13 14:05:35', types:['IP'], source:'텍스트', filename:'-', reason:'', suspicious: true},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-12 22:52:31', types:['IP'], source:'XLSX', filename:'contacts.xlsx', reason:''},
+  {emp:'192.168.1.101', status:'실패', date:'2025-09-11 22:48:18', types:[], source:'XLSX', filename:'draft.xlsx', reason:'지원 불가 형식'},
+  {emp:'192.168.1.102', status:'성공', date:'2025-09-10 21:35:06', types:['이메일','카드번호'], source:'XLSX', filename:'log.xlsx', reason:''},
+  {emp:'192.168.1.103', status:'실패', date:'2025-09-09 05:23:01', types:[], source:'텍스트', filename:'-', reason:'지원 불가 형식'},
+  {emp:'192.168.1.104', status:'성공', date:'2025-09-08 04:18:49', types:['전화번호'], source:'TXT', filename:'summary.txt', reason:''},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-07 12:06:44', types:['전화번호'], source:'DOCX', filename:'invoice.docx', reason:''},
+  {emp:'192.168.1.106', status:'성공', date:'2025-09-06 11:01:32', types:['카드번호'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-05 19:49:27', types:['전화번호'], source:'XLSX', filename:'analysis.xlsx', reason:''},
+  {emp:'192.168.1.101', status:'성공', date:'2025-09-04 18:45:15', types:['생년월일','전화번호'], source:'XLSX', filename:'invoice.xlsx', reason:''},
+  {emp:'192.168.1.102', status:'성공', date:'2025-09-22 02:32:02', types:['이메일'], source:'TXT', filename:'q3_report.pdf', reason:''},
+  {emp:'192.168.1.103', status:'실패', date:'2025-09-15 01:20:58', types:[], source:'텍스트', filename:'-', reason:'암호화 파일'},
+  {emp:'192.168.1.104', status:'실패', date:'2025-09-23 01:15:45', types:[], source:'XLSX', filename:'draft.docx', reason:'지원 불가 형식'},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-19 15:41:11', types:['IP'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.106', status:'실패', date:'2025-09-23 22:28:07', types:[], source:'TXT', filename:'data.txt', reason:'손상 파일'},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-14 22:24:54', types:['전화번호'], source:'PDF', filename:'q3_report.pdf', reason:''},
+  {emp:'192.168.1.101', status:'실패', date:'2025-09-21 05:12:50', types:[], source:'DOCX', filename:'analysis.docx', reason:'빈 파일'},
+  {emp:'192.168.1.102', status:'성공', date:'2025-09-24 05:59:37', types:['전화번호','IP'], source:'텍스트', filename:'-', reason:''},
+  {emp:'192.168.1.103', status:'성공', date:'2025-09-24 04:55:25', types:['이메일'], source:'XLSX', filename:'user_notes.xlsx', reason:''},
+  {emp:'192.168.1.104', status:'실패', date:'2025-09-24 12:42:20', types:[], source:'텍스트', filename:'-', reason:'빈 파일'},
+  {emp:'192.168.1.105', status:'성공', date:'2025-09-24 11:38:08', types:['주민등록번호'], source:'TXT', filename:'notes.txt', reason:''},
+  {emp:'192.168.1.106', status:'성공', date:'2025-09-10 19:25:04', types:['주민등록번호'], source:'PDF', filename:'draft.docx', reason:''},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-18 18:21:51', types:['카드번호','주민등록번호'], source:'DOCX', filename:'summary.docx', reason:''},
+  {emp:'192.168.1.101', status:'성공', date:'2025-09-15 02:08:47', types:['IP'], source:'TXT', filename:'apply.txt', reason:''},
+  {emp:'192.168.1.103', status:'성공', date:'2025-09-14 02:04:34', types:['전화번호'], source:'PPTX', filename:'report.pptx', reason:''},
+  {emp:'192.168.1.102', status:'실패', date:'2025-09-13 01:51:22', types:[], source:'HWPX', filename:'document.hwpx', reason:'암호화 파일'},
+  {emp:'192.168.1.100', status:'성공', date:'2025-09-12 09:39:17', types:['이메일'], source:'HWP', filename:'memo.hwp', reason:''}
 ];
 
 /* ====== DOM/유틸 ====== */
 const $ = (sel) => document.querySelector(sel);
+
+// 스크롤 방지 함수
+function preventScroll(e) {
+  e.preventDefault();
+}
 function fmt(d){ return d.toISOString().slice(0,10); }
 function normalizeSource(source) {
   if(['DOCX','DOC'].includes(source)) return 'DOCX/DOC';
@@ -80,8 +85,8 @@ function endOfLastWeek(d){ const e=endOfWeek(d); e.setDate(e.getDate()-7); retur
 function startOfLastMonth(d){ return new Date(d.getFullYear(), d.getMonth()-1, 1); }
 function endOfLastMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 0); }
 
-/* 샘플에서 사번이 없을 때 순환 배정 */
-const EMP_POOL = ['S0001','A1023','A1138','B2047','B2099'];
+/* 샘플에서 IP가 없을 때 순환 배정 */
+const EMP_POOL = ['192.168.1.100','192.168.1.101','192.168.1.102','192.168.1.103','192.168.1.104'];
 function attachEmp(rows){
   return rows.map((r,i)=> r.emp ? r : ({...r, emp: EMP_POOL[i % EMP_POOL.length]}));
 }
@@ -127,7 +132,6 @@ function applyFilters(){
   const type = $('#type').value;
   const source = $('#source').value;
   const status = $('#status').value;
-  const emp = ($('#emp').value || '').trim().toLowerCase();
   const q = $('#q').value.trim().toLowerCase();
 
   let rows = attachEmp(DATA);
@@ -139,15 +143,11 @@ function applyFilters(){
     if (source && normalizeSource(row.source) !== source) return false;
     if (status) {
       if (status === '개인 식별 의심') {
-        // 개인 식별 의심 상태는 30% 확률로 의심 판정
-        const hash = (row.emp || '').charCodeAt(0) + (row.date || '').charCodeAt(5);
-        const isSuspicious = (hash % 10) < 3; // 30% 확률
-        if (!isSuspicious) return false;
+        if (!row.suspicious) return false;
       } else if (row.status !== status) {
         return false;
       }
     }
-    if (emp && !(row.emp||'').toLowerCase().includes(emp)) return false;
     if (q){
       const hay = [(row.types||[]).join(','),row.source,row.filename,row.reason,row.status,row.date,row.emp].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
@@ -281,8 +281,7 @@ function openDetailModal(row) {
   
   // 개인 식별 의심 설정
   const suspiciousEl = $('#detail-suspicious');
-  const isSuspicious = Math.random() > 0.7; // 30% 확률로 의심
-  if (isSuspicious) {
+  if (row.suspicious) {
     suspiciousEl.innerHTML = '<span style="display:inline-block;background:rgba(239,68,68,0.15);color:#dc2626;padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">의심</span>';
   } else {
     suspiciousEl.textContent = '-';
@@ -300,12 +299,63 @@ function openDetailModal(row) {
   
   $('#detailModal').style.display = 'block';
   document.body.style.overflow = 'hidden';
+  document.addEventListener('wheel', preventScroll, { passive: false });
+  document.addEventListener('touchmove', preventScroll, { passive: false });
 }
 
 /* 팝업 닫기 */
 function closeDetailModal() {
   $('#detailModal').style.display = 'none';
-  document.body.style.overflow = 'auto';
+  document.body.style.overflow = '';
+  document.removeEventListener('wheel', preventScroll);
+  document.removeEventListener('touchmove', preventScroll);
+}
+
+/* 테이블 폰트 크기 및 열 너비 동적 조절 */
+function adjustTableFontSize() {
+  const screenWidth = window.innerWidth;
+  const fontSize = screenWidth < 768 ? '10px' : screenWidth < 1024 ? '12px' : '14px';
+  const headerFontSize = screenWidth < 768 ? '9px' : screenWidth < 1024 ? '11px' : '12px';
+  
+  const table = document.querySelector('table');
+  if (table) {
+    const headers = table.querySelectorAll('thead th');
+    const cells = table.querySelectorAll('tbody td');
+    
+    headers.forEach((th, index) => {
+      th.style.fontSize = headerFontSize;
+      th.style.whiteSpace = 'nowrap';
+      th.style.padding = screenWidth < 768 ? '6px' : '10px';
+      
+      // 열 너비 조절
+      if (screenWidth < 768) {
+        if (index === 0) th.style.width = '60px'; // 상태
+        else if (index === 1) th.style.width = '80px'; // 일자
+        else if (index === 2) th.style.width = '70px'; // IP
+        else if (index === 3) th.style.width = '120px'; // 개인정보 유형
+        else if (index === 4) th.style.width = '70px'; // 탐지 유형
+        else if (index === 5) th.style.width = '80px'; // 파일명
+        else if (index === 6) th.style.width = '80px'; // 실패 사유
+      }
+    });
+    
+    cells.forEach((td, index) => {
+      td.style.fontSize = fontSize;
+      td.style.whiteSpace = 'nowrap';
+      td.style.overflow = 'hidden';
+      td.style.textOverflow = 'ellipsis';
+      td.style.padding = screenWidth < 768 ? '6px' : '12px';
+      
+      // 상태와 개인정보 유형 칩 내부 텍스트 폰트 크기 조절
+      if (index % 7 === 0) { // 상태 열
+        const statusSpan = td.querySelector('.status');
+        if (statusSpan) statusSpan.style.fontSize = fontSize;
+      } else if (index % 7 === 3) { // 개인정보 유형 열
+        const chips = td.querySelectorAll('.chip');
+        chips.forEach(chip => chip.style.fontSize = fontSize);
+      }
+    });
+  }
 }
 
 /* 테이블 렌더링 */
@@ -335,12 +385,13 @@ function renderRows(rows){
     });
   }
   $summary.textContent = `총 ${rows.length}건`;
+  adjustTableFontSize();
 }
 
 /* 초기화 */
 function resetFilters(){
   $('#from').value=''; $('#to').value=''; $('#type').value=''; $('#source').value='';
-  $('#status').value=''; $('#emp').value=''; $('#q').value=''; $('#quickDesc').textContent='';
+  $('#status').value=''; $('#q').value=''; $('#quickDesc').textContent='';
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   applyFilters();
 }
@@ -350,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.pill').forEach(btn=> btn.addEventListener('click', ()=> setQuickRange(btn.dataset.range)));
   $('#applyBtn').addEventListener('click', applyFilters);
   $('#resetBtn').addEventListener('click', resetFilters);
-  document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.target.id==='q' || e.target.id==='emp')) applyFilters(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && e.target.id==='q') applyFilters(); });
 });
 
 // 오늘 날짜 자동 설정
@@ -367,7 +418,6 @@ function setTodayDate() {
 // 페이지 로드 시 오늘 날짜 설정
 document.addEventListener('DOMContentLoaded', function() {
   const filterDate = localStorage.getItem('filterDate');
-  const filterEmp = localStorage.getItem('filterEmp');
   const filterStatus = localStorage.getItem('filterStatus');
   
   if (filterDate) {
@@ -383,11 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('quickDesc').textContent = `· 오늘: ${todayStr} ~ ${todayStr}`;
     // 오늘 버튼 활성화
     document.querySelector('.pill[data-range="today"]').classList.add('active');
-  }
-  
-  if (filterEmp) {
-    $('#emp').value = filterEmp;
-    localStorage.removeItem('filterEmp');
   }
   
   if (filterStatus) {
@@ -424,4 +469,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeDetailModal();
   });
+  
+  // 화면 크기 변경 시 테이블 폰트 조절
+  window.addEventListener('resize', adjustTableFontSize);
 });

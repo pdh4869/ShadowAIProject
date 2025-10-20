@@ -23,16 +23,17 @@
 .table-wrap{ overflow:auto; }
 table{ width:100%; border-collapse:collapse; }
 thead th{ position:sticky; top:0; background:#DBE2EF !important; border-bottom:1px solid var(--border);
-          font-size:12px; color:var(--text) !important; text-align:left; padding:10px; font-weight:bold !important; }
-tbody td{ border-bottom:1px solid var(--border); padding:12px; font-size:14px; vertical-align:middle; color:var(--text); background:#F9F7F7; }
+          font-size:clamp(10px, 1.2vw, 14px); color:var(--text) !important; text-align:center; padding:clamp(8px, 1vw, 12px); font-weight:bold !important; }
+tbody td{ border-bottom:1px solid var(--border); padding:clamp(8px, 1vw, 12px); font-size:clamp(11px, 1.1vw, 14px); vertical-align:middle; color:var(--text); background:#F9F7F7; text-align:center; }
 tbody tr:hover{ background:rgba(148,163,184,.05); }
-.badge{ display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px;
-        font-size:12px; font-weight:700; white-space:nowrap; }
+.badge{ display:inline-flex; align-items:center; gap:6px; padding:clamp(3px, 0.5vw, 4px) clamp(6px, 1vw, 8px); border-radius:999px;
+        font-size:clamp(10px, 1.1vw, 12px); font-weight:700; white-space:nowrap; }
 .role.super{ background:rgba(99,102,241,.15); color:#3F72AF; border:1px solid #6366f1; }
 .role.admin{ background:rgba(14,116,144,.15); color:#3F72AF; border:1px solid #0e7490; }
 .muted{ color:var(--muted); }
 .perm-banner{ background:rgba(245,158,11,.12); color:#fed7aa; border:1px solid rgba(245,158,11,.35); padding:10px 12px; border-radius:10px; margin-bottom:12px; }
-.table-actions{ display:flex; gap:8px; }
+.table-actions{ display:flex; gap:clamp(4px, 0.5vw, 8px); flex-wrap:wrap; justify-content:center; }
+.table-actions .btn{ padding:clamp(4px, 0.8vw, 8px) clamp(6px, 1vw, 12px); font-size:clamp(10px, 1.1vw, 12px); }
 .empty{ padding:28px; text-align:center; color:var(--muted); background:#F9F7F7; }
 
 /* 모달 */
@@ -52,3 +53,4 @@ tbody tr:hover{ background:rgba(148,163,184,.05); }
 .strength > div{ height:100%; width:0%; background:#ef4444; transition:width .2s ease, background .2s ease; }
 .strength.good > div{ background:#10b981; }
 .tip{ font-size:12px; color:#9ca3af; }
+.today-login{ color:#3F72AF !important; font-weight:600; }

@@ -17,12 +17,12 @@
 <body>
   <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
   <div class="pm-container">
-    <div class="page-title"><span onclick="location.href='main.html'">개인정보 탐지 대시보드</span></div>
+    <div class="page-title"><span>개인정보 탐지 대시보드</span></div>
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
-        <a href="#" onclick="location.href='detection_details.html'">탐지 현황</a>
-        <a href="#" onclick="location.href='detection_type.html'">탐지 유형</a>
-        <a href="#" onclick="location.href='personal_information_type.html'">개인정보 유형</a>
+        <a href="#">탐지 현황</a>
+        <a href="#">탐지 유형</a>
+        <a href="#">개인정보 유형</a>
       </nav>
     </div>
 
@@ -30,54 +30,54 @@
     <!-- Indicator cards (3) -->
     <section class="grid indicators" id="cards">
       <div class="panel" data-detail="total">
-        <h2 style="font-size:16px;">총 탐지 수</h2>
+        <h2 class="card-title">총 탐지 수</h2>
         <div class="small">기간 내 PII 탐지 건수</div>
         <div class="ind-val"><div class="num" id="totalNum">0</div><div class="delta" id="totalDelta">0%</div></div>
       </div>
       <div class="panel" data-detail="highrisk">
-        <h2 style="font-size:16px;">고위험 PII 비중</h2>
+        <h2 class="card-title">고위험 PII 비중</h2>
         <div class="small">주민/외국인/여권/면허/카드/계좌</div>
         <div class="ind-val"><div class="num" id="highRiskNum">0%</div><div class="delta" id="highRiskDelta">0%</div></div>
       </div>
       <div class="panel" data-detail="valid">
-        <h2 style="font-size:16px;">검증 통과율</h2>
+        <h2 class="card-title">검증 통과율</h2>
         <div class="small">Luhn / 체크섬 통과율</div>
         <div class="ind-val"><div class="num" id="validNum">0%</div><div class="delta" id="validDelta">0%</div></div>
       </div>
     </section>
     
     <!-- 시간 추이 그래프 -->
-    <section class="panel" data-detail="trend" style="margin-bottom:24px;">
+    <section class="panel trend-section" data-detail="trend">
       <h2>일별 추이</h2>
-      <div style="height:220px;position:relative;">
+      <div class="trend-chart">
         <canvas id="trendChart"></canvas>
       </div>
-      <div class="legend" style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:#475569;margin-top:8px;">
-        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#2563eb;border:1px solid #0001;"></span>총탐지</span>
-        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#16a34a;border:1px solid #0001;"></span>고위험</span>
-        <span class="key" style="display:inline-flex;align-items:center;gap:6px;"><span class="box" style="width:10px;height:10px;border-radius:2px;background:#dc2626;border:1px solid #0001;"></span>탐지실패</span>
+      <div class="legend">
+        <span class="key"><span class="box total"></span>총탐지</span>
+        <span class="key"><span class="box high-risk"></span>고위험</span>
+        <span class="key"><span class="box failed"></span>탐지실패</span>
       </div>
     </section>
     
     <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="panel" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
-          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-            <h2 style="margin:0;font-size:16px;">사용자별 탐지 빈도 (TOP 5)</h2>
-            <p class="text-xs text-gray-700" style="margin:0;" id="contribTimestamp"></p>
+        <div class="panel user-panel">
+          <div class="user-panel-header">
+            <h2>사용자별 탐지 빈도 (TOP 5)</h2>
+            <p class="text-xs text-gray-700" id="contribTimestamp"></p>
           </div>
-          <div style="display:flex;justify-content:center;align-items:center;flex:1;">
+          <div class="user-panel-content">
             <table class="tbl" id="contribTable">
-              <thead><tr><th>대상</th><th>탐지 수</th><th>고위험%</th></tr></thead>
+              <thead><tr><th>IP</th><th>탐지 수</th><th>고위험%</th></tr></thead>
               <tbody id="contribTbody"></tbody>
             </table>
           </div>
         </div>
-        <div class="panel" style="padding:16px;display:flex;flex-direction:column;justify-content:center;height:100%;">
-          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-            <h2 style="margin:0;font-size:16px;">금일 탐지 유형 (TOP 5)</h2>
-            <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="todayTotal">0</span></strong></p>
+        <div class="panel user-panel">
+          <div class="user-panel-header">
+            <h2>금일 탐지 유형 (TOP 5)</h2>
+            <p class="text-xs text-gray-700">총 건수: <strong><span id="todayTotal">0</span></strong></p>
           </div>
-          <div style="display:flex;justify-content:center;align-items:center;flex:1;">
+          <div class="user-panel-content">
             <table class="tbl" id="todayTypeTable">
               <thead><tr><th>유형</th><th>건수</th></tr></thead>
               <tbody id="todayTypeTbody"></tbody>
@@ -87,27 +87,27 @@
       </section>
 
       <section class="grid grid-cols-2 gap-3 mb-4">
-        <div class="panel" style="padding:16px;height:350px;">
-          <h2 style="margin:0 0 8px 0;font-size:16px;">탐지 유형별 분포</h2>
-          <div id="pieChartContainer" style="flex:1;display:flex;justify-content:center;align-items:center;max-width:300px;max-height:300px;margin:0 auto;"><canvas id="chartSourcePie"></canvas></div>
+        <div class="panel chart-panel">
+          <h2>탐지 유형별 분포</h2>
+          <div id="barChartContainer" class="chart-container"><canvas id="chartSourceBar"></canvas></div>
         </div>
-        <div id="rightColumn" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;height:169px;">
-            <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-              <h2 style="margin:0;font-size:16px;">개인 식별 의심</h2>
-              <p class="text-xs text-gray-700" style="margin:0;">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
-              <p class="text-xs text-gray-700" style="margin:0;" id="suspiciousTimestamp"></p>
+        <div id="rightColumn" class="right-column">
+          <div class="panel info-panel">
+            <div class="info-panel-header">
+              <h2>개인 식별 의심</h2>
+              <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
+              <p class="text-xs text-gray-700" id="suspiciousTimestamp"></p>
             </div>
-            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="suspiciousList">
+            <ul class="mt-1 text-xs text-gray-600 space-y-1 info-list" id="suspiciousList">
             </ul>
           </div>
-          <div class="panel" style="padding:16px 16px 5px 16px;display:flex;flex-direction:column;height:169px;">
-            <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 8px 0;flex-wrap:wrap;">
-              <h2 style="margin:0;font-size:16px;">탐지 실패</h2>
-              <p class="text-xs text-gray-700" style="margin:0;">총 실패: <strong><span id="totalFailures">0</span></strong></p>
-              <p class="text-xs text-gray-700" style="margin:0;" id="failureTimestamp"></p>
+          <div class="panel info-panel">
+            <div class="info-panel-header">
+              <h2>탐지 실패</h2>
+              <p class="text-xs text-gray-700">총 실패: <strong><span id="totalFailures">0</span></strong></p>
+              <p class="text-xs text-gray-700" id="failureTimestamp"></p>
             </div>
-            <ul class="mt-1 text-xs text-gray-600 space-y-1" style="padding-left: 0; margin-left: 0;flex:1;overflow:hidden;" id="failureList">
+            <ul class="mt-1 text-xs text-gray-600 space-y-1 info-list" id="failureList">
             </ul>
           </div>
         </div>
@@ -118,8 +118,8 @@
   <!-- 우측 상단 유저 박스 -->
   <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
     <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">S0001</span></span>
-    <button type="button" class="logout" id="accountBtn" onclick="location.href='account_management.html'" style="background:#F9F7F7;">계정 관리</button>
-    <button type="button" class="logout" onclick="location.href='login.html'">로그아웃</button>
+    <button type="button" class="logout account-btn" id="accountBtn">계정 관리</button>
+    <button type="button" class="logout">로그아웃</button>
   </div>
 
 </body>
