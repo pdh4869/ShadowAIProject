@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
         labels: filteredSourceStats.map(s => s.source), 
         datasets: [{ 
           data: filteredSourceStats.map(s => s.count), 
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'].slice(0, filteredSourceStats.length), 
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'].slice(0, filteredSourceStats.length), 
           barThickness: 'flex', 
           categoryPercentage: 0.8 
         }] 
@@ -371,20 +371,15 @@ document.addEventListener('DOMContentLoaded', function() {
       options: { 
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 40, bottom: 0 } },
+        indexAxis: 'y',
+        layout: { padding: { left: 12, right: 12, top: 16, bottom: 10 } },
         plugins: { 
           legend: { display: false }, 
-          datalabels: { 
-            anchor: 'end', 
-            align: 'top', 
-            color: '#374151', 
-            font: { size: 10 }, 
-            formatter: (v) => filteredTotal > 0 ? ((v/filteredTotal)*100).toFixed(1)+'%\n(' + v + '건)' : '0%\n(0건)'
-          } 
+          datalabels: { display: false }
         },
         scales: { 
-          y: { beginAtZero: true, grid: { display: false }, ticks: { display: false }, border: { display: false } }, 
-          x: { grid: { display: false }, ticks: { font: { size: 10 }, padding: 0, maxRotation: 0 } } 
+          y: { beginAtZero: true, grid: { display: false }, ticks: { display: true, autoskip: false, font: { size: 8 }, padding: 0, color: '#000000' }, border: { display: true, tickLength: 0 } }, 
+          x: { display: false, grid: { display: false }, ticks: { font: { size: 10 }, padding: 0, maxRotation: 0 } } 
         },
         onClick: (event, elements) => {
           if (elements.length > 0) {

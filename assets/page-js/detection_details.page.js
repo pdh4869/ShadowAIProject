@@ -127,6 +127,7 @@ function normalizeSource(source) {
   if(['XLSX','XLS'].includes(source)) return 'XLSX/XLS';
   if(['PPTX','PPT'].includes(source)) return 'PPTX';
   if(['HWPX','HWP'].includes(source)) return 'HWPX/HWP';
+  if(['JPG','JPEG'].includes(source)) return 'JPG/JPEG';
   return source;
 }
 
@@ -439,10 +440,15 @@ function renderRows(rows){
   adjustTableFontSize();
 }
 
+function getLabelFontSize() {
+  const w = window.innerWidth;
+  return w < 768 ? 8 : (w < 1024 ? 10 : 12);
+}
+
 // Chart.js 막대 차트
 let barChart;
 function renderChart(rows){
-  const allKeys = ["텍스트","PDF","DOCX/DOC","XLSX/XLS","PPTX","HWPX/HWP","TXT"];
+  const allKeys = ["텍스트","PDF","DOCX/DOC","XLSX/XLS","PPTX","HWPX/HWP","TXT","PNG","JPG/JPEG","BMP","WEBP","GIF","TIFF"];
   const counts = Object.fromEntries(allKeys.map(k=>[k,0]));
   rows.forEach(r=>{ const norm = normalizeSource(r.source); if(counts.hasOwnProperty(norm)) counts[norm]++; });
   
@@ -460,7 +466,7 @@ function renderChart(rows){
       labels: keys,
       datasets: [{
         data: data,
-        backgroundColor: keys.map((_, i) => ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'][i % 7]),
+        backgroundColor: keys.map((_, i) => ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'][i % 7]),
         borderWidth: 0
       }]
     },
@@ -495,12 +501,13 @@ function renderChart(rows){
           beginAtZero: true,
           ticks: { display: false },
           grid: { display: false },
-          border: { display: false }
+          border: { display: false },
         },
         x: {
           grid: { display: false },
+          font: { size: getLabelFontSize() },
           ticks: {
-            font: { size: 12 },
+            font: { size: 12, size: getLabelFontSize() },
             color: '#000000'
           }
         }

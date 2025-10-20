@@ -41,7 +41,7 @@
 .user-panel-content { display: flex; justify-content: center; align-items: center; flex: 1; }
 .chart-panel { padding: 16px; height: 350px; display: flex; flex-direction: column; }
 .chart-panel h2 { margin: 0 0 8px 0; font-size: 16px; }
-.chart-container { flex: 1; display: flex; justify-content: center; align-items: center; }
+.chart-container { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; position: relative;}
 .right-column { display: flex; flex-direction: column; gap: 12px; }
 .info-panel { padding: 16px 16px 5px 16px; display: flex; flex-direction: column; height: 169px; }
 .info-panel-header { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px 0; flex-wrap: wrap; }

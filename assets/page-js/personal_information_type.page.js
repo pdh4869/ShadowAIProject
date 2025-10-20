@@ -398,7 +398,7 @@ function renderRows(rows){
 let barChartInstance = null;
 
 function renderChart(rows){
-  const keys = ["이름","전화번호","이메일","생년월일","주민번호","외국인","운전번호","여권번호","계좌","카드","IP","직책","조직/기관","얼굴이미지"];
+  const keys = ["이름","전화번호","이메일","생년월일","주민번호","외국인","운전번호","여권번호","계좌","카드","IP","직책","조직/기관","얼굴"];
   const keyMapping = {
     "주민등록번호": "주민번호",
     "외국인등록번호": "외국인", 
@@ -422,7 +422,7 @@ function renderChart(rows){
   const filteredData = [];
   const filteredLabels = [];
   const filteredColors = [];
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#22c55e', '#9333ea', '#0ea5e9', '#eab308', '#ef4444', '#14b8a6'];
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'];
   
   for(let i = 0; i < keys.length; i++) {
     if(data[i] > 0) {
