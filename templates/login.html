@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>대시보드 로그인</title>
+
+
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/page-css/login.page.css">
+<script src="assets/js/common.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/page-js/login.page.js"></script></head>
+<body>
+  <main class="card" role="dialog" aria-label="대시보드 로그인 폼">
+    <div class="brand"><div class="dot"></div> Privacy Monitor</div>
+    <div class="head">
+      <h1>대시보드 로그인</h1>
+    </div>
+    <form class="body" id="loginForm" autocomplete="off" novalidate>
+      <div class="field">
+        <label for="emp">ID (사번)</label>
+        <div class="input-wrap">
+          <input id="emp" name="emp" placeholder="예: A1023" inputmode="latin" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="pwd">비밀번호</label>
+        <div class="input-wrap">
+          <input id="pwd" name="pwd" type="password" placeholder="비밀번호" />
+          <button class="show" type="button" id="togglePwd" aria-controls="pwd" aria-pressed="false">표시</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="error" id="error"></div>
+      </div>
+      <button class="btn" type="submit" id="submitBtn">로그인</button>
+    </form>
+    <div class="foot">
+      <div class="note">문의사항은 <b>최고 관리자</b>에게 문의해 주세요.</div>
+    </div>
+  </main>
+
+
+</body>
+</html>
