@@ -15,7 +15,7 @@ const PII_TYPE_MAP = {
   'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
   'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
   'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
-  'combination_risk': '조합위험도'
+  'combination_risk': '조합위험도', 'lc': '주소', '이름': '이름', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
 };
 
 // PII 타입을 한글로 변환하는 함수
@@ -174,55 +174,93 @@ function translateTableChips() {
 
 // 모달 열기 함수
 function openDetailModal(log) {
-  // 상태
+  console.log('Opening modal with log:', log);
+
   const statusEl = $('#detail-status');
-  statusEl.textContent = log.status;
+  statusEl.textContent = log.status || '-';
   statusEl.style.color = log.status === '성공' ? '#059669' : '#dc2626';
   
-  // 기본 정보 (user_type 라우트의 데이터 구조에 맞춤)
-  $('#detail-emp').textContent = log.ip_address || log.emp || '-'; 
+  // 기본 정보
+  $('#detail-emp').textContent = log.ip_address || '-';
   $('#detail-date').textContent = log.timestamp || '-';
   
   // 시스템 정보
   $('#detail-ip').textContent = log.ip_address || '-';
-  $('#detail-os').textContent = log.os || '-'; // user_type 라우트는 'os' 키 사용
-  $('#detail-computer').textContent = log.hostname || '-';
+  $('#detail-os').textContent = log.os_info || log.os || '-';
+  $('#detail-computer').textContent = log.hostname || log.computer_name || '-';
   
   // 웹 정보
-  $('#detail-browser').textContent = log.browser || '-';
-  $('#detail-llm').textContent = log.llm_type_name || '-';
+  $('#detail-browser').textContent = log.browser || log.browser_info || '-';
+  $('#detail-llm').textContent = log.llm_type_name || log.llm_type || '-';
   $('#detail-url').textContent = log.url || '-';
   
   // 탐지 정보
-  $('#detail-source').textContent = log.source || '-'; // user_type 라우트는 'source' 키 사용
+  $('#detail-source').textContent = log.file_type_name || log.source || '-';
   
-  // 파일명 (텍스트인 경우 숨김)
+  // 파일명
   const filenameSection = $('#filename-section');
-  if (log.source === '텍스트' || !log.filename) {
-    filenameSection.parentElement.style.display = 'none';
+  const isText = (log.file_type_name === '텍스트' || log.source === '텍스트');
+  if (isText) {
+    filenameSection.style.display = 'none';
   } else {
-    filenameSection.parentElement.style.display = 'block';
+    filenameSection.style.display = 'block';
     $('#detail-filename').textContent = log.filename || '-';
   }
   
-  // 개인정보 유형 (영어를 한글로 변환 및 색상 적용)
+  // 개인정보 유형 - pii_type_counts 또는 pii_types_with_counts 사용
   const typesEl = $('#detail-types');
-  if (log.types && log.types.length > 0) { // user_type 라우트는 'types' 키 사용
-    typesEl.innerHTML = log.types.map(type => {
+  
+  if (log.pii_type_counts && Object.keys(log.pii_type_counts).length > 0) {
+    // pii_type_counts 객체 사용
+    typesEl.innerHTML = Object.entries(log.pii_type_counts).map(([type, count]) => {
       const koreanType = translatePIIType(type);
-      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}</span>`;
+      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${count}</span>`;
+    }).join('');
+  } else if (log.pii_types_with_counts && Array.isArray(log.pii_types_with_counts)) {
+    // pii_types_with_counts 배열 사용
+    typesEl.innerHTML = log.pii_types_with_counts.map(item => {
+      const [type, count] = item.split(':');
+      const koreanType = translatePIIType(type);
+      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${count}</span>`;
     }).join('');
   } else {
     typesEl.textContent = '-';
   }
+
+  // 검증 결과
+  const validationSection = $('#validation-section');
+  if (log.validation_results && Array.isArray(log.validation_results) && log.validation_results.length > 0) {
+    validationSection.style.display = 'block';
+    $('#detail-validation').innerHTML = log.validation_results.map(result => {
+      const match = result.match(/(valid|invalid) \(([^)]+)\)/);
+      if (match) {
+        const isValid = match[1] === 'valid';
+        const piiType = match[2];
+        const koreanType = translatePIIType(piiType);
+        const status = isValid ? '성공' : '실패';
+        return `<span style="display:inline-block;background:${isValid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${isValid ? '#059669' : '#dc2626'};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${status}</span>`;
+      }
+      return '';
+    }).join('');
+  } else {
+    validationSection.style.display = 'none';
+  }
   
+  // 개인 식별 의심
+  const suspiciousEl = $('#detail-suspicious');
+  if (log.suspicious === true) {
+    suspiciousEl.innerHTML = '<span style="display:inline-block;background:rgba(220,38,38,0.15);color:#dc2626;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:700;">의심</span>';
+  } else {
+    suspiciousEl.textContent = '-';
+  }
+
   // 실패 사유
   const reasonSection = $('#reason-section');
-  if (log.reason && log.reason.trim()) {
-    reasonSection.parentElement.style.display = 'block';
+  if (log.reason && log.reason.trim() && log.reason !== '-') {
+    reasonSection.style.display = 'block';
     $('#detail-reason').textContent = log.reason;
   } else {
-    reasonSection.parentElement.style.display = 'none';
+    reasonSection.style.display = 'none';
   }
   
   $('#detailModal').style.display = 'block';
@@ -333,8 +371,9 @@ function renderChart() {
           const index = elements[0].index;
           const selectedUserIP = labels[index]; 
           
-          $('#q').value = selectedUserIP;
-          applyFilters(); // URL 업데이트를 통해 서버 재요청
+          const params = new URLSearchParams(window.location.search);
+          params.set('q', selectedUserIP);
+          window.location.search = params.toString();
         }
       },
       scales: {

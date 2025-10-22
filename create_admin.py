@@ -1,5 +1,5 @@
-# receive_server.py 파일에서 Flask app과 db, DashboardAdmin 모델을 가져옵니다.
-from receive import app, db, DashboardAdmin
+# backend.py 파일에서 Flask app과 db, DashboardAdmin 모델을 가져옵니다.
+from backend import app, db, DashboardAdmin
 
 def create_super_admin(employee_id, password):
     """최초의 '최고 관리자(super)' 계정을 생성하는 함수"""

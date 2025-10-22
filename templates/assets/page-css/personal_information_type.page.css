@@ -45,7 +45,7 @@ tbody tr:hover{background:rgba(148,163,184,.05)}
 .status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:800}
 .status.ok{background:rgba(16,185,129,.15);color:var(--ok)}
 .status.fail{background:rgba(239,68,68,.15);color:var(--fail)}
-.chips{display:flex;gap:3px;flex-wrap:nowrap;justify-content:center;overflow:hidden}
+.chips{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:200px;margin:0 auto}
 .chip{display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:9px;white-space:nowrap;flex-shrink:0}
 
 @media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} .status-search-row .field:first-child{flex:1} .status-search-row .field:last-child{flex:1} }

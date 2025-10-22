@@ -4,19 +4,19 @@ const $ = (sel) => document.querySelector(sel);
 
 // PII 타입 영어-한글 매핑
 const PII_TYPE_MAP = {
-  'phone': '전화번호', 'email': '이메일', 'ssn': '주민등록번호', 'card': '카드번호',
-  'account': '계좌번호', 'ps': '이름', 'image_face': '얼굴이미지', 'name': '이름',
-  'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
-  'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
-  'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
-  'combination_risk': '조합위험도'
+  'phone': '전화번호', 'email': '이메일', 'ssn': '주민등록번호', 'card': '카드번호',
+  'account': '계좌번호', 'ps': '이름', 'image_face': '얼굴이미지', 'name': '이름',
+  'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
+  'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
+  'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
+  'combination_risk': '조합위험도', 'lc': '주소', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
 };
 
 // PII 타입을 한글로 변환
 function translatePIIType(type) {
-  if (!type) return '-';
-  const lower = type.toLowerCase();
-  return PII_TYPE_MAP[lower] || type;
+  if (!type) return '-';
+  const lower = type.toLowerCase();
+  return PII_TYPE_MAP[lower] || type;
 }
 
 // Flask에서 전달받은 실제 데이터 사용 (HTML에 추가된 변수명과 일치)
@@ -25,7 +25,7 @@ const CHART_DATA = window.BAR_CHART_DATA || [];
 
 // 스크롤 방지
 function preventScroll(e) {
-  e.preventDefault();
+  e.preventDefault();
 }
 
 // 날짜 포맷
@@ -38,96 +38,96 @@ function fmt(d){
 
 // 오늘 날짜 자동 설정
 function setTodayDate() {
-  const today = new Date();
-  const todayStr = fmt(today);
-  $('#from').value = todayStr;
-  $('#to').value = todayStr;
+  const today = new Date();
+  const todayStr = fmt(today);
+  $('#from').value = todayStr;
+  $('#to').value = todayStr;
 }
 
 // 개인정보 유형 그룹 및 색상 (유지)
 const PII_GROUPS = {
-  '연락처 정보': ['전화번호', '이메일'], '신원 정보': ['이름', '생년월일'],
-  '위치 정보': ['IP', '직책', '조직/기관'], '신분증/증명서': ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호'],
-  '금융 정보': ['계좌번호', '카드번호'], '생체 정보': ['얼굴이미지'],
-  '기타': ['조합위험도', '학번']
+  '연락처 정보': ['전화번호', '이메일'], '신원 정보': ['이름', '생년월일'],
+  '위치 정보': ['IP', '직책', '조직/기관'], '신분증/증명서': ['주민등록번호', '외국인등록번호', '운전면허번호', '여권번호'],
+  '금융 정보': ['계좌번호', '카드번호'], '생체 정보': ['얼굴이미지'],
+  '기타': ['조합위험도', '학번']
 };
 
 const GROUP_COLORS = {
-  '연락처 정보': 'rgba(59,130,246,0.15)', '신원 정보': 'rgba(6,182,212,0.15)',
-  '위치 정보': 'rgba(245,158,11,0.15)', '신분증/증명서': 'rgba(236,72,153,0.15)',
-  '금융 정보': 'rgba(139,92,246,0.15)', '생체 정보': 'rgba(220,38,38,0.15)',
-  '기타': 'rgba(107,114,128,0.15)'
+  '연락처 정보': 'rgba(59,130,246,0.15)', '신원 정보': 'rgba(6,182,212,0.15)',
+  '위치 정보': 'rgba(245,158,11,0.15)', '신분증/증명서': 'rgba(236,72,153,0.15)',
+  '금융 정보': 'rgba(139,92,246,0.15)', '생체 정보': 'rgba(220,38,38,0.15)',
+  '기타': 'rgba(107,114,128,0.15)'
 };
 
 const GROUP_TEXT_COLORS = {
-  '연락처 정보': '#1e40af', '신원 정보': '#0891b2', '위치 정보': '#d97706',
-  '신분증/증명서': '#be185d', '금융 정보': '#7c3aed', '생체 정보': '#dc2626',
-  '기타': '#374151'
+  '연락처 정보': '#1e40af', '신원 정보': '#0891b2', '위치 정보': '#d97706',
+  '신분증/증명서': '#be185d', '금융 정보': '#7c3aed', '생체 정보': '#dc2626',
+  '기타': '#374151'
 };
 
 function getTypeGroup(type) {
-  const koreanType = translatePIIType(type);
-  for (const [group, types] of Object.entries(PII_GROUPS)) {
-    if (types.includes(koreanType)) return group;
-  }
-  return '기타';
+  const koreanType = translatePIIType(type);
+  for (const [group, types] of Object.entries(PII_GROUPS)) {
+    if (types.includes(koreanType)) return group;
+  }
+  return '기타';
 }
 
 function getTypeColor(type) {
-  const group = getTypeGroup(type);
-  return GROUP_COLORS[group] || 'rgba(107,114,128,0.15)';
+  const group = getTypeGroup(type);
+  return GROUP_COLORS[group] || 'rgba(107,114,128,0.15)';
 }
 
 function getTypeTextColor(type) {
-  const group = getTypeGroup(type);
-  return GROUP_TEXT_COLORS[group] || '#374151';
+  const group = getTypeGroup(type);
+  return GROUP_TEXT_COLORS[group] || '#374151';
 }
 
 // 테이블 칩 변환 및 색상 적용
 function translateTableChips() {
   // 서버에서 이미 렌더링된 칩들에 적용
-  document.querySelectorAll('#rows .chip').forEach(chip => {
-    const originalText = chip.dataset.piiType || chip.textContent.trim();
-    const koreanText = translatePIIType(originalText);
-    chip.textContent = koreanText;
-    chip.style.background = getTypeColor(originalText);
-    chip.style.color = getTypeTextColor(originalText);
-    chip.style.fontWeight = '700';
-  });
+  document.querySelectorAll('#rows .chip').forEach(chip => {
+    const originalText = chip.dataset.piiType || chip.textContent.trim();
+    const koreanText = translatePIIType(originalText);
+    chip.textContent = koreanText;
+    chip.style.background = getTypeColor(originalText);
+    chip.style.color = getTypeTextColor(originalText);
+    chip.style.fontWeight = '700';
+  });
 }
 
 
 // 빠른 기간
 function setQuickRange(kind){
-  const now = new Date();
-  let from, to, label='';
-  
-  if(kind==='today'){ 
-    from = new Date(now);
-    to = new Date(now);
-    label = '오늘'; 
-  }
-  else if(kind==='lastweek'){ 
-    from = new Date(now);
-    from.setDate(now.getDate() - 6);
-    to = new Date(now);
-    label = '지난 주'; 
-  }
-  else if(kind==='lastmonth'){ 
-    from = new Date(now);
-    from.setMonth(now.getMonth() - 1, 1);
-    to = new Date(now);
-    to.setMonth(now.getMonth() - 1 + 1, 0);
-    label = '지난 달'; 
-  }
-  else{ return; }
-  
-  $('#from').value = fmt(from);
-  $('#to').value = fmt(to);
-  $('#quickDesc').textContent = `· ${label}: ${fmt(from)} ~ ${fmt(to)}`;
-  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  const btn = document.querySelector(`.pill[data-range="${kind}"]`);
-  if(btn) btn.classList.add('active');
+  const now = new Date();
+  let from, to, label='';
+  
+  if(kind==='today'){ 
+    from = new Date(now);
+    to = new Date(now);
+    label = '오늘'; 
+  }
+  else if(kind==='lastweek'){ 
+    from = new Date(now);
+    from.setDate(now.getDate() - 6);
+    to = new Date(now);
+    label = '지난 주'; 
+  }
+  else if(kind==='lastmonth'){ 
+    from = new Date(now);
+    from.setMonth(now.getMonth() - 1, 1);
+    to = new Date(now);
+    to.setMonth(now.getMonth() - 1 + 1, 0);
+    label = '지난 달'; 
+  }
+  else{ return; }
+  
+  $('#from').value = fmt(from);
+  $('#to').value = fmt(to);
+  $('#quickDesc').textContent = `· ${label}: ${fmt(from)} ~ ${fmt(to)}`;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  const btn = document.querySelector(`.pill[data-range="${kind}"]`);
+  if(btn) btn.classList.add('active');
 
   // 필터 적용 (URL 업데이트)
   applyFilters();
@@ -135,152 +135,180 @@ function setQuickRange(kind){
 
 // 필터 적용 (URL 업데이트하여 서버 재요청)
 function applyFilters() {
-  const params = new URLSearchParams();
-  
-  const from = $('#from').value;
-  const to = $('#to').value;
-  const type = $('#type').value;
-  const source = $('#source').value;
-  const status = $('#status').value;
-  const q = $('#q').value.trim();
-  
-  if (from) params.append('from', from);
-  if (to) params.append('to', to);
-  if (type) params.append('type', type);
-  if (source) params.append('source', source);
-  if (status) params.append('status', status);
-  if (q) params.append('q', q);
-  
-  window.location.search = params.toString();
+  const params = new URLSearchParams();
+  
+  const from = $('#from').value;
+  const to = $('#to').value;
+  const type = $('#type').value;
+  const source = $('#source').value;
+  const status = $('#status').value;
+  const q = $('#q').value.trim();
+  
+  if (from) params.append('from', from);
+  if (to) params.append('to', to);
+  if (type) params.append('type', type);
+  if (source) params.append('source', source);
+  if (status) params.append('status', status);
+  if (q) params.append('q', q);
+  
+  window.location.search = params.toString();
 }
 
 function resetFilters() {
-  window.location.href = window.location.pathname;
+  window.location.href = window.location.pathname;
 }
 
 // 테이블 폰트 크기 조절 (유지)
 function adjustTableFontSize() {
-  const screenWidth = window.innerWidth;
-  const fontSize = screenWidth < 768 ? '10px' : screenWidth < 1024 ? '12px' : '14px';
-  const headerFontSize = screenWidth < 768 ? '9px' : screenWidth < 1024 ? '11px' : '12px';
-  
-  const table = document.querySelector('table');
-  if (table) {
-    const headers = table.querySelectorAll('thead th');
-    const cells = table.querySelectorAll('tbody td');
-    
-    headers.forEach((th, index) => {
-      th.style.fontSize = headerFontSize;
-      th.style.whiteSpace = 'nowrap';
-      th.style.padding = screenWidth < 768 ? '6px' : '10px';
-      
-      // CSS 클래스 대신 JS에서 직접 너비 조정은 권장되지 않으나, 기존 코드 유지
-      if (screenWidth < 768) {
-        if (index === 0) th.style.width = '60px';
-        else if (index === 1) th.style.width = '80px';
-        else if (index === 2) th.style.width = '70px';
-        else if (index === 3) th.style.width = '120px';
-        else if (index === 4) th.style.width = '70px';
-        else if (index === 5) th.style.width = '80px';
-        else if (index === 6) th.style.width = '80px';
-      }
-    });
-    
-    cells.forEach((td, index) => {
-      td.style.fontSize = fontSize;
-      td.style.whiteSpace = 'nowrap';
-      td.style.overflow = 'hidden';
-      td.style.textOverflow = 'ellipsis';
-      td.style.padding = screenWidth < 768 ? '6px' : '12px';
-      
-      if (index % 7 === 0) {
-        const statusSpan = td.querySelector('.status');
-        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
-        if (statusSpan) statusSpan.style.fontSize = chipFontSize;
-      } else if (index % 7 === 3) {
-        const chips = td.querySelectorAll('.chip');
-        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
-        chips.forEach(chip => chip.style.fontSize = chipFontSize);
-      }
-    });
-  }
+  const screenWidth = window.innerWidth;
+  const fontSize = screenWidth < 768 ? '10px' : screenWidth < 1024 ? '12px' : '14px';
+  const headerFontSize = screenWidth < 768 ? '9px' : screenWidth < 1024 ? '11px' : '12px';
+  
+  const table = document.querySelector('table');
+  if (table) {
+    const headers = table.querySelectorAll('thead th');
+    const cells = table.querySelectorAll('tbody td');
+    
+    headers.forEach((th, index) => {
+      th.style.fontSize = headerFontSize;
+      th.style.whiteSpace = 'nowrap';
+      th.style.padding = screenWidth < 768 ? '6px' : '10px';
+      
+      // CSS 클래스 대신 JS에서 직접 너비 조정은 권장되지 않으나, 기존 코드 유지
+      if (screenWidth < 768) {
+        if (index === 0) th.style.width = '60px';
+        else if (index === 1) th.style.width = '80px';
+        else if (index === 2) th.style.width = '70px';
+        else if (index === 3) th.style.width = '120px';
+        else if (index === 4) th.style.width = '70px';
+        else if (index === 5) th.style.width = '80px';
+        else if (index === 6) th.style.width = '80px';
+      }
+    });
+    
+    cells.forEach((td, index) => {
+      td.style.fontSize = fontSize;
+      td.style.whiteSpace = 'nowrap';
+      td.style.overflow = 'hidden';
+      td.style.textOverflow = 'ellipsis';
+      td.style.padding = screenWidth < 768 ? '6px' : '12px';
+      
+      if (index % 7 === 0) {
+        const statusSpan = td.querySelector('.status');
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        if (statusSpan) statusSpan.style.fontSize = chipFontSize;
+      } else if (index % 7 === 3) {
+        const chips = td.querySelectorAll('.chip');
+        const chipFontSize = screenWidth < 768 ? '11px' : screenWidth < 1024 ? '12px' : '12px';
+        chips.forEach(chip => chip.style.fontSize = chipFontSize);
+      }
+    });
+  }
 }
 
 
 // 상세 모달 열기
 function openDetailModal(log) {
-  // log 객체 속성은 Flask의 `logs` 리스트 구조에 맞춥니다.
+  console.log('Opening modal with log:', log);
 
-  const statusEl = $('#detail-status');
-  statusEl.textContent = log.status || '-';
-  statusEl.style.color = log.status === '성공' ? '#059669' : '#dc2626';
-  
+  const statusEl = $('#detail-status');
+  statusEl.textContent = log.status || '-';
+  statusEl.style.color = log.status === '성공' ? '#059669' : '#dc2626';
+  
   // 기본 정보
-  $('#detail-emp').textContent = log.ip_address || '-';
-  $('#detail-date').textContent = log.timestamp || '-';
+  $('#detail-emp').textContent = log.ip_address || '-';
+  $('#detail-date').textContent = log.timestamp || '-';
   
   // 시스템 정보
-  $('#detail-ip').textContent = log.ip_address || '-';
-  $('#detail-os').textContent = log.os_info || log.os || '-';
-  $('#detail-computer').textContent = log.hostname || '-';
+  $('#detail-ip').textContent = log.ip_address || '-';
+  $('#detail-os').textContent = log.os_info || log.os || '-';
+  $('#detail-computer').textContent = log.hostname || log.computer_name || '-';
   
   // 웹 정보
-  $('#detail-browser').textContent = log.browser || '-';
-  $('#detail-llm').textContent = log.llm_type_name || '-';
-  $('#detail-url').textContent = log.url || '-';
+  $('#detail-browser').textContent = log.browser || log.browser_info || '-';
+  $('#detail-llm').textContent = log.llm_type_name || log.llm_type || '-';
+  $('#detail-url').textContent = log.url || '-';
   
   // 탐지 정보
-  $('#detail-source').textContent = log.file_type_name || '-';
+  $('#detail-source').textContent = log.file_type_name || log.source_type || '-';
   
   // 파일명
-  const filenameSection = $('#filename-section');
-  const isText = log.file_type_name === '텍스트';
-  if (isText) {
-    filenameSection.parentElement.style.display = 'none';
-  } else {
-    filenameSection.parentElement.style.display = 'block';
-    $('#detail-filename').textContent = log.filename || '-';
-  }
-  
-  // 개인정보 유형
-  const typesEl = $('#detail-types');
-  const piiNames = log.pii_types_names || [];
-  if (piiNames.length > 0) {
-    typesEl.innerHTML = piiNames.map(type => {
-      const koreanType = translatePIIType(type);
-      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}</span>`;
-    }).join('');
-  } else {
-    typesEl.textContent = '-';
-  }
-
-  // 검증 결과 (HTML에 validation-section이 있으므로, 데이터가 없어도 구조 유지)
-  $('#validation-section').parentElement.style.display = 'none'; // 데이터 없으므로 기본 숨김 처리
-  $('#detail-validation').textContent = '-'; 
+  const filenameSection = $('#filename-section');
+  const isText = (log.file_type_name === '텍스트' || log.source_type === '텍스트');
+  if (isText) {
+    filenameSection.style.display = 'none';
+  } else {
+    filenameSection.style.display = 'block';
+    $('#detail-filename').textContent = log.filename || '-';
+  }
   
-  // 개인 식별 의심 (데이터에 'suspicious' 키가 없으므로 임시로 '-' 처리)
-  $('#detail-suspicious').textContent = '-';
+  // 개인정보 유형 - pii_type_counts 또는 pii_types_with_counts 사용
+  const typesEl = $('#detail-types');
+  
+  if (log.pii_type_counts && Object.keys(log.pii_type_counts).length > 0) {
+    // pii_type_counts 객체 사용
+    typesEl.innerHTML = Object.entries(log.pii_type_counts).map(([type, count]) => {
+      const koreanType = translatePIIType(type);
+      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${count}</span>`;
+    }).join('');
+  } else if (log.pii_types_with_counts && Array.isArray(log.pii_types_with_counts)) {
+    // pii_types_with_counts 배열 사용
+    typesEl.innerHTML = log.pii_types_with_counts.map(item => {
+      const [type, count] = item.split(':');
+      const koreanType = translatePIIType(type);
+      return `<span style="display:inline-block;background:${getTypeColor(type)};color:${getTypeTextColor(type)};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${count}</span>`;
+    }).join('');
+  } else {
+    typesEl.textContent = '-';
+  }
+
+  // 검증 결과
+  const validationSection = $('#validation-section');
+  if (log.validation_results && Array.isArray(log.validation_results) && log.validation_results.length > 0) {
+    validationSection.style.display = 'block';
+    $('#detail-validation').innerHTML = log.validation_results.map(result => {
+      const match = result.match(/(valid|invalid) \(([^)]+)\)/);
+      if (match) {
+        const isValid = match[1] === 'valid';
+        const piiType = match[2];
+        const koreanType = translatePIIType(piiType);
+        const status = isValid ? '성공' : '실패';
+        return `<span style="display:inline-block;background:${isValid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${isValid ? '#059669' : '#dc2626'};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${status}</span>`;
+      }
+      return '';
+    }).join('');
+  } else {
+    validationSection.style.display = 'none';
+  }
+  
+  // 개인 식별 의심
+  const suspiciousEl = $('#detail-suspicious');
+  if (log.suspicious === true) {
+    suspiciousEl.innerHTML = '<span style="display:inline-block;background:rgba(220,38,38,0.15);color:#dc2626;padding:4px 8px;border-radius:12px;font-size:12px;font-weight:700;">의심</span>';
+  } else {
+    suspiciousEl.textContent = '-';
+  }
 
   // 실패 사유
-  const reasonSection = $('#reason-section');
-  if (log.reason && log.reason.trim()) {
-    reasonSection.parentElement.style.display = 'block';
-    $('#detail-reason').textContent = log.reason;
-  } else {
-    reasonSection.parentElement.style.display = 'none';
-  }
-  
-  $('#detailModal').style.display = 'block';
-  document.body.style.overflow = 'hidden';
-  document.addEventListener('wheel', preventScroll, { passive: false });
-  document.addEventListener('touchmove', preventScroll, { passive: false });
+  const reasonSection = $('#reason-section');
+  if (log.reason && log.reason.trim() && log.reason !== '-') {
+    reasonSection.style.display = 'block';
+    $('#detail-reason').textContent = log.reason;
+  } else {
+    reasonSection.style.display = 'none';
+  }
+  
+  $('#detailModal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('wheel', preventScroll, { passive: false });
+  document.addEventListener('touchmove', preventScroll, { passive: false });
 }
 
 function closeDetailModal() {
-  $('#detailModal').style.display = 'none';
-  document.body.style.overflow = '';
-  document.removeEventListener('wheel', preventScroll);
-  document.removeEventListener('touchmove', preventScroll);
+  $('#detailModal').style.display = 'none';
+  document.body.style.overflow = '';
+  document.removeEventListener('wheel', preventScroll);
+  document.removeEventListener('touchmove', preventScroll);
 }
 
 
@@ -288,81 +316,82 @@ function closeDetailModal() {
 let barChartInstance = null;
 
 function getLabelFontSize() {
-  const w = window.innerWidth;
-  return w < 768 ? 8 : (w < 1024 ? 10 : 12);
+  const w = window.innerWidth;
+  return w < 768 ? 8 : (w < 1024 ? 10 : 12);
 }
 
 function renderChart() {
   // CHART_DATA는 PII 유형별 분포 데이터({type: 'ssn', count: 10})를 예상합니다.
-  const labels = CHART_DATA.map(item => translatePIIType(item.type));
-  const data = CHART_DATA.map(item => item.count);
-  const total = data.reduce((a, b) => a + b, 0);
-  
-  const colors = [
-    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7',
-    '#4e79a7', '#f28e2b', '#e15759'
-  ];
-  
-  if (barChartInstance) barChartInstance.destroy();
-  
-  barChartInstance = new Chart($('#barChart'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: labels.map((_, i) => colors[i % colors.length]),
-        borderWidth: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 50, bottom: 0 } },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: (context) => `${context.label}: ${context.parsed.y}건` } }
-      },
-      onClick: (event, elements) => {
-        if (elements.length > 0) {
-          const index = elements[0].index;
-          const selectedType = CHART_DATA[index].type;
+  const labels = CHART_DATA.map(item => translatePIIType(item.type));
+  const data = CHART_DATA.map(item => item.count);
+  const total = data.reduce((a, b) => a + b, 0);
+  
+  const colors = [
+    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7',
+    '#4e79a7', '#f28e2b', '#e15759'
+  ];
+  
+  if (barChartInstance) barChartInstance.destroy();
+  
+  barChartInstance = new Chart($('#barChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: labels.map((_, i) => colors[i % colors.length]),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 50, bottom: 0 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (context) => `${context.label}: ${context.parsed.y}건` } }
+      },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const index = elements[0].index;
+          const selectedType = CHART_DATA[index].type;
           
-          // PII 유형 필터링을 위해 드롭다운 값 변경 후 서버 재요청
-          $('#type').value = selectedType;
-          applyFilters();
-        }
-      },
-      scales: {
-        y: { beginAtZero: true, ticks: { display: false }, grid: { display: false }, border: { display: false } },
-        x: { grid: { display: false }, ticks: { font: { size: getLabelFontSize() }, color: '#000000' } }
-      }
-    }
-  });
-  
-  Chart.register({
-    id: 'customLabelsPersonal',
-    afterDraw: function(chart) {
-      if (chart.canvas.id !== 'barChart') return;
-      
-      const ctx = chart.ctx;
-      ctx.save();
-      ctx.font = '12px Arial';
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'center';
-      
-      chart.data.datasets[0].data.forEach((value, index) => {
-        if (value > 0) {
-          const meta = chart.getDatasetMeta(0);
-          const bar = meta.data[index];
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-          ctx.fillText(`${percentage}%(${value}건)`, bar.x, bar.y - 15);
-        }
-      });
-      ctx.restore();
-    }
-  });
+          // PII 유형 필터링을 위해 URL 업데이트
+          const params = new URLSearchParams(window.location.search);
+          params.set('type', selectedType);
+          window.location.search = params.toString();
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { display: false }, grid: { display: false }, border: { display: false } },
+        x: { grid: { display: false }, ticks: { font: { size: getLabelFontSize() }, color: '#000000' } }
+      }
+    }
+  });
+  
+  Chart.register({
+    id: 'customLabelsPersonal',
+    afterDraw: function(chart) {
+      if (chart.canvas.id !== 'barChart') return;
+      
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      
+      chart.data.datasets[0].data.forEach((value, index) => {
+        if (value > 0) {
+          const meta = chart.getDatasetMeta(0);
+          const bar = meta.data[index];
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+          ctx.fillText(`${percentage}%(${value}건)`, bar.x, bar.y - 15);
+        }
+      });
+      ctx.restore();
+    }
+  });
 }
 
 // 초기화 및 이벤트 리스너 부착

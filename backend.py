@@ -8,8 +8,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_cors import CORS
 from sqlalchemy.orm import joinedload
-# locale import는 필요하지만, 여기서는 사용하지 않으므로 주석 처리
-# import locale 
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 import traceback
@@ -19,14 +17,14 @@ import re
 # 1. Flask 앱 초기화 및 설정
 app = Flask(__name__,
              template_folder='templates',
-             static_folder='templates/assets', # assets 폴더를 정적 폴더로 지정
+             static_folder='templates/assets',
              static_url_path='/assets'
 )
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:mysql@localhost/shadowai'
 app.config['SECRET_KEY'] = 'your-very-secret-key-for-dashboard'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.ensure_ascii = False
-CORS(app) # CORS 설정
+CORS(app)
 
 db = SQLAlchemy(app)
 
@@ -42,13 +40,10 @@ def rjust_filter(s, width, fillchar=' '):
 
 app.jinja_env.filters['rjust'] = rjust_filter
 
-# to_local_string_filter는 locale 모듈에 의존하므로, 임시로 제거하거나 단순화합니다.
 def to_local_string_filter(value):
      if value is None: return ''
-     # locale.format_string 대신 단순 쉼표 포맷팅
      return f"{int(value):,}" if isinstance(value, (int, float)) else str(value)
 
-# 필터 등록
 app.jinja_env.filters['toLocaleString'] = to_local_string_filter
 
 # UTC 시간을 KST 시간으로 변환하는 함수
@@ -65,9 +60,25 @@ def format_datetime_kst(dt_utc):
     dt_kst = dt_utc.astimezone(ZoneInfo('Asia/Seoul'))
     return dt_kst.strftime('%Y-%m-%d %H:%M:%S')
 
-# 위 함수를 'kst'라는 이름의 Jinja 필터로 등록
-app.jinja_env.filters['kst'] = format_datetime_kst
+# User Agent를 짧은 브라우저 이름으로 변환하는 함수
+def parse_browser_name(user_agent):
+    if not user_agent:
+        return '-'
+    ua = user_agent.lower()
+    if 'chrome' in ua and 'edg' not in ua:
+        return 'Chrome'
+    elif 'edg' in ua:
+        return 'Edge'
+    elif 'firefox' in ua:
+        return 'Firefox'
+    elif 'safari' in ua and 'chrome' not in ua:
+        return 'Safari'
+    elif 'opera' in ua:
+        return 'Opera'
+    else:
+        return 'Unknown'
 
+app.jinja_env.filters['kst'] = format_datetime_kst
 
 # 💡 Jinja에서 현재 KST 시간을 사용할 수 있도록 등록
 @app.context_processor
@@ -133,9 +144,8 @@ class PiiLog(db.Model):
     ip_address = db.Column(db.String(50), nullable=True)
     os_info = db.Column(db.String(128), nullable=True)
     hostname = db.Column(db.String(255), nullable=True) 
-    
-    # ⭐ 추가: Luhn/체크섬 검증 결과 저장 필드 (JSON 타입)
-    validation_results = db.Column(db.JSON, nullable=True) 
+    validation_results = db.Column(db.JSON, nullable=True)
+    pii_type_counts = db.Column(db.JSON, nullable=True) 
 
     file_type = db.relationship('FileType', backref='pii_logs')
     llm_type = db.relationship('LlmType', backref='pii_logs')
@@ -158,7 +168,7 @@ def load_user(user_id):
     return DashboardAdmin.query.get(int(user_id))
 
 # =====================================================================
-# API 엔드포인트: PII 로그 수신 (클라이언트용)
+# API 엔드포인트: PII 로그 수신 (클라이언트용) - 새로운 로직
 # =====================================================================
 @app.route('/api/log-pii', methods=['POST'])
 def log_pii():
@@ -176,9 +186,9 @@ def log_pii():
             try:
                 file_type_obj = FileType(type_name=file_type_name)
                 db.session.add(file_type_obj)
-                db.session.flush() # INSERT 시도
+                db.session.flush()
             except IntegrityError:
-                db.session.rollback() # 오류 발생 시 롤백
+                db.session.rollback()
                 file_type_obj = FileType.query.filter_by(type_name=file_type_name).first()
 
         # --- LlmType 처리 로직 ---
@@ -195,11 +205,16 @@ def log_pii():
                     db.session.rollback()
                     llm_type_obj = LlmType.query.filter_by(type_name=llm_type_name).first()
 
-        # 3. PiiType을 한 번에 효율적으로 처리
-        pii_type_names = list(set(
+        # 3. PiiType을 한 번에 효율적으로 처리 (중복 허용)
+        pii_type_names = [
             name for name in data.get('pii_types', []) if isinstance(name, str) and name
-        ))
+        ]
+        unique_pii_type_names = list(set(pii_type_names))
         final_pii_objects = []
+        
+        # 디버깅 로그 추가
+        print(f"\u2705 [PII 로그 수신] pii_types: {data.get('pii_types', [])}")
+        print(f"\u2705 [PII 로그 수신] pii_type_names: {pii_type_names}")
 
         if pii_type_names:
             existing_types_map = {
@@ -207,34 +222,40 @@ def log_pii():
             }
             
             new_types_to_create = []
-            for type_name in pii_type_names:
+            for type_name in unique_pii_type_names:
                 if type_name not in existing_types_map:
                     new_type = PiiType(type_name=type_name)
                     new_types_to_create.append(new_type)
                     existing_types_map[type_name] = new_type
+                    print(f"\u2705 [PII 타입 생성] {type_name}")
 
             if new_types_to_create:
                 db.session.add_all(new_types_to_create)
             
-            final_pii_objects = [existing_types_map[name] for name in pii_type_names]
+            # 다대다 관계는 유니크하게, 개수는 pii_type_counts에 저장
+            pii_counts = data.get('pii_type_counts', {})
+            if pii_counts:
+                final_pii_objects = [existing_types_map[name] for name in pii_counts.keys() if name in existing_types_map]
+            else:
+                final_pii_objects = [existing_types_map[name] for name in pii_type_names]
+            print(f"\u2705 [PII 객체 생성] {len(final_pii_objects)}개 생성됨")
 
         # 4. PiiLog 객체 생성 및 PiiType 관계 설정
-        
-        # ⭐ validation_statuses 필드 처리: DB.JSON 필드에 리스트를 저장
         validation_statuses = data.get('validation_statuses', None) 
         
         new_pii_log = PiiLog(
             filename=data.get('filename'),
             file_type=file_type_obj,
             llm_type=llm_type_obj,
-            status=data.get('status', '성공'),
+            status='성공' if data.get('status') == 'success' else ('실패' if data.get('status') == 'failure' else data.get('status', '성공')),
             reason=data.get('reason'),
             ip_address=data.get('ip_address'),
             session_url=data.get('session_url'),
             user_agent=data.get('user_agent'),
             os_info=data.get('os_info'),
             hostname=data.get('hostname'),
-            validation_results=validation_statuses, # ⭐ JSON 필드에 리스트 직접 저장
+            validation_results=validation_statuses,
+            pii_type_counts=data.get('pii_type_counts'),
             pii_types=final_pii_objects
         )
 
@@ -292,16 +313,11 @@ def admin_manage():
     if current_user.privilege != 'super':
         abort(403)
 
-    # ⭐ 정렬 함수 정의
     def sort_admins(admin):
-        # 'super' (0) 우선, 'admin' (1) 다음
         privilege_order = 0 if admin.privilege == 'super' else 1
-        # 2차 정렬 기준: 사번 (employee_id)
         return (privilege_order, admin.employee_id)
 
-    # 쿼리는 정렬 없이 모든 데이터를 가져오고 Python에서 정렬합니다.
     users_from_db = DashboardAdmin.query.all()
-    # ⭐ Python에서 사용자 정의 키로 정렬
     sorted_users = sorted(users_from_db, key=sort_admins)
     
     users_for_template = [
@@ -310,10 +326,10 @@ def admin_manage():
             "name": u.name if u.name else '-',
             "email": u.email if u.email else '-',
             "privilege": u.privilege if u.privilege else 'general',
-            "last_login": u.last_login, # datetime 객체 그대로 전달 (Jinja 필터 'kst' 사용)
-            "created_at": u.created_at # datetime 객체 그대로 전달
+            "last_login": u.last_login,
+            "created_at": u.created_at
         }
-        for u in sorted_users # ⭐ 정렬된 리스트 사용
+        for u in sorted_users
     ]
     
     return render_template('account_management.html', 
@@ -376,13 +392,18 @@ def api_admin_delete():
 # =====================================================================
 # 대시보드 페이지 렌더링
 # =====================================================================
+@app.route('/test_input')
+@login_required
+def test_input_page():
+    """PII 탐지 테스트 페이지"""
+    return render_template('test_input.html', active_page='test_input')
+
 @app.route('/')
 @app.route('/main')
 @login_required
 def show_dashboard():
     """메인 대시보드 페이지를 위한 데이터를 조회하고 렌더링"""
     
-    # 안정화를 위한 초기화
     kpi_data = {'total_num': 0, 'total_delta': 0, 'high_risk_num': 0, 'high_risk_delta': 0, 'valid_num': 0, 'valid_delta': 0}
     today_stats = {'total': 0, 'types': []}
     top_users = []
@@ -398,18 +419,17 @@ def show_dashboard():
         fourteen_days_ago = (now_utc - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
         kst_timestamp = func.convert_tz(PiiLog.timestamp, 'UTC', 'Asia/Seoul')
 
-        # 2. 일별 탐지 추이 (TREND_DATA) - Python에서 시간대 변환
+        # 2. 일별 탐지 추이 (TREND_DATA)
         trend_raw_query = db.session.query(
             PiiLog.timestamp,
             PiiLog.status,
             PiiType.type_name.label('pii_type')
         ).select_from(PiiLog).outerjoin(pii_log_pii_type_links).outerjoin(PiiType).filter(PiiLog.timestamp >= fourteen_days_ago).all()
 
-        # 실제 DB에 저장된 영어 PII 유형 이름 사용
-        high_risk_types_names = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license']
+        # ⭐ 수정: ip, name, ps, person, combination_risk 추가
+        high_risk_types_names = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk']
         trend_data_map = {}
         
-        # 7일간의 날짜 라벨 생성 및 초기화
         korea_tz = ZoneInfo('Asia/Seoul')
         for i in range(7):
             date = datetime.now(korea_tz).date() - timedelta(days=i)
@@ -418,7 +438,6 @@ def show_dashboard():
         
         for timestamp, status, pii_type in trend_raw_query:
             if timestamp is None: continue
-            # UTC를 KST로 변환
             if timestamp.tzinfo is None:
                 timestamp = timestamp.replace(tzinfo=timezone.utc)
             kst_time = timestamp.astimezone(korea_tz)
@@ -449,15 +468,57 @@ def show_dashboard():
         high_risk_types = PiiType.query.filter(PiiType.type_name.in_(high_risk_types_names)).all()
         high_risk_ids = [t.id for t in high_risk_types]
         
-        high_risk_count_current = db.session.query(func.count(PiiLog.id)).select_from(PiiLog).join(pii_log_pii_type_links).filter(
-            PiiLog.timestamp >= seven_days_ago, pii_log_pii_type_links.c.pii_type_id.in_(high_risk_ids)
-        ).scalar() or 0
-        high_risk_count_last = db.session.query(func.count(PiiLog.id)).select_from(PiiLog).join(pii_log_pii_type_links).filter(
-            PiiLog.timestamp < seven_days_ago, PiiLog.timestamp >= fourteen_days_ago, pii_log_pii_type_links.c.pii_type_id.in_(high_risk_ids)
-        ).scalar() or 0
+        # ⭐ 디버깅 로그 추가
+        print(f"=== DEBUG: high_risk_types_names = {high_risk_types_names}")
+        print(f"=== DEBUG: high_risk_ids = {high_risk_ids}")
         
-        high_risk_num = (high_risk_count_current / (total_num or 1)) * 100
-        high_risk_ratio_last = (high_risk_count_last / (last_period_total or 1)) * 100
+        # 실제 DB에 있는 PII 타입들 확인
+        all_pii_in_db = PiiType.query.all()
+        print(f"=== DEBUG: All PII types in DB = {[p.type_name for p in all_pii_in_db]}")
+        
+        # pii_type_counts를 고려한 고위험 PII 개수 계산
+        high_risk_count_current = 0
+        total_pii_count_current = 0
+        high_risk_count_last = 0
+        total_pii_count_last = 0
+        
+        # 현재 기간 (최근 7일)
+        current_logs = db.session.query(PiiLog).filter(
+            PiiLog.timestamp >= seven_days_ago, PiiLog.status == '성공'
+        ).all()
+        
+        for log in current_logs:
+            if log.pii_type_counts:
+                for pii_type, count in log.pii_type_counts.items():
+                    total_pii_count_current += count
+                    if pii_type in high_risk_types_names:
+                        high_risk_count_current += count
+            else:
+                # pii_types 관계에서 고위험 타입 확인
+                for pii_type in log.pii_types:
+                    total_pii_count_current += 1
+                    if pii_type.type_name in high_risk_types_names:
+                        high_risk_count_current += 1
+        
+        # 이전 기간 (7-14일 전)
+        last_logs = db.session.query(PiiLog).filter(
+            PiiLog.timestamp < seven_days_ago, PiiLog.timestamp >= fourteen_days_ago, PiiLog.status == '성공'
+        ).all()
+        
+        for log in last_logs:
+            if log.pii_type_counts:
+                for pii_type, count in log.pii_type_counts.items():
+                    total_pii_count_last += count
+                    if pii_type in high_risk_types_names:
+                        high_risk_count_last += count
+            else:
+                for pii_type in log.pii_types:
+                    total_pii_count_last += 1
+                    if pii_type.type_name in high_risk_types_names:
+                        high_risk_count_last += 1
+        
+        high_risk_num = (high_risk_count_current / (total_pii_count_current or 1)) * 100
+        high_risk_ratio_last = (high_risk_count_last / (total_pii_count_last or 1)) * 100
         if high_risk_ratio_last == 0:
             high_risk_delta = 100 if high_risk_num > 0 else 0
         else:
@@ -465,7 +526,6 @@ def show_dashboard():
 
         
         # ⭐ Luhn/체크섬 통과율 (valid_num) 계산 로직
-        
         def calculate_validation_metrics(start_time, end_time=None):
             query = db.session.query(PiiLog.validation_results).filter(
                 PiiLog.timestamp >= start_time,
@@ -480,7 +540,7 @@ def show_dashboard():
             successful_validations = 0
             
             for log in validation_logs:
-                results = log[0] # JSON 필드는 튜플의 첫 번째 요소로 리턴됨
+                results = log[0]
                 if results and isinstance(results, list):
                     for status in results:
                         total_validation_attempts += 1
@@ -490,14 +550,10 @@ def show_dashboard():
             ratio = (successful_validations / total_validation_attempts) * 100 if total_validation_attempts > 0 else 0
             return ratio
 
-        # 현재 기간 계산
         now_time = datetime.now(timezone.utc)
         valid_num = calculate_validation_metrics(seven_days_ago, now_time)
-        
-        # 이전 기간 계산
         valid_ratio_last = calculate_validation_metrics(fourteen_days_ago, seven_days_ago)
 
-        # 델타 계산
         if valid_ratio_last == 0:
             valid_delta = 100 if valid_num > 0 else 0
         else:
@@ -505,21 +561,19 @@ def show_dashboard():
         
         kpi_data = {
             'total_num': total_num, 'total_delta': round(total_delta, 1),
-            'high_risk_num': round(high_risk_num, 3), # ⭐ 프론트엔드에서 toFixed(2) 사용을 위해 소수점 자릿수를 셋째자리까지 보냄
+            'high_risk_num': round(high_risk_num, 3),
             'high_risk_delta': round(high_risk_delta, 1),
             'valid_num': round(valid_num, 1), 'valid_delta': round(valid_delta, 1) 
         }
 
-        # 4. 금일 탐지 유형 (today_stats) -> 최근 7일 탐지 유형으로 변경
+        # 4. 최근 7일 탐지 유형 (today_stats) - 실시간 데이터 포함
         seven_days_ago_utc = (datetime.now(timezone.utc) - timedelta(days=7))
 
         today_total = db.session.query(func.count(PiiLog.id)).filter(
-            PiiLog.timestamp >= seven_days_ago_utc, # ⭐ 최근 7일 조건으로 변경
             PiiLog.status == '성공'
         ).scalar() or 0
         top_5_today_query = db.session.query(PiiType.type_name, func.count(PiiLog.id)).select_from(PiiLog).join(
             pii_log_pii_type_links).join(PiiType).filter(
-            PiiLog.timestamp >= seven_days_ago_utc, # ⭐ 최근 7일 조건으로 변경
             PiiLog.status == '성공'
         ).group_by(PiiType.type_name).order_by(func.count(PiiLog.id).desc()).limit(5).all()
 
@@ -527,13 +581,12 @@ def show_dashboard():
             'total': today_total, 'types': [{'type': r[0], 'count': r[1]} for r in top_5_today_query]
         }
         
-        # ⭐ 추가 디버깅 코드 시작
-        print(f"--- TODAY_STATS (KST: {datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d')}) ---")
-        print(f"Total Successful (Last 7 Days): {today_total}")
-        print(f"Top 5 Types (Last 7 Days): {today_stats['types']}")
+        # ⭐ 디버깅 로그 추가
+        print(f"--- TODAY_STATS (Last 7 Days) ---")
+        print(f"Total Successful: {today_total}")
+        print(f"Top 5 Types: {today_stats['types']}")
+        print(f"Raw query result: {top_5_today_query}")
         print("-------------------------------------------------")
-        # ⭐ 추가 디버깅 코드 끝
-
 
         # 5. 사용자별 탐지 빈도 (top_users)
         top_users_query = db.session.query(PiiLog.ip_address, func.count(PiiLog.id)).filter(
@@ -555,11 +608,11 @@ def show_dashboard():
             high_risk_percent = round((high_risk_count / total_count) * 100, 0) if total_count > 0 else 0
             top_users.append({'account': ip if ip else 'Unknown IP', 'count': total_count, 'high_risk': high_risk_percent})
 
-
-        # 6. 소스별 분포 (source_stats)
-        source_dist_query = db.session.query(FileType.type_name, func.count(PiiLog.id)).join(
-            FileType, PiiLog.file_type_id == FileType.id
-        ).filter(PiiLog.status == '성공').group_by(FileType.type_name).all()
+        # 6. 소스별 분포 (source_stats) - 전체 데이터
+        source_dist_query = db.session.query(PiiType.type_name, func.count(PiiLog.id)).select_from(PiiLog).join(
+            pii_log_pii_type_links).join(PiiType).filter(
+            PiiLog.status == '성공'
+        ).group_by(PiiType.type_name).all()
         source_stats = [{'source': r[0], 'count': r[1]} for r in source_dist_query]
 
         # 7. LLM 유형별 분포 (llm_stats)
@@ -568,8 +621,7 @@ def show_dashboard():
         ).filter(PiiLog.status == '성공').group_by(LlmType.type_name).all()
         llm_stats = [{'llm': r[0], 'count': r[1]} for r in llm_dist_query]
 
-
-        # 9. 최근 탐지 실패 로그 (recent_failures)
+        # 8. 최근 탐지 실패 로그 (recent_failures)
         recent_failures_query = db.session.query(PiiLog).options(db.joinedload(PiiLog.file_type)).filter(
             PiiLog.status == '실패').order_by(PiiLog.timestamp.desc()).limit(8).all() 
 
@@ -585,7 +637,7 @@ def show_dashboard():
                 'reason': str(log.reason) if log.reason else '-',
             })
 
-        # 10. 개인 식별 의심 목록 (recent_suspicious)
+        # 9. 개인 식별 의심 목록 (recent_suspicious)
         suspicious_ids = high_risk_ids 
 
         recent_suspicious_query = db.session.query(PiiLog).options(db.joinedload(PiiLog.file_type)).join(
@@ -606,11 +658,10 @@ def show_dashboard():
                 'reason': str(log.reason) if log.reason else '-',
             })
         
-        # 11. KPI 델타 클래스 설정 
+        # 10. KPI 델타 클래스 설정 
         kpi_data['total_delta_class'] = 'ok' if kpi_data['total_delta'] > 0 else 'bad'
         kpi_data['high_risk_delta_class'] = 'bad' if kpi_data['high_risk_delta'] > 0 else 'ok'
         kpi_data['valid_delta_class'] = 'ok' if kpi_data['valid_delta'] > 0 else 'bad'
-
 
         return render_template(
             'main.html', 
@@ -624,7 +675,6 @@ def show_dashboard():
     except Exception as e:
         print(f"❌ [대시보드 로딩 오류] {type(e).__name__}: {e}")
         traceback.print_exc()
-        # 오류 발생 시 빈 데이터로 렌더링 
         return render_template(
              'main.html', active_page='main', 
              KPI_DATA=kpi_data, TREND_DATA=[], TODAY_STATS={'total': 0, 'types': []}, TOP_USERS=[], 
@@ -632,7 +682,7 @@ def show_dashboard():
         )
 
 # =====================================================================
-# 상세/현황 페이지 라우트는 생략 (기존 로직 유지)
+# 상세/현황 페이지 라우트
 # =====================================================================
 
 @app.route('/detection_details')
@@ -675,7 +725,6 @@ def show_detection_details():
                 PiiLog.ip_address.ilike(search_pattern)
             ))
 
-
         filtered_logs = query.order_by(PiiLog.timestamp.desc()).all()
         
         file_type_counts = Counter()
@@ -702,14 +751,17 @@ def show_detection_details():
                 'ip_address': log.ip_address if log.ip_address else '-',
                 'hostname': log.hostname if log.hostname else '-',
                 'os': log.os_info if log.os_info else '-',
-                'browser': log.user_agent if log.user_agent else '-',
-                'pii_types_names': pii_types_names, 
+                'browser': parse_browser_name(log.user_agent),
+                'pii_types_names': pii_types_names,
+                'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_names],
+                'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
+                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_names if log.pii_type_counts else pii_types_names)),
                 'file_type_name': log.file_type.type_name if log.file_type else '-',
                 'llm_type_name': llm_type_name_safe,
                 'filename': log.filename if log.filename else '-',
                 'url': log.session_url if log.session_url else '-',
                 'reason': log.reason if log.reason else '-',
-                'validation_results': log.validation_results if log.validation_results else [] # ⭐ 추가된 필드
+                'validation_results': log.validation_results if log.validation_results else []
             })
         
         all_file_types = FileType.query.order_by(FileType.type_name).all()
@@ -719,7 +771,8 @@ def show_detection_details():
             active_page='detection_details',
             logs=formatted_logs,
             file_types=all_file_types,
-            bar_chart_data=bar_chart_data
+            bar_chart_data=bar_chart_data,
+            DETECTION_LOGS=formatted_logs
         )
         
     except Exception as e:
@@ -765,7 +818,6 @@ def show_user_type():
             query = query.join(PiiLog.file_type).filter(FileType.type_name == source_type_name)
         if status_filter:
             if status_filter == '개인 식별 의심':
-                 # '개인 식별 의심'을 위한 플래그가 PiiLog에 없으므로, 일단 모든 성공 로그를 대상으로 함 (임시)
                  query = query.filter(PiiLog.status == '성공')
             else:
                  query = query.filter(PiiLog.status == status_filter)
@@ -791,6 +843,10 @@ def show_user_type():
             if log.status == '성공':
                 user_counts[ip_address] += 1
                 
+            # 디버깅 로그
+            if log.pii_type_counts:
+                print(f"🔍 [DEBUG] Log ID {log.id}: pii_type_counts = {log.pii_type_counts}")
+            
             logs.append({
                 'id': log.id,
                 'status': log.status if log.status else '-',
@@ -801,13 +857,15 @@ def show_user_type():
                 'reason': log.reason if log.reason else '',
                 'source': log.file_type.type_name if log.file_type else '-', 
                 'llm_type_name': log.llm_type.type_name if log.llm_type else '-',
-                'types': pii_types_list, 
+                'types': pii_types_list,
+                'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_list],
+                'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
+                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
                 'os': log.os_info if log.os_info else '-', 
                 'hostname': log.hostname if log.hostname else '-', 
-                'browser': log.user_agent if log.user_agent else '-', 
+                'browser': parse_browser_name(log.user_agent), 
                 'url': log.session_url if log.session_url else '-', 
-                'validation_results': log.validation_results if log.validation_results else [], # ⭐ 추가된 필드
-                'suspicious': True if status_filter == '개인 식별 의심' and log.status == '성공' else False 
+                'validation_results': log.validation_results if log.validation_results else [] 
             })
         
         chart_data = [{'emp': ip, 'count': count} for ip, count in user_counts.most_common(10)]
@@ -891,16 +949,25 @@ def show_personal_information_type():
                 'file_type_name': log.file_type.type_name if log.file_type else '-',
                 'llm_type_name': log.llm_type.type_name if log.llm_type else '-',
                 'pii_types_names': pii_types_list,
-                'validation_results': log.validation_results if log.validation_results else [], # ⭐ 추가된 필드
+                'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_list],
+                'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
+                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
+                'validation_results': log.validation_results if log.validation_results else [],
                 'os_info': log.os_info if log.os_info else '-', 
                 'hostname': log.hostname if log.hostname else '-',
-                'browser': log.user_agent if log.user_agent else '-', 
+                'browser': parse_browser_name(log.user_agent), 
                 'url': log.session_url if log.session_url else '-', 
             })
             
             if log.status == '성공':
-                for name in pii_types_list:
-                    pie_chart_counts[name] += 1
+                # pii_type_counts에서 개수 반영
+                if log.pii_type_counts:
+                    for name, count in log.pii_type_counts.items():
+                        pie_chart_counts[name] += count
+                else:
+                    # 기존 방식
+                    for name in pii_types_list:
+                        pie_chart_counts[name] += 1
         
         pie_chart_data = [{'type': type, 'count': count} for type, count in pie_chart_counts.most_common()]
 
@@ -934,10 +1001,7 @@ def show_personal_information_type():
 # =====================================================================
 if __name__ == '__main__':
     with app.app_context():
-
         db.create_all()
         print("✅ All database tables created or already exist.")
-        
-        # 관리자 계정 생성 로직은 외부 스크립트(create_admin.py)로 분리되었습니다.
         
     app.run(debug=True, port=5000, host='0.0.0.0')

@@ -188,6 +188,14 @@
                   <div>탐지 결과</div>
                   <div id="detail-types">-</div>
                 </div>
+                <div class="detail-item padded fit-content" id="validation-section">
+                  <div>검증 결과</div>
+                  <div id="detail-validation">-</div>
+                </div>
+                <div class="detail-item padded fit-content">
+                  <div>개인 식별 의심</div>
+                  <div id="detail-suspicious">-</div>
+                </div>
                 <div class="detail-item padded fit-content" id="reason-section">
                   <div>실패 사유</div>
                   <div id="detail-reason">-</div>
@@ -201,7 +209,7 @@
 
     <script>
       // Flask에서 전달된 데이터를 JavaScript 변수로 변환
-      window.DETECTION_LOGS = {{ logs|tojson|safe }};
+      window.DETECTION_LOGS = {{ DETECTION_LOGS|tojson|safe }};
       window.BAR_CHART_DATA = {{ bar_chart_data|tojson|safe }};
     </script>
 {% endblock %}

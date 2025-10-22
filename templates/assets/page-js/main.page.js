@@ -3,7 +3,7 @@
 // Flask에서 전달받는 실제 데이터 변수 정의 (backend.py의 show_dashboard 함수 참조)
 const KPI_DATA = window.KPI_DATA || {};
 const TREND_DATA = window.TREND_DATA || [];
-const TODAY_STATS = window.TODAY_STATS || {};
+const TODAY_STATS = window.TODAY_STATS || {types: []};
 const TOP_USERS = window.TOP_USERS || [];
 const SOURCE_STATS = window.SOURCE_STATS || [];
 const PII_TYPE_OVERALL_STATS = window.PII_TYPE_OVERALL_STATS || [];
@@ -17,10 +17,10 @@ const PII_TYPE_MAP_KR = {
   'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
   'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
   'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
-  'combination_risk': '조합위험도',
+  'combination_risk': '조합위험도', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도',
   // 백엔드에서 DB 조회 시 이미 한글로 나올 수 있는 항목도 포함 (안전 보장)
   '주민등록번호': '주민등록번호', '카드번호': '카드번호', '계좌번호': '계좌번호',
-  '전화번호': '전화번호', '이메일': '이메일'
+  '전화번호': '전화번호', '이메일': '이메일', '이름': '이름'
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -149,13 +149,17 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 5. 금일 탐지 유형 테이블 (TODAY_STATS 사용)
+  console.log("=== TODAY_STATS 디버깅 ===");
+  console.log("TODAY_STATS:", TODAY_STATS);
+  console.log("Types:", TODAY_STATS.types);
+  
   const todayTypeTbody = document.getElementById('todayTypeTbody');
   const totalDetectedPii = TODAY_STATS.types ? TODAY_STATS.types.reduce((a, b) => a + b.count, 0) : 0;
   
   if(todayTypeTbody) {
     todayTypeTbody.innerHTML = '';
     // TODAY_STATS.types가 비어있지 않다면, TOP 5를 표시
-    TODAY_STATS.types.slice(0, 5).forEach(item => {
+    (TODAY_STATS.types || []).slice(0, 5).forEach(item => {
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
 
@@ -169,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
       todayTypeTbody.appendChild(tr);
     });
     // 5개 미만인 경우 나머지 행을 '-'으로 채움
-    for(let i = TODAY_STATS.types.length; i < 5; i++) {
+    for(let i = (TODAY_STATS.types || []).length; i < 5; i++) {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>-</td><td>-</td>`;
         todayTypeTbody.appendChild(tr);

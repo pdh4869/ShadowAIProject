@@ -105,9 +105,8 @@
               <td style="text-align:center;">{{ log.ip_address or '-' }}</td>
               <td style="text-align:center;">
                 <div class="chips">
-                  {# pii_types_names는 서버에서 전달되는 키라고 가정합니다. #}
                   {% for pii_type in log.pii_types_names %}
-                  <span class="chip" data-pii-type="{{ pii_type }}">{{ pii_type }}</span>
+                  <span class="chip">{{ pii_type }}</span>
                   {% endfor %}
                 </div>
               </td>
