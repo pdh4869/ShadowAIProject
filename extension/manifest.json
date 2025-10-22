@@ -4,14 +4,15 @@
   "version": "0.2.3",
   "description": "Hook LLM send events, talk to native host, and forward payloads to local server",
   "permissions": ["storage","activeTab","scripting","nativeMessaging","alarms"],
-  "host_permissions": ["http://127.0.0.1:9000/*","http://localhost:9000/*"],
+  "host_permissions": ["http://127.0.0.1:9500/*","http://localhost:9500/*"],
   "background": { 
     "service_worker": "background.js"
   },
   "content_scripts": [{
     "matches": [
       "https://chatgpt.com/*",
-      "https://gemini.google.com/*"
+      "https://gemini.google.com/*",
+      "https://claude.ai/*"
     ],
     "js": ["content.js"],
     "run_at": "document_start"

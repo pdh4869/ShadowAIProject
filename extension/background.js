@@ -1,8 +1,8 @@
 // background.js – Service Worker 안정성 강화
 const PORT_NAME = "pii_port";
 
-const SERVER_EVENT_ENDPOINT = "http://127.0.0.1:9000/api/event";
-const SERVER_FILE_ENDPOINT  = "http://127.0.0.1:9000/api/file_collect";
+const SERVER_EVENT_ENDPOINT = "http://127.0.0.1:9500/api/event";
+const SERVER_FILE_ENDPOINT  = "http://127.0.0.1:9500/api/file_collect";
 const MARK_HEADER = "X-From-Extension";
 
 // 보안: API Secret 관리 (chrome.storage 사용)
@@ -185,9 +185,9 @@ async function handlePayload(t, payload, senderUrl) {
       body: JSON.stringify(combinedPayload)
     };
 
-    console.log(`[bg] 통합 전송: http://127.0.0.1:9000/api/combined`);
+    console.log(`[bg] 통합 전송: http://127.0.0.1:9500/api/combined`);
     
-    fetch("http://127.0.0.1:9000/api/combined", options)
+    fetch("http://127.0.0.1:9500/api/combined", options)
       .then(async res => {
         if (!res.ok) {
           const errText = await res.text().catch(() => "응답 없음");

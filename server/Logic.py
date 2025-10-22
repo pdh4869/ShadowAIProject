@@ -360,25 +360,47 @@ def parse_file(File_Bytes: bytes, File_Ext: str) -> tuple:
             except Exception as e:
                 raise ValueError(f"[ERROR] XLS 파싱 실패: {e}")
     
-    elif File_Ext == "pptx":
-        if Presentation is None:
-            raise ValueError("[ERROR] PPTX 파싱 실패: python-pptx 라이브러리 미설치")
-        try:
-            prs = Presentation(io.BytesIO(File_Bytes))
-            text = ""
-            for slide in prs.slides:
-                for shape in slide.shapes:
-                    if hasattr(shape, "text"):
-                        text += shape.text + "\n"
-            ocr_text = run_ocr_on_pptx_images(File_Bytes)
-            if ocr_text:
-                text += "\n" + ocr_text
-            return text.strip(), False
-        except Exception as e:
-            raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
-    
-    elif File_Ext == "ppt":
-        raise ValueError("[ERROR] PPT 파일은 지원하지 않습니다. PPTX로 변환 후 업로드해주세요.")
+    elif File_Ext in ["ppt", "pptx"]:
+        if File_Ext == "pptx":
+            if Presentation is None:
+                raise ValueError("[ERROR] PPTX 파싱 실패: python-pptx 라이브러리 미설치")
+            try:
+                prs = Presentation(io.BytesIO(File_Bytes))
+                text = ""
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text"):
+                            text += shape.text + "\n"
+                ocr_text = run_ocr_on_pptx_images(File_Bytes)
+                if ocr_text:
+                    text += "\n" + ocr_text
+                return text.strip(), False
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPTX 파싱 실패: {e}")
+        else:  # .ppt
+            if win32com is None:
+                raise ValueError("[ERROR] PPT 파싱 실패: win32com 미설치")
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+                    tmp.write(File_Bytes)
+                    tmp_path = tmp.name
+                tmp_pptx_path = tmp_path + "x"
+                try:
+                    pp = win32com.client.Dispatch("PowerPoint.Application")
+                    pp.Visible = False
+                    pres = pp.Presentations.Open(tmp_path, WithWindow=False)
+                    pres.SaveAs(tmp_pptx_path, FileFormat=24)
+                    pres.Close()
+                    pp.Quit()
+                except Exception:
+                    raise ValueError("[ERROR] PPT → PPTX 변환 실패 또는 암호")
+                with open(tmp_pptx_path, "rb") as f:
+                    converted = f.read()
+                os.remove(tmp_path)
+                os.remove(tmp_pptx_path)
+                return parse_file(converted, "pptx")
+            except Exception as e:
+                raise ValueError(f"[ERROR] PPT 파싱 실패: {e}")
     
     elif File_Ext == "doc":
         if win32com is None:
@@ -788,17 +810,9 @@ def detect_by_ner(Text: str) -> list:
                     Detected.append({"type": "ORG", "value": Word, "span": (Start, End)})
                     continue
                 
-                # 신뢰도 기반 필터링
-                score = Entity.get('score', 0)
-                
-                # 2글자: 신뢰도 90% 이상
-                if len(clean_word) == 2 and score < 0.90:
-                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (2글자, 신뢰도 {score:.2f} < 0.90)")
-                    continue
-                
-                # 4글자 이상: 신뢰도 80% 이상
-                if len(clean_word) >= 4 and score < 0.80:
-                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (4글자+, 신뢰도 {score:.2f} < 0.80)")
+                # 2글자 이하 제외
+                if len(clean_word) <= 2:
+                    print(f"[INFO] ✗ NER 필터링 ({Label}): {Word} (2글자 이하)")
                     continue
                 
                 # 숫자만 있는 경우 제외
@@ -809,12 +823,11 @@ def detect_by_ner(Text: str) -> list:
             Detected.append({"type": Label, "value": Word, "span": (Start, End)})
             print(f"[INFO] ✓ NER 탐지 ({Label}): {Word}")
     
-    # 주소 병합
-    if location_parts:
-        merged_location = ' '.join(location_parts).strip()
-        if merged_location:
-            Detected.append({"type": "LC", "value": merged_location, "span": (0, 0)})
-            print(f"[INFO] ✓ 주소 병합: {merged_location}")
+    # 주소 개별 처리 (병합하지 않음)
+    for loc in location_parts:
+        if loc.strip():
+            Detected.append({"type": "LC", "value": loc.strip(), "span": (0, 0)})
+            print(f"[INFO] ✓ 주소 탐지: {loc.strip()}")
     
     return Detected
 
@@ -900,14 +913,6 @@ def analyze_combination_risk(detected_items, text):
         risk_level = 'critical'
         risk_message = '민감정보 + 식별자 조합 → 개인 완전 특정 가능!'
         risk_items = categorized.get('identifier', []) + categorized.get('sensitive', [])
-    elif identifier_count >= 3:
-        risk_level = 'high'
-        risk_message = f'식별자 {identifier_count}개 → 개인 특정 가능'
-        risk_items = categorized.get('identifier', [])
-    elif identifier_count >= 2:
-        risk_level = 'medium'
-        risk_message = f'식별자 {identifier_count}개 → 개인 특정 가능성 있음'
-        risk_items = categorized.get('identifier', [])
     elif identifier_count >= 1 and quasi_count >= 2:
         risk_level = 'high'
         risk_message = f'식별자 + 준식별자 {quasi_count}개 조합 → 개인 특정 가능'
@@ -917,8 +922,11 @@ def analyze_combination_risk(detected_items, text):
         risk_message = '식별자 + 준식별자 조합 → 개인 특정 가능성 있음'
         risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
     elif quasi_count >= 2:
+        # 준식별자만 2개 이상일 때 - 조직명만 있는 경우는 제외
         quasi_items = categorized.get('quasi', [])
         non_org_quasi = [item for item in quasi_items if item.get('type') not in ['ORG', 'OG']]
+        
+        # 조직명이 아닌 준식별자가 최소 1개 이상 있어야 함
         if len(non_org_quasi) >= 1:
             risk_level = 'medium'
             risk_message = f'준식별자 {quasi_count}개 조합 → 개인 특정 가능성 있음'
@@ -1232,10 +1240,9 @@ def handle_input_raw(Input_Data, Original_Format=None, Original_Filename=None):
         # 조합 위험도 분석 (모든 항목 포함)
         combination_risk = analyze_combination_risk(all_detected, combined_text)
         
-        # 조합 위험도 분석 결과에 따라 처리
+        # 식별자와 민감정보는 항상 포함, 준식별자는 조합 위험도 있을 때만 포함
         if combination_risk:
-            # 조합 위험도 있으면 모든 항목 포함
-            Detected = all_detected
+            Detected = all_detected  # 조합 위험도 있으면 모두 포함
             print(f"[WARN] ⚠️ 조합 위험 감지: {combination_risk['level']} - {combination_risk['message']}")
             Detected.append({
                 "type": "combination_risk",
@@ -1245,7 +1252,7 @@ def handle_input_raw(Input_Data, Original_Format=None, Original_Filename=None):
                 "counts": combination_risk['counts']
             })
         else:
-            # 조합 위험도 없으면: 식별자/민감정보만 포함 (준식별자 제외)
+            # 조합 위험도 없으면: 식별자/민감정보만 포함, 준식별자(조직명 등) 제외
             Detected = [item for item in all_detected if categorize_detection(item) in ['identifier', 'sensitive']]
     else:
         print("[INFO] 추출된 텍스트 없음")

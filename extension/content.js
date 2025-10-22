@@ -261,7 +261,7 @@
 
   // 허용된 URL 확인
   function isAllowedUrl(url) {
-    return url.match(/^https:\/\/chatgpt\.com\/?$/i) || url.match(/^https:\/\/chatgpt\.com\/(c|g)\//i) || url.match(/^https:\/\/gemini\.google\.com\//i);
+    return url.match(/^https:\/\/chatgpt\.com\/?$/i) || url.match(/^https:\/\/chatgpt\.com\/(c|g)\//i) || url.match(/^https:\/\/gemini\.google\.com\//i) || url.match(/^https:\/\/claude\.ai\//i);
   }
   let isActive = isAllowedUrl(location.href);
 
