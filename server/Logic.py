@@ -922,17 +922,17 @@ def analyze_combination_risk(detected_items, text):
         risk_message = '식별자 + 준식별자 조합 → 개인 특정 가능성 있음'
         risk_items = categorized.get('identifier', []) + categorized.get('quasi', [])
     elif quasi_count >= 2:
-        # 준식별자만 2개 이상일 때 - 조직명만 있는 경우는 제외
+        # 준식별자만 2개 이상일 때 - 조직명+주소만 있는 경우는 제외
         quasi_items = categorized.get('quasi', [])
-        non_org_quasi = [item for item in quasi_items if item.get('type') not in ['ORG', 'OG']]
+        non_org_lc_quasi = [item for item in quasi_items if item.get('type') not in ['ORG', 'OG', 'LC']]
         
-        # 조직명이 아닌 준식별자가 최소 1개 이상 있어야 함
-        if len(non_org_quasi) >= 1:
+        # 조직명/주소가 아닌 준식별자가 최소 1개 이상 있어야 함
+        if len(non_org_lc_quasi) >= 1:
             risk_level = 'medium'
             risk_message = f'준식별자 {quasi_count}개 조합 → 개인 특정 가능성 있음'
             risk_items = quasi_items
         else:
-            print(f"[DEBUG] 조합 위험 스킵: 조직명만 {len(quasi_items)}개 (개인 특정 불가)")
+            print(f"[DEBUG] 조합 위험 스킵: 조직명/주소만 {len(quasi_items)}개 (개인 특정 불가)")
     
     if risk_level:
         print(f"[WARN] ⚠️ 조합 위험 감지: {risk_level} - {risk_message}")
