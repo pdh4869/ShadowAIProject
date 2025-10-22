@@ -3,6 +3,14 @@
   const PORT_NAME = "pii_port";
   let port = null;
   let pending = new Map();
+  let lastSendTime = 0; // 마지막 전송으로부터 경과된 시간?
+
+  function canSendNow() {
+  const now = Date.now();
+  if (now - lastSendTime < 1500) return false;  // 1.5초 이내 중복 방지
+  lastSendTime = now;
+  return true;
+}
 
   function nextReqId(){ return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
   function connectPort() {
@@ -39,7 +47,7 @@
         connectPort();
         if (!port) {
           console.error("[content] 포트 재연결 실패");
-          resolve({ ok:false, error:"포트 연겴 실패" });
+          resolve({ ok:false, error:"포트 연결 실패" });
           return;
         }
       }
@@ -84,7 +92,7 @@
 
   async function storeFileForLater(file, origin){
     const ext = file.name.split('.').pop().toLowerCase();
-    const allowed = ['pdf', 'doc', 'docx', 'hwp', 'hwpx', 'txt', 'png', 'jpg', 'jpeg', 'bmp', 'webp', 'gif', 'tiff', 'xls', 'xlsx', 'ppt', 'pptx'];
+    const allowed = ['pdf','doc','docx','hwp','hwpx','txt','png','jpg','jpeg','bmp','webp','gif','tiff','xls','xlsx','pptx'];
     if (!allowed.includes(ext)) {
       console.log(`[content] 지원하지 않는 파일 형식: ${file.name}`);
       return;
@@ -155,36 +163,58 @@
     console.log("[content] ========== 파일 전송 완료 ==========");
   }
 
-  // 1. input[type=file] 감지 (취소 감지 위해 지연 처리)
-  let fileInputTimeout = null;
+  // 1. input[type=file] 감지 (드롭처럼 대기 목록에만 추가)
+  let lastInputElement = null;
   document.addEventListener("change",(e)=>{
     if(e.target.tagName==="INPUT"&&e.target.type==="file"){
       const input = e.target;
-      
-      // 이전 타이머 취소
-      if(fileInputTimeout) clearTimeout(fileInputTimeout);
+      lastInputElement = input;
       
       if(input.files?.length){
-        console.log(`[content] input[type=file] 감지: ${input.files.length}개, 500ms 대기 중...`);
+        console.log(`[content] input[type=file] 감지: ${input.files.length}개, 대기 목록에 추가`);
         
-        // 500ms 후에 여전히 파일이 있으면 저장
-        fileInputTimeout = setTimeout(() => {
-          if(input.files?.length) {
-            console.log(`[content] 파일 저장 시작: ${input.files.length}개`);
-            pendingFiles.length = 0;
-            filesMap.clear();
-            for(const f of input.files) {
-              storeFileForLater(f, location.href);
-            }
-          } else {
-            console.log(`[content] 파일 취소됨 (저장 안함)`);
-          }
-          fileInputTimeout = null;
-        }, 500);
-      } else {
-        console.log(`[content] 파일 선택 취소됨, 저장된 파일 초기화`);
+        // 기존 파일 초기화 후 저장 (드롭처럼)
         pendingFiles.length = 0;
         filesMap.clear();
+        
+        for(const f of input.files) {
+          storeFileForLater(f, location.href);
+        }
+      } else {
+        console.log(`[content] 파일 선택 취소됨`);
+        pendingFiles.length = 0;
+        filesMap.clear();
+      }
+    }
+  }, true);
+  
+  // input[type=file] 취소 감지 (focus 이벤트)
+  document.addEventListener("focus", (e) => {
+    if (lastInputElement && lastInputElement.files?.length === 0 && pendingFiles.length > 0) {
+      console.log(`[content] ❌ 파일 선택 취소 감지 - 대기 파일 ${pendingFiles.length}개 삭제`);
+      pendingFiles.length = 0;
+      filesMap.clear();
+      lastInputElement = null;
+    }
+  }, true);
+  
+  // 취소 버튼 감지 강화
+  document.addEventListener("click", (e) => {
+    if (lastInputElement && pendingFiles.length > 0) {
+      // 취소/닫기 버튼 체크
+      let el = e.target;
+      for (let i=0; i<5 && el; i++, el=el.parentElement) {
+        const ariaLabel = (el.getAttribute?.("aria-label")||"").toLowerCase();
+        const className = el.className?.toString().toLowerCase() || "";
+        
+        if (ariaLabel.includes("제거") || ariaLabel.includes("close") || 
+            ariaLabel.includes("cancel") || className.includes("close")) {
+          console.log(`[content] ❌ 취소 버튼 클릭 - 대기 파일 ${pendingFiles.length}개 삭제`);
+          pendingFiles.length = 0;
+          filesMap.clear();
+          lastInputElement = null;
+          break;
+        }
       }
     }
   }, true);
@@ -198,8 +228,6 @@
       dropHandled = true;
       justDropped = true;
       console.log(`[content] 드롭 이벤트 감지: ${e.dataTransfer.files.length}개 파일`);
-      pendingFiles.length = 0;
-      filesMap.clear();
       for(const f of e.dataTransfer.files) {
         await storeFileForLater(f, location.href);
       }
@@ -241,7 +269,7 @@
 
   // 허용된 URL 확인
   function isAllowedUrl(url) {
-    return url.match(/^https:\/\/chatgpt\.com\/?$/i) || url.match(/^https:\/\/chatgpt\.com\/(c|g)\//i) || url.match(/^https:\/\/gemini\.google\.com\//i);
+    return url.match(/^https:\/\/chatgpt\.com\/?$/i) || url.match(/^https:\/\/chatgpt\.com\/(c|g)\//i) || url.match(/^https:\/\/gemini\.google\.com\//i) || url.match(/^https:\/\/claude\.ai\//i);
   }
   let isActive = isAllowedUrl(location.href);
 
@@ -249,30 +277,18 @@
   document.addEventListener("keydown", async (e)=>{
     if (!isActive) return;
     if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (!canSendNow()) return;
       console.log("[content] ✓ Enter 키 전송");
       const text = getFocusedText().trim();
       if (text || pendingFiles.length > 0) {
         console.log(`[content] 전송: 텍스트 ${text.length}글자, 파일 ${pendingFiles.length}개`);
-	let result;
-	if (text && pendingFiles.length === 0) {
-        // 텍스트만 있을 때
-	  result = await sendViaPort("PII_EVENT", {
-	    source_url: location.href,
-	    page_title: document.title,
-	    raw_text: text,
-	    tab: { ua: navigator.userAgent }
-	  });
-	}
-	else {
-  	  // 파일 또는 텍스트+파일
-	  result = await sendViaPort("COMBINED_EVENT", {
-	    source_url: location.href,
-	    page_title: document.title,
-	    raw_text: text,
-	    files_data: pendingFiles,
-	    tab: { ua: navigator.userAgent }
-	  });
-	}
+        const result = await sendViaPort("COMBINED_EVENT", {
+          source_url: location.href,
+          page_title: document.title,
+          raw_text: text,
+          files_data: pendingFiles,
+          tab: { ua: navigator.userAgent }
+        });
         
         if (!result.ok) {
           console.error(`[content] 전송 실패: ${result.error}`);
@@ -289,8 +305,8 @@
   document.addEventListener("mousedown", (e)=>{
     if (!isActive) return;
     
-    // 취소 버튼 체크 (드롭 직후)
-    if (justDropped && pendingFiles.length > 0) {
+    // 취소 버튼 체크
+    if (pendingFiles.length > 0) {
       let el = e.target;
       for (let i=0; i<8 && el; i++, el=el.parentElement) {
         const ariaLabel = (el.getAttribute?.("aria-label")||"");
@@ -351,29 +367,18 @@
         className.includes("send");
       
       if (isSendButton && (pendingFiles.length > 0 || lastCapturedText)) {
+        if (!canSendNow()) return;
         justDropped = false;
         isSending = true;
         console.log(`[content] 전송: 텍스트 ${lastCapturedText.length}글자, 파일 ${pendingFiles.length}개`);
-        let result;
-	if (lastCapturedText && pendingFiles.length === 0) {
-        // 텍스트만 있을 때
-	  result = await sendViaPort("PII_EVENT", {
-	    source_url: location.href,
-	    page_title: document.title,
-	    raw_text: lastCapturedText,
-	    tab: { ua: navigator.userAgent }
-	  });
-	}
-	else {
-  	  // 파일 또는 텍스트+파일
-	  result = await sendViaPort("COMBINED_EVENT", {
-	    source_url: location.href,
-	    page_title: document.title,
-	    raw_text: lastCapturedText,
-	    files_data: pendingFiles,
-	    tab: { ua: navigator.userAgent }
-	  });
-	}
+        
+        const result = await sendViaPort("COMBINED_EVENT", {
+          source_url: location.href,
+          page_title: document.title,
+          raw_text: lastCapturedText,
+          files_data: pendingFiles,
+          tab: { ua: navigator.userAgent }
+        });
         
         if (!result.ok) {
           console.error(`[content] 전송 실패: ${result.error}`);

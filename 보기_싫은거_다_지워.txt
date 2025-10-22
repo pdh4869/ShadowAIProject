@@ -1,0 +1,46 @@
+[content.js 수정 부분]
+
+  let lastSendTime = 0;
+
+  function canSendNow() {
+  const now = Date.now();
+  if (now - lastSendTime < 1500) return false;  // 1.5초 이내 중복 방지
+  lastSendTime = now;
+  return true;
+}
+// -> "lastSendTime" 변수와 canSendNow() 함수를 상단에 추가. 그러니까 "let pending = new Map();" 바로 밑에.
+
+if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) { // 이 행 바로 밑에
+  if (!canSendNow()) return; // 이 코드 추가
+
+if (isSendButton && (pendingFiles.length > 0 || lastCapturedText)) { // 이 행 바로 밑에
+  if (!canSendNow()) return; // 이 코드 추가
+
+// 여기까지의 부분은 에이전트가 동일 데이터를 중복 전송하는 것을 막기 위하여 추가되었다.
+ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+[logic.py 수정 부분]
+
+# logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s') 
+# 이 부분 주석 처리
+
+logged_messages = set() # 중복 로그 방지 전역 변수 및 래퍼
+
+def log_once(message: str, level="INFO"):
+    """DEBUG 무시"""
+    if "[DEBUG]" in message:
+        return  # 완전 차단
+
+    normalized = re.sub(r'\s+', ' ', message.strip())
+    normalized = re.sub(r'\d+', '', normalized)
+    normalized = normalized[:100]
+    if normalized not in logged_messages:
+        logged_messages.add(normalized)
+        print(f"[{level.upper()}] {message}")
+
+# "detector = MTCNN()" 부분 바로 밑에 "logged_messages = set()" 추가
+# "logged_messages = set()" 바로 밑에 "log_once()" 함수 추가
+
+# 그리고 parse_file() 함수 아래로 나오는 모든 "print()" 기능을 전부 "log_once()"로 교체 (한 100개 정도)
+# parse_file() 함수 위에 있는 "print()" 기능은 첫 실행에서의 디버그 메시지니까 교체하지 않아도 됨
+ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+LocalServer.py 및 다른 js/매니페스트 파일 등은 수정 불필요
