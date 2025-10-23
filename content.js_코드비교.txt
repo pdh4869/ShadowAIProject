@@ -1,0 +1,349 @@
+================================================================================
+content.js 코드 비교 (변경 전 vs 변경 후)
+================================================================================
+
+📅 작성일: 2024년
+📝 목적: 실제 코드 레벨에서 변경 전후 비교
+
+================================================================================
+1. 중복 전송 방지 - 시간 기반 필터링 제거
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+const PORT_NAME = "pii_port";
+let port = null;
+let pending = new Map();
+let lastSendTime = 0; // 마지막 전송 시간
+
+function canSendNow() {
+  const now = Date.now();
+  if (now - lastSendTime < 1500) return false;  // 1.5초 이내 중복 방지
+  lastSendTime = now;
+  return true;
+}
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+const PORT_NAME = "pii_port";
+let port = null;
+let pending = new Map();
+
+// canSendNow() 함수 제거됨
+────────────────────────────────────────────────────────────────────────────
+
+차이점: 시간 기반 중복 방지 제거, isSending 플래그로 대체
+
+================================================================================
+2. Enter 키 이벤트 - canSendNow() 제거
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("keydown", async (e)=>{
+  // [수정] isSending 플래그를 확인하여 이미 전송 중이면 실행하지 않도록 수정
+  if (!isActive || isSending) return;
+  if (!canSendNow()) return; // 시간 기반 중복 방지
+
+  if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    console.log("[content] ✓ Enter 키 전송");
+    const text = getFocusedText().trim();
+    // ... 전송 로직
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("keydown", async (e)=>{
+  // [수정] isSending 플래그를 확인하여 이미 전송 중이면 실행하지 않도록 수정
+  if (!isActive || isSending) return;
+
+  if (e.key==="Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    console.log("[content] ✓ Enter 키 전송");
+    const text = getFocusedText().trim();
+    // ... 전송 로직
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+차이점: canSendNow() 호출 제거
+
+================================================================================
+3. 드래그 앤 드롭 - 파일 초기화 로직 변경
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("drop", async (e)=>{
+  if (dropHandled) return;
+  if (e.dataTransfer?.files?.length) {
+    dropHandled = true;
+    justDropped = true;
+    console.log(`[content] 드롭 이벤트 감지: ${e.dataTransfer.files.length}개 파일`);
+    // 초기화하지 않고 기존 파일에 추가
+    for(const f of e.dataTransfer.files) {
+      await storeFileForLater(f, location.href);
+    }
+    setTimeout(() => { dropHandled = false; }, 1000);
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("drop", async (e)=>{
+  if (dropHandled) return;
+  if (e.dataTransfer?.files?.length) {
+    dropHandled = true;
+    justDropped = true;
+    console.log(`[content] 드롭 이벤트 감지: ${e.dataTransfer.files.length}개 파일`);
+    pendingFiles.length = 0;
+    filesMap.clear();
+    for(const f of e.dataTransfer.files) {
+      await storeFileForLater(f, location.href);
+    }
+    setTimeout(() => { dropHandled = false; }, 1000);
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+차이점: 드롭 시 기존 파일 초기화 추가 (덮어쓰기 방식)
+
+================================================================================
+4. mousedown 이벤트 - 개별 파일 삭제 기능 추가
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+let lastCapturedText = "";
+document.addEventListener("mousedown", (e)=>{
+  if (!isActive) return;
+  
+  if (justDropped && pendingFiles.length > 0) {
+    let el = e.target;
+    for (let i=0; i<8 && el; i++, el=el.parentElement) {
+      const ariaLabel = (el.getAttribute?.("aria-label")||"");
+      const className = el.className?.toString().toLowerCase() || "";
+      
+      if (ariaLabel.includes("제거") || ariaLabel.includes("파일 제거") ||
+          ariaLabel.toLowerCase().includes("close") || ariaLabel.toLowerCase().includes("cancel") || 
+          className.includes("close") || className.includes("cancel")) {
+        justDropped = false;
+        console.log(`[content] 취소 버튼 감지 - 대기 파일 삭제`);
+        pendingFiles.length = 0;
+        filesMap.clear();
+        return;
+      }
+    }
+  }
+  
+  lastCapturedText = getFocusedText().trim();
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+let lastCapturedText = "";
+let isRemovingFile = false;
+
+document.addEventListener("mousedown", (e)=>{
+  if (!isActive) return;
+  
+  if (pendingFiles.length > 0) {
+    let el = e.target;
+    let fileNameToRemove = null;
+    
+    // 개별 파일 삭제 버튼 찾기 (파일명 추출)
+    for (let i=0; i<10 && el; i++, el=el.parentElement) {
+      const ariaLabel = (el.getAttribute?.("aria-label")||"");
+      const className = el.className?.toString().toLowerCase() || "";
+      const innerText = (el.innerText || "").trim();
+      
+      // 삭제/제거 버튼인지 확인
+      const isRemoveButton = 
+        ariaLabel.includes("제거") || ariaLabel.includes("파일 제거") ||
+        ariaLabel.toLowerCase().includes("remove") || 
+        ariaLabel.toLowerCase().includes("close") || 
+        ariaLabel.toLowerCase().includes("cancel") || 
+        className.includes("close") || 
+        className.includes("cancel") ||
+        className.includes("remove");
+      
+      if (isRemoveButton) {
+        // 파일명 찾기: 형제/부모 요소에서 파일명 검색
+        let searchEl = el.parentElement;
+        for (let j=0; j<5 && searchEl; j++, searchEl=searchEl.parentElement) {
+          const text = (searchEl.innerText || searchEl.textContent || "").trim();
+          
+          // 저장된 파일명과 매칭
+          for (const fileName of filesMap.keys()) {
+            if (text.includes(fileName)) {
+              fileNameToRemove = fileName;
+              break;
+            }
+          }
+          if (fileNameToRemove) break;
+        }
+        
+        if (fileNameToRemove) {
+          // 개별 파일 삭제
+          isRemovingFile = true;
+          console.log(`[content] 개별 파일 삭제: ${fileNameToRemove}`);
+          filesMap.delete(fileNameToRemove);
+          const idx = pendingFiles.findIndex(f => f.name === fileNameToRemove);
+          if (idx !== -1) {
+            pendingFiles.splice(idx, 1);
+          }
+          console.log(`[content] 남은 파일: ${pendingFiles.length}개`);
+          if (pendingFiles.length === 0) {
+            justDropped = false;
+          }
+          setTimeout(() => { isRemovingFile = false; }, 300);
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        } else {
+          // 파일명을 찾지 못한 경우 전체 삭제 (기존 동작)
+          isRemovingFile = true;
+          console.log(`[content] 전체 파일 삭제 (파일명 미식별)`);
+          pendingFiles.length = 0;
+          filesMap.clear();
+          justDropped = false;
+          setTimeout(() => { isRemovingFile = false; }, 300);
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  }
+  
+  lastCapturedText = getFocusedText().trim();
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+차이점: 
+1. isRemovingFile 플래그 추가
+2. 개별 파일 삭제 로직 추가 (파일명 매칭)
+3. 이벤트 전파 중단 (stopPropagation, preventDefault)
+4. 루프 범위 8 → 10으로 확대
+
+================================================================================
+5. click 이벤트 - canSendNow() 제거 및 isRemovingFile 체크 추가
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("click", async (e)=>{
+  if (!isActive || isSending) return;
+  if (!canSendNow()) return; // 시간 기반 중복 방지
+  
+  let el = e.target;
+  for (let i=0; i<8 && el; i++, el=el.parentElement) {
+    const ariaLabel = (el.getAttribute?.("aria-label")||"");
+    const className = el.className?.toString().toLowerCase() || "";
+    
+    if (ariaLabel.includes("제거") || ariaLabel.includes("파일 제거") ||
+        ariaLabel.toLowerCase().includes("close") || ariaLabel.toLowerCase().includes("cancel") || 
+        className.includes("close") || className.includes("cancel")) {
+      if (justDropped && pendingFiles.length > 0) {
+        justDropped = false;
+        console.log(`[content] 취소 버튼 감지 - 대기 파일 삭제`);
+        pendingFiles.length = 0;
+        filesMap.clear();
+      }
+      return;
+    }
+  }
+  
+  el = e.target;
+  for (let i=0;i<8&&el;i++,el=el.parentElement){
+    // ... 전송 버튼 감지 로직
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+document.addEventListener("click", async (e)=>{
+  if (!isActive || isSending || isRemovingFile) return;
+  
+  let el = e.target;
+  for (let i=0;i<8&&el;i++,el=el.parentElement){
+    const t=(el.innerText||"").toLowerCase();
+    const ariaLabel = (el.getAttribute?.("aria-label")||"").toLowerCase();
+    const tagName = el.tagName?.toLowerCase();
+    const className = el.className?.toString().toLowerCase() || "";
+    
+    const isSendButton = 
+      tagName === "button" ||
+      t.includes("send") || 
+      t.includes("전송") || 
+      ariaLabel.includes("send") || 
+      ariaLabel.includes("submit") ||
+      className.includes("send");
+    
+    const hasText = lastCapturedText.length > 0;
+    const hasFiles = pendingFiles.length > 0;
+
+    if (isSendButton && (hasText || hasFiles)) {
+      // ... 전송 로직
+    }
+  }
+}, true);
+────────────────────────────────────────────────────────────────────────────
+
+차이점:
+1. canSendNow() 호출 제거
+2. isRemovingFile 체크 추가 (삭제 중일 때 전송 방지)
+3. 삭제 버튼 감지 로직 제거 (mousedown으로 이동)
+4. let el 선언 추가
+
+================================================================================
+6. CSP 경고 메시지 제거
+================================================================================
+
+[변경 전 - 제공된 코드]
+────────────────────────────────────────────────────────────────────────────
+console.log("[content] ========== PII Agent 활성화 ==========");
+console.log("[content] URL:", location.href);
+console.log(`[content] 탐지 상태: ${isActive ? '활성' : '비활성'}`);
+console.log("[content] 디버깅: window.forceSendFiles() 호출하여 강제 전송 가능");
+console.log("[content] ⚠ CSP 정책으로 인해 fetch는 차단됩니다. 모든 통신은 background.js를 통해 이루어집니다.");
+────────────────────────────────────────────────────────────────────────────
+
+[변경 후 - 현재 버전]
+────────────────────────────────────────────────────────────────────────────
+console.log("[content] ========== PII Agent 활성화 ==========");
+console.log("[content] URL:", location.href);
+console.log(`[content] 탐지 상태: ${isActive ? '활성' : '비활성'}`);
+console.log("[content] 디버깅: window.forceSendFiles() 호출하여 강제 전송 가능");
+────────────────────────────────────────────────────────────────────────────
+
+차이점: CSP 경고 메시지 제거
+
+================================================================================
+변경 사항 요약
+================================================================================
+
+주요 개선 사항:
+1. ✅ 개별 파일 삭제 기능 추가 (파일명 매칭)
+2. ✅ 삭제 후 자동 전송 방지 (isRemovingFile 플래그)
+3. ✅ 시간 기반 중복 방지 제거 (canSendNow 함수 삭제)
+4. ✅ 드롭 시 파일 초기화 (덮어쓰기 방식)
+5. ✅ 이벤트 전파 중단 (stopPropagation, preventDefault)
+6. ✅ CSP 경고 메시지 제거
+
+코드 변경 통계:
+- 추가된 코드: 약 60줄 (개별 파일 삭제 로직)
+- 제거된 코드: 약 30줄 (canSendNow, 중복 삭제 버튼 감지)
+- 수정된 코드: 약 10줄 (플래그 체크, 초기화 로직)
+
+주요 버그 수정:
+- 🐛 파일 하나 삭제 시 전체 삭제되던 문제 해결
+- 🐛 삭제 후 남은 파일이 자동 전송되던 문제 해결
+- 🐛 드롭 시 파일이 누적되던 문제 해결 (덮어쓰기로 변경)
+
+================================================================================

@@ -1,0 +1,9 @@
+{
+  "name": "com.example.pii_host",
+  "description": "PII Agent Native Host",
+  "type": "stdio",
+  "path": "C:/Users/USER/Downloads/ShadowAIProject-integratedKKK/ShadowAIProject-integratedKKK/native_host/dist/host.exe",
+  "allowed_origins": [
+    "chrome-extension://nngagkeidpjmofniecdabhlfcjdbjobl/"
+  ]
+}

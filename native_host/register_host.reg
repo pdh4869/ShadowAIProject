@@ -1,0 +1,4 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.example.pii_host]
+@="C:\\Users\\KSH\\AppData\\Local\\Google\\Chrome\\User Data\\NativeMessagingHosts\\com.example.pii_host.json"
