@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('typeTimestamp').textContent = new Date().toLocaleString('ko-KR', { hour12: false, dateStyle: 'short', timeStyle: 'short' }) + ' 기준';
   }
   
-  // 6. 탐지 유형별 분포 차트 (SOURCE_STATS 사용)
+  // 6. 파일 확장자별 분포 차트 (SOURCE_STATS 사용)
   const barChartEl = document.getElementById("chartSourceBar");
   if(barChartEl) {
     const filteredSourceStats = SOURCE_STATS.filter(s => s.count > 0);
@@ -203,8 +203,8 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(barChartEl, {
       type: "bar",
       data: { 
-        // ⭐ 수정: 라벨을 한글로 매핑하여 표시
-        labels: sortedStats.map(s => PII_TYPE_MAP_KR[s.source] || s.source),
+        // 파일 확장자는 그대로 표시
+        labels: sortedStats.map(s => s.source),
         datasets: [{ 
           data: sortedStats.map(s => s.count),
           backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6','#06b6d4', '#ec4899', '#84cc16', '#f97316', '#a855f7','#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f','#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ab'].slice(0, sortedStats.length),
@@ -253,9 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
         li.style.listStyle = 'none';
         li.style.lineHeight = '16px';
         li.style.cursor = 'pointer';
-        li.addEventListener('click', () => {
-          window.location.href = `/user_type?status=${encodeURIComponent('개인 식별 의심')}`;
-        });
         const shortDate = item.timestamp.slice(2, 10).replace(/-/g, '/'); // YY/MM/DD
         const time = item.timestamp.slice(11, 16); // HH:MM
         const source = item.file || item.file_type_name || '-';

@@ -8,7 +8,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_cors import CORS
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 import traceback
 import json
@@ -170,6 +169,28 @@ def load_user(user_id):
 # =====================================================================
 # API 엔드포인트: PII 로그 수신 (클라이언트용) - 새로운 로직
 # =====================================================================
+
+def _get_or_create_generic(model, session, **kwargs):
+    """
+    단순한 get-or-create 헬퍼.
+    1) 먼저 조회
+    2) 없으면 추가 후 flush
+    3) flush에서 IntegrityError가 나오면 rollback 후 다시 조회
+    """
+    instance = model.query.filter_by(**kwargs).first()
+    if instance:
+        return instance
+    instance = model(**kwargs)
+    session.add(instance)
+    try:
+        session.flush()
+        return instance
+    except IntegrityError:
+        # 다른 세션이 같은 이름을 삽입했을 수 있음: 롤백하고 재조회
+        session.rollback()
+        instance = model.query.filter_by(**kwargs).first()
+        return instance
+
 @app.route('/api/log-pii', methods=['POST'])
 def log_pii():
     data = request.get_json()
@@ -179,7 +200,7 @@ def log_pii():
         return jsonify({'status': 'error', 'message': f'필수 필드({", ".join(required_fields)})가 누락되었습니다.'}), 400
 
     try:
-        # --- FileType 처리 로직 ---
+        # --- FileType 처리 로직 (기존 방식 유지, try/except flush 포함) ---
         file_type_name = data.get('file_type_name')
         file_type_obj = FileType.query.filter_by(type_name=file_type_name).first()
         if not file_type_obj:
@@ -191,7 +212,7 @@ def log_pii():
                 db.session.rollback()
                 file_type_obj = FileType.query.filter_by(type_name=file_type_name).first()
 
-        # --- LlmType 처리 로직 ---
+        # --- LlmType 처리 로직 (기존 방식 유지) ---
         llm_type_obj = None
         llm_type_name = data.get('llm_type_name')
         if llm_type_name:
@@ -205,40 +226,60 @@ def log_pii():
                     db.session.rollback()
                     llm_type_obj = LlmType.query.filter_by(type_name=llm_type_name).first()
 
-        # 3. PiiType을 한 번에 효율적으로 처리 (중복 허용)
-        pii_type_names = [
-            name for name in data.get('pii_types', []) if isinstance(name, str) and name
-        ]
-        unique_pii_type_names = list(set(pii_type_names))
+        # 3. PiiType을 한 번에 효율적으로 처리 (중복 허용) - 안정적인 get-or-create 방식
+        raw_pii_type_list = data.get('pii_types', []) or []
+        # 필터링 및 순서 보존하면서 중복 제거
+        pii_type_names = []
+        seen = set()
+        for name in raw_pii_type_list:
+            if isinstance(name, str) and name:
+                if name not in seen:
+                    seen.add(name)
+                    pii_type_names.append(name)
+
         final_pii_objects = []
-        
+
         # 디버깅 로그 추가
-        print(f"\u2705 [PII 로그 수신] pii_types: {data.get('pii_types', [])}")
-        print(f"\u2705 [PII 로그 수신] pii_type_names: {pii_type_names}")
+        print(f"[PII 로그 수신] raw pii_types: {raw_pii_type_list}")
+        print(f"[PII 로그 수신] normalized unique pii_type_names: {pii_type_names}")
 
         if pii_type_names:
-            existing_types_map = {
-                t.type_name: t for t in PiiType.query.filter(PiiType.type_name.in_(pii_type_names)).all()
-            }
-            
-            new_types_to_create = []
-            for type_name in unique_pii_type_names:
-                if type_name not in existing_types_map:
-                    new_type = PiiType(type_name=type_name)
-                    new_types_to_create.append(new_type)
-                    existing_types_map[type_name] = new_type
-                    print(f"\u2705 [PII 타입 생성] {type_name}")
+            # 먼저 DB에 이미 존재하는 타입을 묶어서 가져옵니다 (효율성)
+            existing_types = PiiType.query.filter(PiiType.type_name.in_(pii_type_names)).all()
+            existing_types_map = {t.type_name: t for t in existing_types}
 
-            if new_types_to_create:
-                db.session.add_all(new_types_to_create)
-            
+            # 각 이름별로 존재하면 사용, 없으면 안전하게 생성 시도
+            for type_name in pii_type_names:
+                if type_name in existing_types_map:
+                    final_pii_objects.append(existing_types_map[type_name])
+                else:
+                    # get-or-create: flush에서 IntegrityError가 발생하면 rollback 후 재조회
+                    try:
+                        new_type = PiiType(type_name=type_name)
+                        db.session.add(new_type)
+                        db.session.flush()
+                        final_pii_objects.append(new_type)
+                        existing_types_map[type_name] = new_type
+                        print(f"[PII 타입 생성] 새 타입 생성: {type_name}")
+                    except IntegrityError:
+                        db.session.rollback()
+                        # 다른 트랜잭션이 같은 값을 넣었을 수 있으니 재조회
+                        existing = PiiType.query.filter_by(type_name=type_name).first()
+                        if existing:
+                            final_pii_objects.append(existing)
+                            existing_types_map[type_name] = existing
+                            print(f"[PII 타입 생성 충돌] 이미 존재하여 재사용: {type_name}")
+                        else:
+                            # 예상치 못한 상황: 에러를 다시 던져서 상위에서 rollback 및 로그 처리
+                            raise
+
             # 다대다 관계는 유니크하게, 개수는 pii_type_counts에 저장
             pii_counts = data.get('pii_type_counts', {})
             if pii_counts:
+                # pii_type_counts에 기재된 순서/키만 사용
                 final_pii_objects = [existing_types_map[name] for name in pii_counts.keys() if name in existing_types_map]
-            else:
-                final_pii_objects = [existing_types_map[name] for name in pii_type_names]
-            print(f"\u2705 [PII 객체 생성] {len(final_pii_objects)}개 생성됨")
+
+            print(f"[PII 객체 생성] 최종 PII 객체 수: {len(final_pii_objects)}")
 
         # 4. PiiLog 객체 생성 및 PiiType 관계 설정
         validation_statuses = data.get('validation_statuses', None) 
@@ -608,11 +649,10 @@ def show_dashboard():
             high_risk_percent = round((high_risk_count / total_count) * 100, 0) if total_count > 0 else 0
             top_users.append({'account': ip if ip else 'Unknown IP', 'count': total_count, 'high_risk': high_risk_percent})
 
-        # 6. 소스별 분포 (source_stats) - 전체 데이터
-        source_dist_query = db.session.query(PiiType.type_name, func.count(PiiLog.id)).select_from(PiiLog).join(
-            pii_log_pii_type_links).join(PiiType).filter(
-            PiiLog.status == '성공'
-        ).group_by(PiiType.type_name).all()
+        # 6. 파일 확장자별 분포 (source_stats) - 전체 데이터
+        source_dist_query = db.session.query(FileType.type_name, func.count(PiiLog.id)).join(
+            FileType, PiiLog.file_type_id == FileType.id
+        ).filter(PiiLog.status == '성공').group_by(FileType.type_name).all()
         source_stats = [{'source': r[0], 'count': r[1]} for r in source_dist_query]
 
         # 7. LLM 유형별 분포 (llm_stats)
@@ -692,9 +732,9 @@ def show_detection_details():
     try:
         from_date = request.args.get('from')
         to_date = request.args.get('to')
+        pii_type_filter = request.args.get('type')
         source_filter = request.args.get('source')
         status_filter = request.args.get('status')
-        ip_address_filter = request.args.get('ip_address')
         search_query = request.args.get('q')
         
         query = PiiLog.query.options(
@@ -710,19 +750,25 @@ def show_detection_details():
                 query = query.filter(PiiLog.timestamp < to_date_end)
             except ValueError:
                 pass
+        if pii_type_filter:
+            query = query.join(PiiLog.pii_types).filter(PiiType.type_name == pii_type_filter)
         if source_filter:
             query = query.join(PiiLog.file_type).filter(FileType.type_name == source_filter)
         if status_filter:
-            query = query.filter(PiiLog.status == status_filter)
-        if ip_address_filter:
-            query = query.filter(PiiLog.ip_address.ilike(f"%{ip_address_filter}%"))
+            if status_filter == '개인 식별 의심':
+                query = query.filter(PiiLog.status == '성공')
+            else:
+                query = query.filter(PiiLog.status == status_filter)
         if search_query:
             search_pattern = f"%{search_query}%"
             query = query.filter(or_(
+                PiiLog.ip_address.ilike(search_pattern),
+                PiiLog.os_info.ilike(search_pattern),
+                PiiLog.hostname.ilike(search_pattern),
+                PiiLog.llm_type.has(LlmType.type_name.ilike(search_pattern)),
                 PiiLog.filename.ilike(search_pattern),
                 PiiLog.session_url.ilike(search_pattern),
-                PiiLog.reason.ilike(search_pattern),
-                PiiLog.ip_address.ilike(search_pattern)
+                PiiLog.reason.ilike(search_pattern)
             ))
 
         filtered_logs = query.order_by(PiiLog.timestamp.desc()).all()
@@ -742,6 +788,15 @@ def show_detection_details():
         for log in filtered_logs:
             pii_types_names = [pii.type_name for pii in log.pii_types] if log.pii_types else []
             llm_type_name_safe = log.llm_type.type_name if log.llm_type else '-'
+            
+            # suspicious 계산
+            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'alien_reg', 'email', 'phone', 'face_image']
+            all_pii_types = list(log.pii_type_counts.keys()) + pii_types_names if log.pii_type_counts else pii_types_names
+            suspicious_result = any(pii_type in high_risk_types for pii_type in all_pii_types)
+            
+            # 개인 식별 의심 필터링 추가 처리
+            if status_filter == '개인 식별 의심' and not suspicious_result:
+                continue
 
             formatted_logs.append({
                 'id': log.id,
@@ -755,7 +810,7 @@ def show_detection_details():
                 'pii_types_names': pii_types_names,
                 'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_names],
                 'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
-                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_names if log.pii_type_counts else pii_types_names)),
+                'suspicious': suspicious_result,
                 'file_type_name': log.file_type.type_name if log.file_type else '-',
                 'llm_type_name': llm_type_name_safe,
                 'filename': log.filename if log.filename else '-',
@@ -772,7 +827,8 @@ def show_detection_details():
             logs=formatted_logs,
             file_types=all_file_types,
             bar_chart_data=bar_chart_data,
-            DETECTION_LOGS=formatted_logs
+            DETECTION_LOGS=formatted_logs,
+            status_options=['성공', '실패', '개인 식별 의심']
         )
         
     except Exception as e:
@@ -798,7 +854,7 @@ def show_user_type():
         source_type_name = request.args.get('source')
         status_filter = request.args.get('status')
         search_query = request.args.get('q')
-
+        
         query = PiiLog.query.options(
             db.joinedload(PiiLog.file_type), 
             db.joinedload(PiiLog.llm_type),
@@ -818,9 +874,9 @@ def show_user_type():
             query = query.join(PiiLog.file_type).filter(FileType.type_name == source_type_name)
         if status_filter:
             if status_filter == '개인 식별 의심':
-                 query = query.filter(PiiLog.status == '성공')
+                query = query.filter(PiiLog.status == '성공')
             else:
-                 query = query.filter(PiiLog.status == status_filter)
+                query = query.filter(PiiLog.status == status_filter)
 
         if search_query:
             search_pattern = f"%{search_query}%"
@@ -829,7 +885,9 @@ def show_user_type():
                 PiiLog.os_info.ilike(search_pattern),
                 PiiLog.hostname.ilike(search_pattern),
                 PiiLog.llm_type.has(LlmType.type_name.ilike(search_pattern)),
-                PiiLog.filename.ilike(search_pattern)
+                PiiLog.filename.ilike(search_pattern),
+                PiiLog.session_url.ilike(search_pattern),
+                PiiLog.reason.ilike(search_pattern)
             ))
 
         logs_from_db = query.order_by(PiiLog.timestamp.desc()).all()
@@ -839,13 +897,18 @@ def show_user_type():
         for log in logs_from_db:
             pii_types_list = [pii_type.type_name for pii_type in log.pii_types] if log.pii_types else []
             
+            # suspicious 계산
+            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'alien_reg', 'email', 'phone', 'face_image']
+            all_pii_types = list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list
+            suspicious_result = any(pii_type in high_risk_types for pii_type in all_pii_types)
+            
+            # 개인 식별 의심 필터링 추가 처리
+            if status_filter == '개인 식별 의심' and not suspicious_result:
+                continue
+            
             ip_address = log.ip_address if log.ip_address else 'Unknown IP'
             if log.status == '성공':
                 user_counts[ip_address] += 1
-                
-            # 디버깅 로그
-            if log.pii_type_counts:
-                print(f"🔍 [DEBUG] Log ID {log.id}: pii_type_counts = {log.pii_type_counts}")
             
             logs.append({
                 'id': log.id,
@@ -860,7 +923,7 @@ def show_user_type():
                 'types': pii_types_list,
                 'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_list],
                 'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
-                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
+                'suspicious': suspicious_result,
                 'os': log.os_info if log.os_info else '-', 
                 'hostname': log.hostname if log.hostname else '-', 
                 'browser': parse_browser_name(log.user_agent), 
@@ -921,7 +984,11 @@ def show_personal_information_type():
         if pii_type_filter: query = query.join(PiiLog.pii_types).filter(PiiType.type_name == pii_type_filter)
         if source_filter: query = query.join(PiiLog.file_type).filter(FileType.type_name == source_filter)
         if llm_filter: query = query.join(PiiLog.llm_type).filter(LlmType.type_name == llm_filter)
-        if status_filter: query = query.filter(PiiLog.status == status_filter)
+        if status_filter:
+            if status_filter == '개인 식별 의심':
+                query = query.filter(PiiLog.status == '성공')
+            else:
+                query = query.filter(PiiLog.status == status_filter)
 
         if search_query:
             search_pattern = f"%{search_query}%"
@@ -951,7 +1018,7 @@ def show_personal_information_type():
                 'pii_types_names': pii_types_list,
                 'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_list],
                 'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
-                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
+                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'email', 'phone', 'face_image'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
                 'validation_results': log.validation_results if log.validation_results else [],
                 'os_info': log.os_info if log.os_info else '-', 
                 'hostname': log.hostname if log.hostname else '-',
@@ -974,7 +1041,7 @@ def show_personal_information_type():
         all_pii_types = PiiType.query.order_by(PiiType.type_name).all()
         all_file_types = FileType.query.order_by(FileType.type_name).all()
         all_llm_types = LlmType.query.order_by(LlmType.type_name).all()
-        status_options = ['성공', '실패']
+        status_options = ['성공', '실패', '개인 식별 의심']
 
         return render_template(
             'personal_information_type.html', 
@@ -994,7 +1061,6 @@ def show_personal_information_type():
             active_page='pii_type', logs=[], pie_chart_data=[],
             pii_types=[], file_types=[], llm_types=[], status_options=[]
         )
-
 
 # =====================================================================
 # 서버 실행 및 테이블 생성

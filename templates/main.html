@@ -68,14 +68,14 @@
       <section class="grid grid-cols-2 gap-3 mb-4">
         <div class="panel chart-panel">
           <div class="info-panel-header">
-            <h2>탐지 유형별 분포</h2>
+            <h2>파일 확장자별 분포</h2>
             <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSources">0</span></strong></p>
             <p class="text-xs text-gray-700" id="sourceTimestamp"></p>
           </div>
           <div id="barChartContainer" class="chart-container"><canvas id="chartSourceBar"></canvas></div>
         </div>
         <div id="rightColumn" class="right-column">
-          <div class="panel info-panel">
+          <div class="panel info-panel" style="cursor: pointer;" onclick="window.location.href='/detection_details?status=개인%20식별%20의심'">
             <div class="info-panel-header">
               <h2>개인 식별 의심</h2>
               <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>

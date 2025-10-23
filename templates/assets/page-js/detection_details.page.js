@@ -15,6 +15,7 @@ const PII_TYPE_MAP = {
   'person': '이름',
   'rrn': '주민등록번호',
   'alien_registration': '외국인등록번호',
+  'alien_reg': '외국인등록번호',
   'driver_license': '운전면허번호',
   'passport': '여권번호',
   'birth': '생년월일',
@@ -24,6 +25,7 @@ const PII_TYPE_MAP = {
   'student_id': '학번',
   'combination_risk': '조합위험도',
   'lc': '주소',
+  'luhn': '카드번호',
   '이름': '이름',
   'IP': 'IP',
   'PS': '이름',
@@ -35,6 +37,8 @@ const PII_TYPE_MAP = {
 function translatePIIType(type) {
   if (!type) return '-';
   const lower = type.toLowerCase();
+  // Luhn을 카드번호로 변환
+  if (lower === 'luhn') return '카드번호';
   return PII_TYPE_MAP[lower] || type;
 }
 
@@ -157,16 +161,19 @@ function applyFilters() {
   
   const from = $('#from').value;
   const to = $('#to').value;
+  const type = $('#type').value;
   const source = $('#source').value;
   const status = $('#status').value;
-  const ipAddress = $('#ip_address').value.trim();
   const q = $('#q').value.trim();
+  
+  // 탐지 유형 매핑 (이미 정확한 값이므로 매핑 불필요)
+  const mappedSource = source;
   
   if (from) params.append('from', from);
   if (to) params.append('to', to);
+  if (type) params.append('type', type);
   if (source) params.append('source', source);
   if (status) params.append('status', status);
-  if (ipAddress) params.append('ip_address', ipAddress);
   if (q) params.append('q', q);
   
   window.location.search = params.toString();
@@ -178,7 +185,7 @@ function resetFilters() {
 
 // Enter 키로 검색
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.target.id === 'q' || e.target.id === 'ip_address')) {
+  if (e.key === 'Enter' && e.target.id === 'q') {
     applyFilters();
   }
 });

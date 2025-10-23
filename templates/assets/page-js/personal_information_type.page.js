@@ -9,13 +9,16 @@ const PII_TYPE_MAP = {
   'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
   'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
   'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
-  'combination_risk': '조합위험도', 'lc': '주소', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
+  'combination_risk': '조합위험도', 'alien_reg': '외국인등록번호', 'lc': '주소', 
+  'luhn': '카드번호', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
 };
 
 // PII 타입을 한글로 변환
 function translatePIIType(type) {
   if (!type) return '-';
   const lower = type.toLowerCase();
+  // Luhn을 카드번호로 변환
+  if (lower === 'luhn') return '카드번호';
   return PII_TYPE_MAP[lower] || type;
 }
 

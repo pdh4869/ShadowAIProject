@@ -15,13 +15,16 @@ const PII_TYPE_MAP = {
   'person': '이름', 'rrn': '주민등록번호', 'alien_registration': '외국인등록번호',
   'driver_license': '운전면허번호', 'passport': '여권번호', 'birth': '생년월일',
   'ip': 'IP', 'org': '조직/기관', 'position': '직책', 'student_id': '학번',
-  'combination_risk': '조합위험도', 'lc': '주소', '이름': '이름', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
+  'combination_risk': '조합위험도', 'alien_reg': '외국인등록번호', 'lc': '주소', 
+  'luhn': '카드번호', '이름': '이름', 'IP': 'IP', 'PS': '이름', 'COMBINATION_RISK': '조합위험도', 'LC': '주소'
 };
 
 // PII 타입을 한글로 변환하는 함수
 function translatePIIType(type) {
   if (!type) return '-';
   const lower = type.toLowerCase();
+  // Luhn을 카드번호로 변환
+  if (lower === 'luhn') return '카드번호';
   return PII_TYPE_MAP[lower] || type;
 }
 
@@ -132,16 +135,19 @@ function applyFilters() {
   
   const from = $('#from').value;
   const to = $('#to').value;
+  const type = $('#type').value;
   const source = $('#source').value;
   const status = $('#status').value;
-  const ipAddress = $('#ip_address').value.trim();
   const q = $('#q').value.trim();
+  
+  // 탐지 유형 매핑 (이미 정확한 값이므로 매핑 불필요)
+  const mappedSource = source;
   
   if (from) params.append('from', from);
   if (to) params.append('to', to);
+  if (type) params.append('type', type);
   if (source) params.append('source', source);
   if (status) params.append('status', status);
-  if (ipAddress) params.append('ip_address', ipAddress);
   if (q) params.append('q', q);
   
   window.location.search = params.toString();
@@ -235,7 +241,7 @@ function openDetailModal(log) {
       const match = result.match(/(valid|invalid) \(([^)]+)\)/);
       if (match) {
         const isValid = match[1] === 'valid';
-        const piiType = match[2];
+        let piiType = match[2];
         const koreanType = translatePIIType(piiType);
         const status = isValid ? '성공' : '실패';
         return `<span style="display:inline-block;background:${isValid ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${isValid ? '#059669' : '#dc2626'};padding:4px 8px;border-radius:12px;font-size:12px;margin:2px 4px 2px 0;font-weight:700;">${koreanType}: ${status}</span>`;
@@ -437,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
   $('#resetBtn').addEventListener('click', resetFilters);
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && (e.target.id === 'q' || e.target.id === 'ip_address')) {
+    if (e.key === 'Enter' && e.target.id === 'q') {
       applyFilters();
     }
   });

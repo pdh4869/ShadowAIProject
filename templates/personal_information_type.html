@@ -18,33 +18,50 @@
       </div>
       <div class="filters">
         <div class="field">
-          <label for="from">시작 일자</label>
+          <label for="from">시작일자</label>
           <input type="date" id="from" value="{{ request.args.get('from', '') }}" />
         </div>
         <div class="field">
-          <label for="to">종료 일자</label>
+          <label for="to">종료일자</label>
           <input type="date" id="to" value="{{ request.args.get('to', '') }}" />
         </div>
         <div class="field">
           <label for="type">개인정보 유형</label>
           <select id="type">
             <option value="">전체</option>
-            {% for pii_type in pii_types %}
-            <option value="{{ pii_type.type_name }}" {% if request.args.get('type') == pii_type.type_name %}selected{% endif %}>
-                {{ pii_type.type_name }}
-            </option>
-            {% endfor %}
+            <option value="name" {% if request.args.get('type') == 'name' %}selected{% endif %}>이름</option>
+            <option value="phone" {% if request.args.get('type') == 'phone' %}selected{% endif %}>전화번호</option>
+            <option value="email" {% if request.args.get('type') == 'email' %}selected{% endif %}>이메일</option>
+            <option value="birth" {% if request.args.get('type') == 'birth' %}selected{% endif %}>생년월일</option>
+            <option value="ssn" {% if request.args.get('type') == 'ssn' %}selected{% endif %}>주민등록번호</option>
+            <option value="alien_registration" {% if request.args.get('type') == 'alien_registration' %}selected{% endif %}>외국인등록번호</option>
+            <option value="driver_license" {% if request.args.get('type') == 'driver_license' %}selected{% endif %}>운전면허번호</option>
+            <option value="passport" {% if request.args.get('type') == 'passport' %}selected{% endif %}>여권번호</option>
+            <option value="account" {% if request.args.get('type') == 'account' %}selected{% endif %}>계좌번호</option>
+            <option value="card" {% if request.args.get('type') == 'card' %}selected{% endif %}>카드번호</option>
+            <option value="ip" {% if request.args.get('type') == 'ip' %}selected{% endif %}>IP</option>
+            <option value="position" {% if request.args.get('type') == 'position' %}selected{% endif %}>직책</option>
+            <option value="org" {% if request.args.get('type') == 'org' %}selected{% endif %}>조직/기관</option>
+            <option value="face_image" {% if request.args.get('type') == 'face_image' %}selected{% endif %}>얼굴이미지</option>
           </select>
         </div>
         <div class="field">
           <label for="source">탐지 유형</label>
           <select id="source">
             <option value="">전체</option>
-            {% for ft in file_types %}
-            <option value="{{ ft.type_name }}" {% if request.args.get('source') == ft.type_name %}selected{% endif %}>
-                {{ ft.type_name }}
-            </option>
-            {% endfor %}
+            <option value="텍스트" {% if request.args.get('source') == '텍스트' %}selected{% endif %}>텍스트</option>
+            <option value="PDF" {% if request.args.get('source') == 'PDF' %}selected{% endif %}>PDF</option>
+            <option value="DOCX/DOC" {% if request.args.get('source') == 'DOCX/DOC' %}selected{% endif %}>DOCX/DOC</option>
+            <option value="HWPX/HWP" {% if request.args.get('source') == 'HWPX/HWP' %}selected{% endif %}>HWPX/HWP</option>
+            <option value="XLSX/XLS" {% if request.args.get('source') == 'XLSX/XLS' %}selected{% endif %}>XLSX/XLS</option>
+            <option value="PPTX" {% if request.args.get('source') == 'PPTX' %}selected{% endif %}>PPTX</option>
+            <option value="TXT" {% if request.args.get('source') == 'TXT' %}selected{% endif %}>TXT</option>
+            <option value="PNG" {% if request.args.get('source') == 'PNG' %}selected{% endif %}>PNG</option>
+            <option value="JPG/JPEG" {% if request.args.get('source') == 'JPG/JPEG' %}selected{% endif %}>JPG/JPEG</option>
+            <option value="BMP" {% if request.args.get('source') == 'BMP' %}selected{% endif %}>BMP</option>
+            <option value="WEBP" {% if request.args.get('source') == 'WEBP' %}selected{% endif %}>WEBP</option>
+            <option value="GIF" {% if request.args.get('source') == 'GIF' %}selected{% endif %}>GIF</option>
+            <option value="TIFF" {% if request.args.get('source') == 'TIFF' %}selected{% endif %}>TIFF</option>
           </select>
         </div>
         <div class="status-search-row">
@@ -60,7 +77,7 @@
             </select>
           </div>
           <div class="field search">
-            <label for="q">검색(IP/OS/컴퓨터이름/LLM/파일명)</label>
+            <label for="q">검색</label>
             <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, report.pdf..." value="{{ request.args.get('q', '') }}" />
           </div>
         </div>

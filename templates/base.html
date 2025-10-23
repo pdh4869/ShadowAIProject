@@ -25,6 +25,7 @@
     
     <div class="pm-navwrap">
       <nav class="pm-nav" aria-label="주요 메뉴">
+        <a href="/main" data-page="main" class="{% if active_page == 'main' %}active{% endif %}">메인</a>
         <a href="/detection_details" data-page="detection_details" class="{% if active_page == 'detection_details' %}active{% endif %}">탐지 현황</a>
         <a href="/personal_information_type" data-page="pii_type" class="{% if active_page == 'pii_type' %}active{% endif %}">개인정보 유형</a>
         <a href="/user_type" data-page="user_type" class="{% if active_page == 'user_type' %}active{% endif %}">사용자별 현황</a>

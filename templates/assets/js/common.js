@@ -125,12 +125,6 @@ window.CommonEvents = {
 
 // DOM 로드 시 공통 이벤트 바인딩
 document.addEventListener('DOMContentLoaded', function() {
-  // 페이지 제목 클릭 이벤트
-  const pageTitle = document.querySelector('.page-title span');
-  if (pageTitle) {
-    pageTitle.addEventListener('click', () => CommonEvents.navigateTo('/main'));
-    pageTitle.style.cursor = 'pointer';
-  }
   
   // 네비게이션 메뉴 클릭 이벤트: A 태그의 기본 동작을 사용하도록 JS 리스너 제거
   const navLinks = document.querySelectorAll('.pm-nav a');
