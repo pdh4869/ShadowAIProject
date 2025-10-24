@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='page-css/account_management.page.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-6xl mx-auto p-4">
+    <div id="permBanner" class="perm-banner" hidden>
+      현재 계정은 <b>일반 관리자</b>입니다. 계정 생성, 삭제, 비밀번호 변경 권한이 없습니다.
+    </div>
+
+    <section class="card">
+      <div class="topbar">
+        <div class="tools">
+          <button id="createBtn" class="btn primary">관리자 계정 생성</button>
+        </div>
+        <div class="tools">
+          <div class="search-wrapper">
+            <input id="q" class="search" placeholder="사번/이름/역할로 검색…" />
+            <button id="searchBtn" class="search-btn">검색</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>사번</th>
+              <th>이메일</th>
+              <th>이름</th>
+              <th>역할</th>
+              <th>최근 로그인</th>
+              <th>생성일</th>
+              <th>작업</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            {% for user in users|sort(attribute='privilege', reverse=true) %}
+            <tr data-employee-id="{{ user.employee_id }}" data-privilege="{{ user.privilege }}">
+                <td data-field="employee_id">{{ user.employee_id }}</td>
+                <td data-field="email">{{ user.email }}</td>
+                <td data-field="name">{{ user.name }}</td>
+                <td data-field="privilege">
+                  <span class="badge {% if user.privilege == 'super' %}role super{% else %}role admin{% endif %}">
+                    {{ '최고 관리자' if user.privilege == 'super' else '일반 관리자' }}
+                  </span>
+                </td>
+                <td data-field="last_login">{{ user.last_login | kst if user.last_login }}</td>
+                <td data-field="created_at">{{ user.created_at | kst if user.created_at }}</td>
+                <td class="action-cell">
+                  <div class="table-actions">
+                    {# ⭐ 수정된 로직: 최고 관리자만 본인 변경 가능 #}
+                    {% if current_user.employee_id == user.employee_id and current_user.privilege == 'super' %}
+                    <button class="btn ghost btn-sm change-pw-btn" data-emp="{{ user.employee_id }}">비밀번호 변경</button>
+
+                    {# 최고 관리자가 일반 관리자 계정을 보는 경우 #}
+                    {% elif current_user.privilege == 'super' and user.privilege != 'super' %}
+                    <button class="btn ghost btn-sm change-pw-btn" data-emp="{{ user.employee_id }}">비밀번호 변경</button>
+                    <button class="btn danger btn-sm delete-btn" data-emp="{{ user.employee_id }}">삭제</button>
+
+                    {# 그 외 (일반 관리자 본인 포함) #}
+                    {% else %}
+                    <span class="text-muted">권한 없음</span>
+                    {% endif %}
+                  </div>
+                </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty" {% if users|length > 0 %}hidden{% endif %}>검색 결과가 없습니다.</div>
+    </section>
+
+    <div class="tip tip-style">
+      * 데모 페이지입니다. 실제 저장/인증은 백엔드 연동 필요.
+    </div>
+    </div>
+
+  <div id="createModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true">
+      <div class="head">관리자 계정 생성</div>
+      <div class="body">
+        <div class="field">
+          <label for="c_emp">사번</label>
+          <input id="c_emp" class="input" placeholder="예: A1023" />
+        </div>
+        <div class="field">
+          <label for="c_email">이메일</label>
+          <input id="c_email" class="input" placeholder="admin@example.com" />
+        </div>
+        <div class="field">
+          <label for="c_name">이름</label>
+          <input id="c_name" class="input" placeholder="홍길동" />
+        </div>
+        <div class="field">
+          <label>역할</label>
+          <select id="c_role" class="input" disabled>
+            <option value="admin" selected>일반 관리자</option>
+          </select>
+          <div class="hint">* 최고 관리자만 일반 관리자 생성 가능</div>
+        </div>
+        <div class="field">
+          <label for="c_pwd">초기 비밀번호</label>
+          <input id="c_pwd" class="input" type="password" placeholder="비밀번호" />
+          <div id="c_strength" class="strength"><div></div></div>
+          <div class="hint" id="c_hint">8자 이상, 숫자/문자 포함 권장</div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" data-close="#createModal">취소</button>
+        <button id="createSubmit" class="btn btn-brand">생성</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pwModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true">
+      <div class="head">비밀번호 변경</div>
+      <div class="body">
+        <div class="field">
+          <label>대상 사번</label>
+          <input id="p_emp" class="input" disabled />
+        </div>
+        <div class="field">
+          <label for="p_pwd">새 비밀번호</label>
+          <input id="p_pwd" class="input" type="password" placeholder="새 비밀번호" />
+          <div id="p_strength" class="strength"><div></div></div>
+          <div class="hint" id="p_hint">8자 이상, 숫자/문자 포함 권장</div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" data-close="#pwModal">취소</button>
+        <button id="pwSubmit" class="btn btn-brand">변경</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true">
+      <div class="head">관리자 계정 삭제</div>
+      <div class="body">
+        <div class="field">
+          <label>삭제 대상 사번</label>
+          <input id="d_emp" class="input" disabled />
+          <div class="hint">이 작업은 되돌릴 수 없습니다.</div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" data-close="#delModal">취소</button>
+        <button id="delSubmit" class="btn danger">삭제</button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='page-js/account_management.page.js') }}"></script>
+<script>
+// 클라이언트 측 권한 처리 (Flask의 권한을 JS 변수에 주입)
+document.addEventListener('DOMContentLoaded', function() {
+    const permBanner = document.getElementById('permBanner');
+    const createBtn = document.getElementById('createBtn');
+    
+    // Jinja 템플릿 변수를 사용하여 권한 체크
+    if ("{{ current_user.privilege }}" !== 'super') {
+        permBanner.removeAttribute('hidden');
+        createBtn.disabled = true;
+    } else {
+        permBanner.setAttribute('hidden', ''); 
+    }
+    
+    // JS에서 사용할 현재 로그인된 사용자의 권한과 사번을 전역 변수로 저장
+    window.currentUserPrivilege = "{{ current_user.privilege }}";
+    window.currentUserId = "{{ current_user.employee_id }}";
+    
+    // JS에서 Action Cell의 클릭 이벤트 리스너를 등록합니다.
+    // DOM이 재렌더링된 후에도 이벤트가 동작하도록, JS 로직에서 직접 openPasswordModal/openDeleteModal 함수를 호출합니다.
+});
+</script>
+{% endblock %}

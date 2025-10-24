@@ -1,0 +1,64 @@
+/* detection_type.html 전용 스타일 */
+
+.subtitle{display:none}
+
+/* 카드 스타일 */
+.card{
+  background: #DBE2EF;
+  border:1px solid var(--border); border-radius:16px; box-shadow: 0 10px 40px rgba(0,0,0,.15);
+  overflow:hidden;
+}
+
+/* 필터 관련 */
+.quick{display:flex;gap:8px; padding:12px 16px; border-bottom:1px solid var(--border); align-items:center; flex-wrap:wrap}
+.muted{color:var(--muted);font-size:13px;margin-left:16px}
+.pill{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#F9F7F7;font-size:13px;cursor:pointer;color:var(--text)}
+.pill.active{background:var(--brand);border-color:var(--brand);color:#fff}
+
+.filters{display:grid;grid-template-columns:repeat(12,1fr);gap:12px; padding:16px}
+.field{grid-column:span 3;display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#F9F7F7;font-size:14px;color:var(--text)}
+.field input[type="date"]{min-height:40px}
+.field.search{grid-column:span 6}
+.status-search-row{display:flex;gap:12px;grid-column:span 12}
+.status-search-row .field:first-child{flex:0 0 200px}
+.status-search-row .field:last-child{flex:1}
+
+.actions{display:flex;gap:8px;align-items:end}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:#F9F7F7;font-weight:700;cursor:pointer;color:var(--text)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.ghost{background:#F9F7F7}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
+.chart-card{margin-top:16px;padding:12px 16px;background:#F9F7F7;border-radius:12px}
+.chart-wrap{padding:12px 0}
+canvas{width:100%; height:300px; display:block}
+
+.muted{color:var(--muted)} .empty{padding:28px;text-align:center;color:var(--muted);background:#F9F7F7}
+
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+thead th{position:sticky;top:0;background:#3F72AF;border-bottom:1px solid var(--border);font-size:12px;color:#ffffff;text-align:left;padding:10px}
+tbody td{border-bottom:1px solid var(--border);padding:12px;font-size:14px;vertical-align:middle;text-align:center;color:var(--text);background:#F9F7F7}
+tbody tr:hover{background:rgba(148,163,184,.05)}
+.status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:800}
+.status.ok{background:rgba(16,185,129,.15);color:var(--ok)}
+.status.fail{background:rgba(239,68,68,.15);color:var(--fail)}
+.chips{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:200px;margin:0 auto}
+.chip{display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;background:#DBE2EF;color:#3F72AF;font-size:9px;white-space:nowrap;flex-shrink:0}
+
+@media (max-width:920px){ .field{grid-column:span 6} .field.search{grid-column:span 12} .status-search-row .field:first-child{flex:1} .status-search-row .field:last-child{flex:1} }
+@media (max-width:560px){ .filters{grid-template-columns:repeat(6,1fr)} .field{grid-column:span 6} .field.search{grid-column:span 6} .status-search-row{flex-direction:column} .status-search-row .field:first-child{flex:1} }
+
+/* 인라인 스타일을 클래스로 이동 */
+.quick-desc { text-align: center; display: block; }
+.chart-title { font-size: 16px; margin: 6px 0 0 0; }
+.chart-height { height: 260px; }
+.table-header-100 { width: 100px; text-align: center; }
+.table-header-120 { width: 120px; text-align: center; }
+.table-header-110 { width: 110px; text-align: center; }
+.table-header-220 { width: 220px; text-align: center; }
+.table-header-140 { width: 140px; text-align: center; }
+.table-header-center { text-align: center; }
+.account-btn { background: #F9F7F7; }

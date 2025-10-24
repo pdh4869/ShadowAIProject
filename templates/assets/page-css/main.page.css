@@ -1,0 +1,51 @@
+/* main.html 전용 스타일 */
+
+/* 대시보드 지표 카드 */
+.grid.indicators{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:24px; }
+.panel{ background:#ffffff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; box-shadow:0 5px 20px rgba(15,23,42,.05); cursor:pointer; }
+.panel h2{ margin:0 0 8px 0; font-size:16px; }
+.small{ color:#475569; font-size:12px; margin:0 0 8px 0; }
+.ind-val{ display:flex; justify-content:space-between; align-items:baseline; margin-top:8px; }
+.ind-val .num{ font-size:28px; font-weight:800; }
+.ind-val .delta{ font-size:12px; font-weight:700; }
+.delta.ok{ color:#16a34a; }
+.delta.warn{ color:#d97706; }
+.delta.bad{ color:#dc2626; }
+
+/* 범례 스타일 */
+.legend{ display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:#475569; margin-top:8px; }
+.legend .key{ display:inline-flex; align-items:center; gap:6px; }
+.legend .box{ width:10px; height:10px; border-radius:2px; border:1px solid #0001; }
+
+/* 차트 위치 조정 */
+#chartDetectionsOverTime { margin-top: 20px; }
+#chartAccountCounts { margin-top: 20px; }
+
+/* 카드 고정 높이 */
+.grid.grid-cols-2:first-of-type .panel { height: 200px !important; }
+
+/* 인라인 스타일을 클래스로 이동 */
+.panel h2.card-title { font-size: 16px; }
+.trend-section { margin-bottom: 24px; }
+.trend-chart { height: 220px; position: relative; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #475569; margin-top: 8px; }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid #0001; }
+.legend .box.total { background: #2563eb; }
+.legend .box.high-risk { background: #16a34a; }
+.legend .box.failed { background: #dc2626; }
+.user-panel { padding: 16px; display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.user-panel-header { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px 0; flex-wrap: wrap; }
+.user-panel-header h2 { margin: 0; font-size: 16px; }
+.user-panel-header p { margin: 0; }
+.user-panel-content { display: flex; justify-content: center; align-items: center; flex: 1; }
+.chart-panel { padding: 16px; height: 350px; display: flex; flex-direction: column; }
+.chart-panel h2 { margin: 0 0 8px 0; font-size: 16px; }
+.chart-container { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; position: relative;}
+.right-column { display: flex; flex-direction: column; gap: 12px; }
+.info-panel { padding: 16px 16px 5px 16px; display: flex; flex-direction: column; height: 169px; }
+.info-panel-header { display: flex; align-items: baseline; gap: 12px; margin: 0 0 8px 0; flex-wrap: wrap; }
+.info-panel-header h2 { margin: 0; font-size: 16px; }
+.info-panel-header p { margin: 0; }
+.info-list { padding-left: 0; margin-left: 0; flex: 1; overflow: hidden; }
+.account-btn { background: #F9F7F7; }

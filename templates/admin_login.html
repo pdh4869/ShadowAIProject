@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>대시보드 로그인</title>
+
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/page-css/login.page.css">
+
+<style>
+/* 기존 login.page.css 내용 */
+:root{
+    --bg:#F9F7F7; --card:#DBE2EF; --surface:#DBE2EF; --text:#112D4E; --muted:#3F72AF;
+    --brand:#3F72AF; --brand-2:#112D4E; --error:#ef4444; --border:#DBE2EF;
+  }
+  *{ box-sizing:border-box }
+  html,body{ height:100%; }
+  /* 중앙 정렬을 위한 핵심 스타일 */
+  body{
+    margin:0; 
+    display:grid; 
+    place-items:center; /* 요소를 정확히 중앙에 배치 */
+    min-height:100%;
+    background: var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  }
+  .card{
+    width:min(440px, 92vw); /* 최대 폭과 반응형 폭 설정 */
+    background: #ffffff;
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.15);
+    overflow:hidden;
+  }
+  /* 이하 스타일 생략 */
+</style>
+
+</head>
+<body>
+  <main class="card" role="dialog" aria-label="대시보드 로그인 폼">
+    <div class="brand"><div class="dot"></div> Privacy Monitor</div>
+    <div class="head">
+      <h1>대시보드 로그인</h1>
+    </div>
+    <form class="body" id="loginForm" autocomplete="off" novalidate>
+      <div class="field">
+        <label for="emp">ID (사번)</label>
+        <div class="input-wrap">
+          <input id="emp" name="emp" placeholder="예: A1023" inputmode="latin" required />
+        </div>
+      </div>
+      <div class="field">
+        <label for="pwd">비밀번호</label>
+        <div class="input-wrap">
+          <input id="pwd" name="pwd" type="password" placeholder="비밀번호" required />
+          <button class="show" type="button" id="togglePwd" aria-controls="pwd" aria-pressed="false">표시</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="error" id="error"></div>
+      </div>
+      <button class="btn" type="submit" id="submitBtn">로그인</button>
+    </form>
+    <div class="foot">
+      <div class="note">문의사항은 <b>최고 관리자</b>에게 문의해 주세요.</div>
+    </div>
+  </main>
+
+<script>
+const $ = (sel)=>document.querySelector(sel);
+const form = $('#loginForm');
+const emp  = $('#emp');
+const pwd  = $('#pwd');
+const err  = $('#error');
+const submitBtn = $('#submitBtn');
+const togglePwd = $('#togglePwd');
+
+// Demo validation (프론트엔드 검증 샘플)
+function validEmp(v){ return /^[A-Za-z0-9_-]{2,20}$/.test(v); }
+
+togglePwd.addEventListener('click', ()=>{
+  const visible = pwd.getAttribute('type') === 'text';
+  pwd.setAttribute('type', visible ? 'password' : 'text');
+  togglePwd.setAttribute('aria-pressed', String(!visible));
+  togglePwd.textContent = visible ? '표시' : '숨김';
+});
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    
+    const employeeId = emp.value.trim();
+    const password = pwd.value;
+    
+    // 1차 클라이언트 측 유효성 검사
+    if (!employeeId || !password) {
+        err.textContent = 'ID와 비밀번호를 모두 입력해주세요.';
+        return;
+    }
+
+    submitBtn.disabled = true;
+
+    try {
+        // 서버 API로 인증 요청
+        const response = await fetch('/api/dashboard_login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employee_id: employeeId,
+                password: password
+            })
+        });
+
+        if (response.ok) {
+            // ⭐ 수정된 부분: Flask 라우트 URL인 '/dashboard'로 리디렉션
+            window.location.href = '/dashboard'; 
+        } else {
+            // 로그인 실패 처리
+            const contentType = response.headers.get('content-type');
+            let data = { message: `로그인 실패 (상태 코드: ${response.status})` };
+            
+            if (contentType && contentType.includes('application/json')) {
+              data = await response.json();
+            }
+
+            err.textContent = data.message || '잘못된 사번 또는 비밀번호입니다.';
+        }
+    } catch (error) {
+        // 네트워크 오류 등 예외 처리
+        err.textContent = '서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.';
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
+
+// Enter 키
+[pwd, emp].forEach(el => el.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){ form.requestSubmit(); }
+}));
+</script>
+</body>
+</html>

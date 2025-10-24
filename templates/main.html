@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='page-css/main.page.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-6xl mx-auto p-4">
+    <section class="grid indicators" id="cards">
+      <div class="panel" data-detail="total">
+        <h2 class="card-title">총 탐지 수</h2>
+        <div class="small">금일 PII 탐지 건수</div>
+        <div class="ind-val"><div class="num" id="totalNum">0</div><div class="delta" id="totalDelta">0%</div></div>
+      </div>
+      <div class="panel" data-detail="highrisk">
+        <h2 class="card-title">고위험 PII 비중</h2>
+        <div class="small">주민/외국인/여권/면허/카드/계좌</div>
+        <div class="ind-val"><div class="num" id="highRiskNum">0%</div><div class="delta" id="highRiskDelta">0%</div></div>
+      </div>
+      <div class="panel" data-detail="valid">
+        <h2 class="card-title">검증 통과율</h2>
+        <div class="small">Luhn / 체크섬 통과율</div>
+        <div class="ind-val"><div class="num" id="validNum">0%</div><div class="delta" id="validDelta">0%</div></div>
+      </div>
+    </section>
+    
+    <section class="panel trend-section" data-detail="trend">
+      <h2>일별 추이</h2>
+      <div class="trend-chart">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div class="legend">
+        <span class="key"><span class="box total"></span>총탐지</span>
+        <span class="key"><span class="box high-risk"></span>고위험</span>
+        <span class="key"><span class="box failed"></span>탐지실패</span>
+      </div>
+    </section>
+    
+    <section class="grid grid-cols-2 gap-3 mb-4">
+        <div class="panel user-panel">
+          <div class="user-panel-header">
+            <h2>사용자별 탐지 빈도 (TOP 5)</h2>
+            <p class="text-xs text-gray-700" id="contribTimestamp"></p>
+          </div>
+          <div class="user-panel-content">
+            <table class="tbl" id="contribTable">
+              <thead><tr><th>IP</th><th>탐지 수</th><th>고위험%</th></tr></thead>
+              <tbody id="contribTbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel user-panel">
+          <div class="user-panel-header">
+            <h2>탐지 유형 (TOP 5)</h2>
+            <p class="text-xs text-gray-700" id="typeTimestamp"></p>
+          </div>
+          <div class="user-panel-content">
+            <table class="tbl" id="todayTypeTable">
+              <thead><tr><th>유형</th><th>건수</th></tr></thead>
+              <tbody id="todayTypeTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-2 gap-3 mb-4">
+        <div class="panel chart-panel">
+          <div class="info-panel-header">
+            <h2>파일 확장자별 분포</h2>
+            <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSources">0</span></strong></p>
+            <p class="text-xs text-gray-700" id="sourceTimestamp"></p>
+          </div>
+          <div id="barChartContainer" class="chart-container"><canvas id="chartSourceBar"></canvas></div>
+        </div>
+        <div id="rightColumn" class="right-column">
+          <div class="panel info-panel" style="cursor: pointer;" onclick="window.location.href='/detection_details?status=개인%20식별%20의심'">
+            <div class="info-panel-header">
+              <h2>개인 식별 의심</h2>
+              <p class="text-xs text-gray-700">총 건수: <strong><span id="totalSuspicious">0</span></strong></p>
+              <p class="text-xs text-gray-700" id="suspiciousTimestamp"></p>
+            </div>
+            <ul class="mt-1 text-xs text-gray-600 space-y-1 info-list" id="suspiciousList">
+            </ul>
+          </div>
+          <div class="panel info-panel">
+            <div class="info-panel-header">
+              <h2>탐지 실패</h2>
+              <p class="text-xs text-gray-700">총 실패: <strong><span id="totalFailures">0</span></strong></p>
+              <p class="text-xs text-gray-700" id="failureTimestamp"></p>
+            </div>
+            <ul class="mt-1 text-xs text-gray-600 space-y-1 info-list" id="failureList">
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+    
+    {# Flask에서 전달하는 모든 변수를 정확하게 할당 #}
+    <script>
+      window.KPI_DATA = {{ KPI_DATA|tojson|safe }};
+      window.TREND_DATA = {{ TREND_DATA|tojson|safe }};
+      window.TODAY_STATS = {{ TODAY_STATS|tojson|safe }};
+      window.TOP_USERS = {{ TOP_USERS|tojson|safe }};
+      window.SOURCE_STATS = {{ SOURCE_STATS|tojson|safe }};
+      window.LLM_STATS = {{ LLM_STATS|tojson|safe }};
+      window.RECENT_FAILURES = {{ RECENT_FAILURES|tojson|safe }};
+      window.RECENT_SUSPICIOUS = {{ RECENT_SUSPICIOUS|tojson|safe }};
+    </script>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='page-js/main.page.js') }}"></script>
+{% endblock %}

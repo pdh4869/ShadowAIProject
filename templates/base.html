@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}개인정보 탐지 대시보드{% endblock %}</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+  <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/data.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/pii-detector.js') }}"></script>
+  
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="brandbar"><div class="dot"></div> Privacy Monitor</div>
+  
+  <div class="pm-container">
+    <div class="page-title">
+      <span>{% block page_title %}개인정보 탐지 대시보드{% endblock %}</span>
+    </div>
+    
+    <div class="pm-navwrap">
+      <nav class="pm-nav" aria-label="주요 메뉴">
+        <a href="/main" data-page="main" class="{% if active_page == 'main' %}active{% endif %}">메인</a>
+        <a href="/detection_details" data-page="detection_details" class="{% if active_page == 'detection_details' %}active{% endif %}">탐지 현황</a>
+        <a href="/personal_information_type" data-page="pii_type" class="{% if active_page == 'pii_type' %}active{% endif %}">개인정보 유형</a>
+        <a href="/user_type" data-page="user_type" class="{% if active_page == 'user_type' %}active{% endif %}">사용자별 현황</a>
+      </nav>
+    </div>
+
+    {% block content %}
+    <p>콘텐츠가 없습니다.</p>
+    {% endblock %}
+  </div>
+
+  <div class="pm-userbox" role="group" aria-label="사용자 메뉴">
+    <span class="emp" title="사번"><span class="dot" aria-hidden="true"></span> <span id="userEmp">{% if current_user.is_authenticated %}{{ current_user.employee_id }}{% else %}S0001{% endif %}</span></span>
+    
+    {% if current_user.is_authenticated and current_user.privilege == 'super' %}
+      <button type="button" class="logout account-btn" id="accountBtn">계정 관리</button>
+    {% endif %}
+    
+    <button type="button" class="logout">로그아웃</button>
+  </div>
+
+  {% block page_scripts %}{% endblock %}
+</body>
+</html>

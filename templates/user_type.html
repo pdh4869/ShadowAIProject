@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='page-css/user_type.page.css') }}">
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-6xl mx-auto p-4">
+    <section class="card" aria-label="필터">
+      <div class="quick" aria-label="빠른 기간 선택">
+        <button class="pill" data-range="today">오늘</button>
+        <button class="pill" data-range="lastweek">지난 주</button>
+        <button class="pill" data-range="lastmonth">지난 달</button>
+        <span class="muted quick-desc" id="quickDesc"></span>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="from">시작일자</label>
+          <input type="date" id="from" value="{{ request.args.get('from', '') }}" />
+        </div>
+        <div class="field">
+          <label for="to">종료일자</label>
+          <input type="date" id="to" value="{{ request.args.get('to', '') }}" />
+        </div>
+        <div class="field">
+          <label for="type">개인정보 유형</label>
+          <select id="type">
+            <option value="">전체</option>
+            <option value="name" {% if request.args.get('type') == 'name' %}selected{% endif %}>이름</option>
+            <option value="phone" {% if request.args.get('type') == 'phone' %}selected{% endif %}>전화번호</option>
+            <option value="email" {% if request.args.get('type') == 'email' %}selected{% endif %}>이메일</option>
+            <option value="birth" {% if request.args.get('type') == 'birth' %}selected{% endif %}>생년월일</option>
+            <option value="ssn" {% if request.args.get('type') == 'ssn' %}selected{% endif %}>주민등록번호</option>
+            <option value="alien_registration" {% if request.args.get('type') == 'alien_registration' %}selected{% endif %}>외국인등록번호</option>
+            <option value="driver_license" {% if request.args.get('type') == 'driver_license' %}selected{% endif %}>운전면허번호</option>
+            <option value="passport" {% if request.args.get('type') == 'passport' %}selected{% endif %}>여권번호</option>
+            <option value="account" {% if request.args.get('type') == 'account' %}selected{% endif %}>계좌번호</option>
+            <option value="card" {% if request.args.get('type') == 'card' %}selected{% endif %}>카드번호</option>
+            <option value="ip" {% if request.args.get('type') == 'ip' %}selected{% endif %}>IP</option>
+            <option value="position" {% if request.args.get('type') == 'position' %}selected{% endif %}>직책</option>
+            <option value="org" {% if request.args.get('type') == 'org' %}selected{% endif %}>조직/기관</option>
+            <option value="face_image" {% if request.args.get('type') == 'face_image' %}selected{% endif %}>얼굴이미지</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="source">탐지 유형</label>
+          <select id="source">
+            <option value="">전체</option>
+            <option value="텍스트" {% if request.args.get('source') == '텍스트' %}selected{% endif %}>텍스트</option>
+            <option value="PDF" {% if request.args.get('source') == 'PDF' %}selected{% endif %}>PDF</option>
+            <option value="DOCX/DOC" {% if request.args.get('source') == 'DOCX/DOC' %}selected{% endif %}>DOCX/DOC</option>
+            <option value="HWPX/HWP" {% if request.args.get('source') == 'HWPX/HWP' %}selected{% endif %}>HWPX/HWP</option>
+            <option value="XLSX/XLS" {% if request.args.get('source') == 'XLSX/XLS' %}selected{% endif %}>XLSX/XLS</option>
+            <option value="PPTX" {% if request.args.get('source') == 'PPTX' %}selected{% endif %}>PPTX</option>
+            <option value="TXT" {% if request.args.get('source') == 'TXT' %}selected{% endif %}>TXT</option>
+            <option value="PNG" {% if request.args.get('source') == 'PNG' %}selected{% endif %}>PNG</option>
+            <option value="JPG/JPEG" {% if request.args.get('source') == 'JPG/JPEG' %}selected{% endif %}>JPG/JPEG</option>
+            <option value="BMP" {% if request.args.get('source') == 'BMP' %}selected{% endif %}>BMP</option>
+            <option value="WEBP" {% if request.args.get('source') == 'WEBP' %}selected{% endif %}>WEBP</option>
+            <option value="GIF" {% if request.args.get('source') == 'GIF' %}selected{% endif %}>GIF</option>
+            <option value="TIFF" {% if request.args.get('source') == 'TIFF' %}selected{% endif %}>TIFF</option>
+          </select>
+        </div>
+        <div class="status-search-row">
+          <div class="field">
+            <label for="status">상태</label>
+            <select id="status">
+              <option value="">전체</option>
+              <option value="성공" {% if request.args.get('status') == '성공' %}selected{% endif %}>성공</option>
+              <option value="실패" {% if request.args.get('status') == '실패' %}selected{% endif %}>실패</option>
+              <option value="개인 식별 의심" {% if request.args.get('status') == '개인 식별 의심' %}selected{% endif %}>개인 식별 의심</option>
+            </select>
+          </div>
+          <div class="field search">
+            <label for="q">검색</label>
+            <input id="q" placeholder="예: 192.168.1.1, Windows, PC-001, GPT-4, report.pdf..." value="{{ request.args.get('q', '') }}" />
+          </div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="muted" id="summary">총 {{ logs_data|length }}건</div>
+        <div class="actions">
+          <button class="btn ghost" id="resetBtn">초기화</button>
+          <button class="btn primary" id="applyBtn">적용</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card chart-card" aria-label="사용자별 탐지 그래프">
+      <h2 class="chart-title">사용자별 탐지 분포</h2>
+      <div class="chart-height">
+        <canvas id="barChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card mt-16" aria-label="목록">
+      <div class="table-wrap">
+        <table aria-describedby="summary">
+          <thead>
+            <tr>
+              <th class="table-header-100">상태</th>
+              <th class="table-header-120">일자</th>
+              <th class="table-header-110">IP</th>
+              <th class="table-header-220">개인정보 유형</th>
+              <th class="table-header-140">탐지 유형</th>
+              <th class="table-header-center">파일명</th>
+              <th class="table-header-center">실패 사유</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            {# JS에서 데이터를 렌더링할 것이므로 비워두거나, 기존 Flask 렌더링 코드를 유지합니다. 
+               JS에서 PII 타입 한글화 및 색상을 적용하기 위해 data-pii-type을 사용합니다. #}
+            {% for log in logs_data %}
+            <tr style="cursor:pointer" data-log-id="{{ log.id }}">
+              <td style="text-align:center;">
+                <span class="status {{ 'ok' if log.status == '성공' else 'fail' }}">{{ log.status }}</span>
+              </td>
+              <td style="text-align:center;">{{ log.timestamp }}</td>
+              <td style="text-align:center;">{{ log.ip_address or '-' }}</td>
+              <td style="text-align:center;">
+                <div class="chips">
+                  {% for pii_type in log.types %}
+                  <span class="chip" data-pii-type="{{ pii_type }}">{{ pii_type }}</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td style="text-align:center;">{{ log.source or '-' }}</td>
+              <td style="text-align:center;">{{ log.filename or '-' }}</td>
+              <td style="text-align:center;">{{ log.reason or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" {% if logs_data|length > 0 %}hidden{% endif %}>조건에 맞는 결과가 없습니다.</div>
+    </section>
+    </div>
+
+    <div id="detailModal" class="modal">
+      <div class="modal-content card">
+        <div class="modal-header">
+          <div>
+            <h3>탐지 결과 상세</h3>
+            <button id="closeModal" class="modal-close-btn">&times;</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="detail-sections">
+            <div class="detail-section">
+              <h4>기본 정보</h4>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div>상태</div>
+                  <div id="detail-status">-</div>
+                </div>
+                <div class="detail-item">
+                  <div>IP</div>
+                  <div id="detail-emp">-</div>
+                </div>
+                <div class="detail-item wide">
+                  <div>일자</div>
+                  <div id="detail-date">-</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>시스템 정보</h4>
+              <div class="detail-grid">
+                <div class="detail-item wide">
+                  <div>IP 주소</div>
+                  <div id="detail-ip">-</div>
+                </div>
+                <div class="detail-item wide">
+                  <div>운영체제</div>
+                  <div id="detail-os">-</div>
+                </div>
+                <div class="detail-item fit-content">
+                  <div>컴퓨터 이름</div>
+                  <div id="detail-computer">-</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>웹 정보</h4>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div>브라우저</div>
+                  <div id="detail-browser">-</div>
+                </div>
+                <div class="detail-item">
+                  <div>LLM</div>
+                  <div id="detail-llm">-</div>
+                </div>
+                <div class="detail-item fit-content max-width">
+                  <div>URL</div>
+                  <div id="detail-url" class="url-text">-</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>탐지 정보</h4>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div>탐지 유형</div>
+                  <div id="detail-source">-</div>
+                </div>
+                <div class="detail-item padded fit-content" id="filename-section">
+                  <div>파일명</div>
+                  <div id="detail-filename" class="break-all">-</div>
+                </div>
+                <div class="detail-item padded fit-content">
+                  <div>탐지 결과</div>
+                  <div id="detail-types">-</div>
+                </div>
+                <div class="detail-item padded fit-content" id="validation-section">
+                  <div>검증 결과</div>
+                  <div id="detail-validation">-</div>
+                </div>
+                <div class="detail-item padded fit-content">
+                  <div>개인 식별 의심</div>
+                  <div id="detail-suspicious">-</div>
+                </div>
+                <div class="detail-item padded fit-content" id="reason-section">
+                  <div>실패 사유</div>
+                  <div id="detail-reason">-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Flask user_type 라우트에서 사용하는 변수명에 맞게 통일
+      window.LOGS_DATA = {{ logs_data|tojson|safe }};
+      window.CHART_DATA = {{ chart_data|tojson|safe }};
+    </script>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='page-js/user_type.page.js') }}"></script>
+{% endblock %}

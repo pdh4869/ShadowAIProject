@@ -1,0 +1,65 @@
+/* account_management.html 전용 스타일 */
+
+.subtitle{ display:none; }
+
+/* 카드 스타일 */
+.card{
+  background: #DBE2EF;
+  border:1px solid var(--border); border-radius:16px; box-shadow:0 10px 40px rgba(0,0,0,.15); overflow:hidden;
+}
+
+/* 툴바 */
+.topbar{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border); }
+.btn{ padding:10px 14px; border:1px solid var(--border); background:var(--brand); color:#fff; border-radius:10px; cursor:pointer; font-weight:700; white-space:nowrap; }
+.btn.primary{ background:#F9F7F7; border-color:var(--border); color:var(--text); }
+.btn.danger{ background:#F9F7F7; color:var(--fail); border-color:var(--fail); }
+.modal .btn.danger{ background:#ef4444; color:white; border-color:#ef4444; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+.tools{ display:flex; gap:8px; align-items:center; }
+.search-wrapper{ display:flex; gap:8px; align-items:center; }
+.search{ padding:9px 12px; border:1px solid var(--border); border-radius:10px; width:200px; background:#F9F7F7; color:var(--text); }
+.search-btn{ padding:9px 12px; border:1px solid var(--border); border-radius:10px; background:var(--brand); color:#fff; cursor:pointer; font-weight:700; white-space:nowrap; }
+
+/* 테이블 */
+.table-wrap{ overflow:auto; }
+table{ width:100%; border-collapse:collapse; }
+thead th{ position:sticky; top:0; background:#DBE2EF !important; border-bottom:1px solid var(--border);
+          font-size:clamp(10px, 1.2vw, 14px); color:var(--text) !important; text-align:center; padding:clamp(8px, 1vw, 12px); font-weight:bold !important; }
+tbody td{ border-bottom:1px solid var(--border); padding:clamp(8px, 1vw, 12px); font-size:clamp(11px, 1.1vw, 14px); vertical-align:middle; color:var(--text); background:#F9F7F7; text-align:center; }
+tbody tr:hover{ background:rgba(148,163,184,.05); }
+.badge{ display:inline-flex; align-items:center; gap:6px; padding:clamp(3px, 0.5vw, 4px) clamp(6px, 1vw, 8px); border-radius:999px;
+        font-size:clamp(10px, 1.1vw, 12px); font-weight:700; white-space:nowrap; }
+
+/* ⭐ JS 렌더링을 위해 .role 클래스 추가 및 기존 클래스 대체 */
+.badge.role.super{ background:rgba(99,102,241,.15); color:#3F72AF; border:1px solid #6366f1; }
+.badge.role.admin{ background:rgba(14,116,144,.15); color:#3F72AF; border:1px solid #0e7490; }
+
+/* 기존 CSS에서 사용된 클래스 (Jinja에서 사용)는 제거하거나 유지 */
+/* .super-privilege{ color: #6366f1; font-weight: 700; }
+.admin-privilege{ color: #0e7490; font-weight: 700; } */
+
+
+.muted{ color:var(--muted); }
+.perm-banner{ background:rgba(245,158,11,.12); color:#fed7aa; border:1px solid rgba(245,158,11,.35); padding:10px 12px; border-radius:10px; margin-bottom:12px; }
+.table-actions{ display:flex; gap:clamp(4px, 0.5vw, 8px); flex-wrap:wrap; justify-content:center; }
+.table-actions .btn{ padding:clamp(4px, 0.8vw, 8px) clamp(6px, 1vw, 12px); font-size:clamp(10px, 1.1vw, 12px); }
+.empty{ padding:28px; text-align:center; color:var(--muted); background:#F9F7F7; }
+
+/* 모달 */
+.modal{ position:fixed; inset:0; background:rgba(15,23,42,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:1000; }
+.modal.open{ display:flex; }
+.modal .panel{ width:min(520px, 92vw); background:#F9F7F7; border-radius:14px; border:1px solid var(--border);
+               box-shadow:0 10px 30px rgba(0,0,0,.2); color:var(--text); }
+.panel .head{ padding:14px 16px; border-bottom:1px solid var(--border); font-weight:700; background:#DBE2EF; border-radius:14px 14px 0 0; }
+.panel .body{ padding:16px; display:grid; gap:12px; }
+.panel .foot{ padding:12px 16px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+.panel .foot .btn:not(.primary):not(.danger){ background:#F9F7F7; color:var(--text); }
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field label{ font-size:12px; color:var(--muted); }
+.input, select{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; background:#F9F7F7; color:var(--text); }
+.hint{ font-size:12px; color:var(--muted); }
+.strength{ height:8px; background:#DBE2EF; border-radius:999px; overflow:hidden; border:1px solid var(--border); }
+.strength > div{ height:100%; width:0%; background:#ef4444; transition:width .2s ease, background .2s ease; }
+.strength.good > div{ background:#10b981; }
+.tip{ font-size:12px; color:#9ca3af; }
+.today-login{ color:#3F72AF !important; font-weight:600; }
