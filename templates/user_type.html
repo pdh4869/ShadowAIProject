@@ -39,6 +39,7 @@
             <option value="ip" {% if request.args.get('type') == 'ip' %}selected{% endif %}>IP</option>
             <option value="position" {% if request.args.get('type') == 'position' %}selected{% endif %}>직책</option>
             <option value="org" {% if request.args.get('type') == 'org' %}selected{% endif %}>조직/기관</option>
+            <option value="address" {% if request.args.get('type') == 'address' %}selected{% endif %}>주소</option>
             <option value="face_image" {% if request.args.get('type') == 'face_image' %}selected{% endif %}>얼굴이미지</option>
           </select>
         </div>

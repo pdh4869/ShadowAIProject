@@ -19,7 +19,7 @@ app = Flask(__name__,
              static_folder='templates/assets',
              static_url_path='/assets'
 )
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:mysql@localhost/shadowai'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shadowai.db'
 app.config['SECRET_KEY'] = 'your-very-secret-key-for-dashboard'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.ensure_ascii = False
@@ -226,64 +226,55 @@ def log_pii():
                     db.session.rollback()
                     llm_type_obj = LlmType.query.filter_by(type_name=llm_type_name).first()
 
-        # 3. PiiType을 한 번에 효율적으로 처리 (중복 허용) - 안정적인 get-or-create 방식
+        # 3. PiiType 처리 - combination_risk에서 LC 추출
         raw_pii_type_list = data.get('pii_types', []) or []
-        # 필터링 및 순서 보존하면서 중복 제거
-        pii_type_names = []
-        seen = set()
-        for name in raw_pii_type_list:
-            if isinstance(name, str) and name:
-                if name not in seen:
-                    seen.add(name)
-                    pii_type_names.append(name)
+        
+        # combination_risk.items에서 LC 타입 추출
+        combination_risk = data.get('combination_risk', {})
+        if combination_risk and 'items' in combination_risk:
+            for item in combination_risk['items']:
+                if item.get('type') == 'LC':
+                    raw_pii_type_list.append('lc')
+                    break
+        
+        pii_type_names = list(dict.fromkeys([name for name in raw_pii_type_list if isinstance(name, str) and name]))
 
         final_pii_objects = []
-
-        # 디버깅 로그 추가
-        print(f"[PII 로그 수신] raw pii_types: {raw_pii_type_list}")
-        print(f"[PII 로그 수신] normalized unique pii_type_names: {pii_type_names}")
-
         if pii_type_names:
-            # 먼저 DB에 이미 존재하는 타입을 묶어서 가져옵니다 (효율성)
-            existing_types = PiiType.query.filter(PiiType.type_name.in_(pii_type_names)).all()
-            existing_types_map = {t.type_name: t for t in existing_types}
-
-            # 각 이름별로 존재하면 사용, 없으면 안전하게 생성 시도
             for type_name in pii_type_names:
-                if type_name in existing_types_map:
-                    final_pii_objects.append(existing_types_map[type_name])
-                else:
-                    # get-or-create: flush에서 IntegrityError가 발생하면 rollback 후 재조회
+                pii_type_obj = PiiType.query.filter_by(type_name=type_name).first()
+                if not pii_type_obj:
                     try:
-                        new_type = PiiType(type_name=type_name)
-                        db.session.add(new_type)
+                        pii_type_obj = PiiType(type_name=type_name)
+                        db.session.add(pii_type_obj)
                         db.session.flush()
-                        final_pii_objects.append(new_type)
-                        existing_types_map[type_name] = new_type
-                        print(f"[PII 타입 생성] 새 타입 생성: {type_name}")
                     except IntegrityError:
                         db.session.rollback()
-                        # 다른 트랜잭션이 같은 값을 넣었을 수 있으니 재조회
-                        existing = PiiType.query.filter_by(type_name=type_name).first()
-                        if existing:
-                            final_pii_objects.append(existing)
-                            existing_types_map[type_name] = existing
-                            print(f"[PII 타입 생성 충돌] 이미 존재하여 재사용: {type_name}")
-                        else:
-                            # 예상치 못한 상황: 에러를 다시 던져서 상위에서 rollback 및 로그 처리
-                            raise
+                        pii_type_obj = PiiType.query.filter_by(type_name=type_name).first()
+                if pii_type_obj:
+                    final_pii_objects.append(pii_type_obj)
 
-            # 다대다 관계는 유니크하게, 개수는 pii_type_counts에 저장
-            pii_counts = data.get('pii_type_counts', {})
-            if pii_counts:
-                # pii_type_counts에 기재된 순서/키만 사용
-                final_pii_objects = [existing_types_map[name] for name in pii_counts.keys() if name in existing_types_map]
-
-            print(f"[PII 객체 생성] 최종 PII 객체 수: {len(final_pii_objects)}")
-
-        # 4. PiiLog 객체 생성 및 PiiType 관계 설정
-        validation_statuses = data.get('validation_statuses', None) 
+        # 4. pii_type_counts 키 변환 및 combination_risk에서 LC 개수 추출
+        pii_type_counts = data.get('pii_type_counts') or {}
+        converted_counts = {}
         
+        for key, value in pii_type_counts.items():
+            # LC, LOC를 lc로 변환
+            if key.upper() in ['LC', 'LOC']:
+                converted_counts['lc'] = converted_counts.get('lc', 0) + value
+            else:
+                converted_counts[key] = value
+        
+        # combination_risk.items에서 LC 개수 세기
+        combination_risk = data.get('combination_risk', {})
+        if combination_risk and 'items' in combination_risk:
+            lc_count = sum(1 for item in combination_risk['items'] if item.get('type') == 'LC')
+            if lc_count > 0:
+                converted_counts['lc'] = converted_counts.get('lc', 0) + lc_count
+        
+        pii_type_counts = converted_counts if converted_counts else None
+        
+        # 5. PiiLog 생성 - pii_types 없이 먼저 생성
         new_pii_log = PiiLog(
             filename=data.get('filename'),
             file_type=file_type_obj,
@@ -295,22 +286,43 @@ def log_pii():
             user_agent=data.get('user_agent'),
             os_info=data.get('os_info'),
             hostname=data.get('hostname'),
-            validation_results=validation_statuses,
-            pii_type_counts=data.get('pii_type_counts'),
-            pii_types=final_pii_objects
+            validation_results=data.get('validation_statuses'),
+            pii_type_counts=pii_type_counts
         )
-
+        
         db.session.add(new_pii_log)
+        db.session.flush()
+        
+        # 6. 관계 설정 - 직접 SQL로 안전하게 삽입
+        if final_pii_objects:
+            for pii_obj in final_pii_objects:
+                try:
+                    db.session.execute(
+                        pii_log_pii_type_links.insert().values(
+                            pii_log_id=new_pii_log.id,
+                            pii_type_id=pii_obj.id
+                        )
+                    )
+                except IntegrityError:
+                    pass  # 이미 존재하면 무시
+        
         db.session.commit()
 
-        print(f"✅ [PII 로그 저장 성공] PII 로그가 저장되었습니다. IP: {data.get('ip_address')}")
+        success_msg = f"[PII 로그 저장 성공] PII 로그가 저장되었습니다. IP: {data.get('ip_address')}"
+        print(success_msg.encode('utf-8', errors='replace').decode('utf-8'))
         return jsonify({'status': 'success', 'message': 'PII 로그가 성공적으로 저장되었습니다.'})
 
+    except IntegrityError as e:
+        db.session.rollback()
+        error_msg = f"[PII 로그 저장 오류] IntegrityError: {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
+        return jsonify({'status': 'error', 'message': 'PII 로그 저장 중 중복 오류 발생'}), 500
     except Exception as e:
         db.session.rollback()
-        print(f"❌ [PII 로그 저장 오류] {type(e).__name__}: {e}")
+        error_msg = f"[PII 로그 저장 오류] {type(e).__name__}: {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
         traceback.print_exc()
-        return jsonify({'status': 'error', 'message': f'PII 로그 저장 중 오류 발생: {type(e).__name__} {e}'}), 500
+        return jsonify({'status': 'error', 'message': f'PII 로그 저장 중 오류 발생: {type(e).__name__}'}), 500
 
 # =====================================================================
 # 대시보드 로그인/로그아웃 및 관리자 기능
@@ -458,7 +470,7 @@ def show_dashboard():
         now_utc = datetime.now(timezone.utc)
         seven_days_ago = (now_utc - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
         fourteen_days_ago = (now_utc - timedelta(days=14)).replace(hour=0, minute=0, second=0, microsecond=0)
-        kst_timestamp = func.convert_tz(PiiLog.timestamp, 'UTC', 'Asia/Seoul')
+        # kst_timestamp = func.convert_tz(PiiLog.timestamp, 'UTC', 'Asia/Seoul')  # SQLite에서는 불필요
 
         # 2. 일별 탐지 추이 (TREND_DATA)
         trend_raw_query = db.session.query(
@@ -468,7 +480,7 @@ def show_dashboard():
         ).select_from(PiiLog).outerjoin(pii_log_pii_type_links).outerjoin(PiiType).filter(PiiLog.timestamp >= fourteen_days_ago).all()
 
         # ⭐ 수정: ip, name, ps, person, combination_risk 추가
-        high_risk_types_names = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk']
+        high_risk_types_names = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license' ]
         trend_data_map = {}
         
         korea_tz = ZoneInfo('Asia/Seoul')
@@ -713,7 +725,8 @@ def show_dashboard():
         )
         
     except Exception as e:
-        print(f"❌ [대시보드 로딩 오류] {type(e).__name__}: {e}")
+        error_msg = f"[대시보드 로딩 오류] {type(e).__name__}: {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
         traceback.print_exc()
         return render_template(
              'main.html', active_page='main', 
@@ -790,7 +803,7 @@ def show_detection_details():
             llm_type_name_safe = log.llm_type.type_name if log.llm_type else '-'
             
             # suspicious 계산
-            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'alien_reg', 'email', 'phone', 'face_image']
+            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'alien_reg', 'email', 'phone', 'face_image']
             all_pii_types = list(log.pii_type_counts.keys()) + pii_types_names if log.pii_type_counts else pii_types_names
             suspicious_result = any(pii_type in high_risk_types for pii_type in all_pii_types)
             
@@ -832,7 +845,8 @@ def show_detection_details():
         )
         
     except Exception as e:
-        print(f"❌ [탐지 현황 로딩 오류] {e}")
+        error_msg = f"[탐지 현황 로딩 오류] {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
         traceback.print_exc()
         
         return render_template(
@@ -898,7 +912,7 @@ def show_user_type():
             pii_types_list = [pii_type.type_name for pii_type in log.pii_types] if log.pii_types else []
             
             # suspicious 계산
-            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'alien_reg', 'email', 'phone', 'face_image']
+            high_risk_types = ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'alien_reg', 'email', 'phone', 'face_image']
             all_pii_types = list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list
             suspicious_result = any(pii_type in high_risk_types for pii_type in all_pii_types)
             
@@ -947,7 +961,8 @@ def show_user_type():
             status_options=status_options
         )
     except Exception as e:
-        print(f"❌ [사용자별 현황 로딩 오류] {type(e).__name__}: {e}")
+        error_msg = f"[사용자별 현황 로딩 오류] {type(e).__name__}: {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
         traceback.print_exc()
         return render_template(
             'user_type.html', active_page='user_type', logs_data=[], chart_data=[], 
@@ -1018,7 +1033,7 @@ def show_personal_information_type():
                 'pii_types_names': pii_types_list,
                 'pii_types_with_counts': [f"{k}:{v}" for k, v in log.pii_type_counts.items()] if log.pii_type_counts else [f"{pii_type}:1" for pii_type in pii_types_list],
                 'pii_type_counts': log.pii_type_counts if log.pii_type_counts else {},
-                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'combination_risk', 'email', 'phone', 'face_image'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
+                'suspicious': any(pii_type in ['ssn', 'card', 'account', 'alien_registration', 'passport', 'driver_license', 'ip', 'name', 'ps', 'person', 'email', 'phone', 'face_image'] for pii_type in (list(log.pii_type_counts.keys()) + pii_types_list if log.pii_type_counts else pii_types_list)),
                 'validation_results': log.validation_results if log.validation_results else [],
                 'os_info': log.os_info if log.os_info else '-', 
                 'hostname': log.hostname if log.hostname else '-',
@@ -1054,7 +1069,8 @@ def show_personal_information_type():
             status_options=status_options
         )
     except Exception as e:
-        print(f"❌ [개인정보 유형 로딩 오류] {type(e).__name__}: {e}")
+        error_msg = f"[개인정보 유형 로딩 오류] {type(e).__name__}: {str(e)}"
+        print(error_msg.encode('utf-8', errors='replace').decode('utf-8'))
         traceback.print_exc()
         return render_template(
             'personal_information_type.html', 
@@ -1068,6 +1084,6 @@ def show_personal_information_type():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        print("✅ All database tables created or already exist.")
+        print("All database tables created or already exist.")
         
     app.run(debug=True, port=5000, host='0.0.0.0')
