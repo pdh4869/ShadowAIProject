@@ -34,6 +34,9 @@ PowerShell을 열어 이 프로젝트의 루트 폴더(`install.ps1` 파일이 �
 
 ``` powershell
 .\install.ps1
+(실행 정책으로 인해 실행이 안될 시 
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+명령어로 현재 창에서만 Bypss로 변경)
 ```
 
 스크립트가 실행되면 다음 과정을 자동으로 진행하며, 중간에 사용자 입력을
