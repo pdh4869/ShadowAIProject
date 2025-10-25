@@ -1,0 +1,228 @@
+﻿# ShadowAI PII 탐지 시스템 자동 설치 스크립트
+# PowerShell에서 실행: .\install.ps1
+
+Write-Host "🚀 ShadowAI PII 탐지 시스템 설치 시작..." -ForegroundColor Green
+
+# 0. 루트 경로 검증
+if (-not (Test-Path "server\LocalServer_Final.py")) {
+    Write-Host "❌ 프로젝트 루트( server\LocalServer_Final.py 가 있는 위치 )에서 실행하세요." -ForegroundColor Red
+    exit 1
+}
+
+# 1. Python 버전 확인
+Write-Host "`n1️⃣ Python 설치 확인 중..." -ForegroundColor Yellow
+try {
+    $pythonVersion = py --version
+    Write-Host "✅ Python 설치됨: $pythonVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Python이 설치되지 않았습니다. https://python.org 에서 설치하세요." -ForegroundColor Red
+    exit 1
+}
+
+# 2. 패키지 설치
+Write-Host "`n2️⃣ Python 패키지 설치 중..." -ForegroundColor Yellow
+Write-Host "기본 패키지 설치 중..."
+py -m pip install -r requirements.txt
+
+Write-Host "추가 패키지 설치 중..."
+py -m pip install tensorflow pyinstaller
+
+# 3. 환경 변수 설정
+Write-Host "`n3️⃣ 환경 변수 설정 중..." -ForegroundColor Yellow
+
+# 사용자에게 토큰 입력 받기
+Write-Host "허깅페이스 토큰이 필요합니다. (https://huggingface.co/settings/tokens 에서 생성)" -ForegroundColor Cyan
+$hfToken = Read-Host "허깅페이스 토큰을 입력하세요"
+if ([string]::IsNullOrEmpty($hfToken)) {
+    Write-Host "❌ 허깅페이스 토큰이 필요합니다!" -ForegroundColor Red
+    exit 1
+}
+
+# 대시보드 IP 입력 받기
+Write-Host "대시보드 서버 IP 주소가 필요합니다." -ForegroundColor Cyan
+Write-Host "로컬 테스트용이면 127.0.0.1을 입력하세요." -ForegroundColor Yellow
+$dashboardIP = Read-Host "대시보드 서버 IP를 입력하세요"
+
+# 입력값 검증 및 기본값 설정
+if ([string]::IsNullOrWhiteSpace($dashboardIP)) {
+    Write-Host "⚠️ IP가 입력되지 않았습니다. 기본값 127.0.0.1을 사용합니다." -ForegroundColor Yellow
+    $dashboardIP = "127.0.0.1"
+}
+
+# IP 유효성 간단 체크
+if ($dashboardIP -notmatch '^(\d{1,3}\.){3}\d{1,3}$' -and $dashboardIP -ne "localhost") {
+    Write-Host "⚠️ 올바르지 않은 IP 형식입니다. 기본값 127.0.0.1을 사용합니다." -ForegroundColor Yellow
+    $dashboardIP = "127.0.0.1"
+}
+
+$dashboardUrl = "http://${dashboardIP}:5000/api/log-pii"
+Write-Host "✅ 대시보드 URL 설정: $dashboardUrl" -ForegroundColor Green
+
+# 환경 변수 설정
+Write-Host "환경 변수 설정 중..." -ForegroundColor Yellow
+Write-Host "  HF_TOKEN: $($hfToken.Substring(0,10))..." -ForegroundColor Gray
+Write-Host "  DASHBOARD_URL: $dashboardUrl" -ForegroundColor Gray
+
+$env:HF_TOKEN = $hfToken
+$env:DASHBOARD_URL = $dashboardUrl
+[Environment]::SetEnvironmentVariable("HF_TOKEN", $hfToken, "User")
+[Environment]::SetEnvironmentVariable("DASHBOARD_URL", $dashboardUrl, "User")
+
+# 설정 확인
+Write-Host "설정 확인:" -ForegroundColor Cyan
+Write-Host "  현재 세션 DASHBOARD_URL: $env:DASHBOARD_URL" -ForegroundColor White
+Write-Host "✅ 환경 변수 설정 완료" -ForegroundColor Green
+
+# 4. .env 파일 생성
+Write-Host "`n4️⃣ .env 파일 생성 중..." -ForegroundColor Yellow
+$envContent = @"
+# 허깅페이스 토큰
+HF_TOKEN=$hfToken
+
+# 대시보드 설정
+DASHBOARD_URL=$dashboardUrl
+DASHBOARD_REQUIRE_AUTH=false
+DASHBOARD_API_SECRET=
+
+# 기타 환경 변수들
+PII_REQUIRE_AUTH=false
+ALLOWED_EXTENSION_ID=CHANGE_AFTER_LOADING_EXTENSION
+"@
+
+$envContent | Out-File -FilePath ".env" -Encoding UTF8
+Write-Host "✅ .env 파일 생성 완료" -ForegroundColor Green
+
+# 5. 네이티브 호스트 설정
+Write-Host "`n5️⃣ 네이티브 호스트 설정 중..." -ForegroundColor Yellow
+
+# 현재 경로 가져오기
+$currentPath = (Get-Location).Path
+
+# com.example.pii_host.json 파일 수정
+$hostConfigPath = "native_host\com.example.pii_host.json"
+if (-not (Test-Path $hostConfigPath)) {
+    Write-Host "❌ 파일 없음: $hostConfigPath" -ForegroundColor Red
+    exit 1
+}
+$hostConfigRaw = Get-Content $hostConfigPath -Raw
+$hostConfig = $hostConfigRaw | ConvertFrom-Json
+$hostConfig.path = "$currentPath\native_host\build\host\host.exe"
+$hostConfig | ConvertTo-Json -Depth 10 | Out-File $hostConfigPath -Encoding UTF8
+
+# register_host.reg 파일 생성/갱신 (UTF16 LE with BOM으로 생성)
+$regPath = "native_host\register_host.reg"
+$regContent = @"
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Google\Chrome\NativeMessagingHosts\com.example.pii_host]
+@="$($currentPath.Replace('\', '\\'))\\native_host\\com.example.pii_host.json"
+
+[HKEY_CURRENT_USER\Software\Microsoft\Edge\NativeMessagingHosts\com.example.pii_host]
+@="$($currentPath.Replace('\', '\\'))\\native_host\\com.example.pii_host.json"
+"@
+
+# 레지스트리 파일은 UTF16 LE with BOM으로 저장해야 함
+$regContent | Out-File -FilePath $regPath -Encoding Unicode
+
+Write-Host "✅ 네이티브 호스트 경로/레지스트리 파일 업데이트 완료" -ForegroundColor Green
+
+# 6. 네이티브 호스트 빌드
+Write-Host "`n6️⃣ 네이티브 호스트 빌드 중..." -ForegroundColor Yellow
+Push-Location "native_host"
+py -m PyInstaller --onefile --distpath=build/host --name=host host.py
+Pop-Location
+Write-Host "✅ 네이티브 호스트 빌드 완료" -ForegroundColor Green
+
+# 7. 레지스트리 등록
+Write-Host "`n7️⃣ 네이티브 호스트 레지스트리 등록 중..." -ForegroundColor Yellow
+try {
+    # PowerShell을 사용한 직접 레지스트리 등록
+    $regPath = "HKCU:\Software\Google\Chrome\NativeMessagingHosts\com.example.pii_host"
+    $jsonPath = "$currentPath\native_host\com.example.pii_host.json"
+    
+    # 레지스트리 키 생성 (존재하지 않는 경우)
+    if (-not (Test-Path $regPath)) {
+        New-Item -Path $regPath -Force | Out-Null
+    }
+    
+    # 기본값 설정
+    Set-ItemProperty -Path $regPath -Name "(default)" -Value $jsonPath
+    
+    Write-Host "✅ Chrome 레지스트리 등록 완료" -ForegroundColor Green
+    
+    # Edge용 레지스트리도 등록
+    $regPathEdge = "HKCU:\Software\Microsoft\Edge\NativeMessagingHosts\com.example.pii_host"
+    if (-not (Test-Path $regPathEdge)) {
+        New-Item -Path $regPathEdge -Force | Out-Null
+    }
+    Set-ItemProperty -Path $regPathEdge -Name "(default)" -Value $jsonPath
+    
+    Write-Host "✅ Edge 레지스트리 등록 완료" -ForegroundColor Green
+    
+} catch {
+    Write-Host "❌ 레지스트리 등록 실패: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "💡 수동 등록 방법:" -ForegroundColor Yellow
+    Write-Host "   1. 관리자 권한으로 PowerShell 실행" -ForegroundColor White
+    Write-Host "   2. regedit /s `"$currentPath\native_host\register_host.reg`" 실행" -ForegroundColor White
+}
+
+# 8. 확장 프로그램 ID 설정
+Write-Host "`n8️⃣ 확장 프로그램 ID 설정..." -ForegroundColor Yellow
+Write-Host "Chrome에서 확장 프로그램을 먼저 로드하세요:" -ForegroundColor Cyan
+Write-Host "1. Chrome에서 chrome://extensions/ 접속" -ForegroundColor White
+Write-Host "2. '개발자 모드' 활성화" -ForegroundColor White
+Write-Host "3. '압축해제된 확장 프로그램 로드' 클릭" -ForegroundColor White
+Write-Host "4. extension 폴더 선택" -ForegroundColor White
+Write-Host "5. 생성된 ID 복사" -ForegroundColor White
+
+$extensionId = Read-Host "`n생성된 확장 프로그램 ID를 입력하세요 (32자리 영문자)"
+if ([string]::IsNullOrEmpty($extensionId)) {
+    Write-Host "⚠️ 확장 프로그램 ID를 나중에 수동으로 설정해야 합니다." -ForegroundColor Yellow
+} elseif ($extensionId -notmatch '^[a-z0-9]{32}$') {
+    Write-Host "❌ 확장 프로그램 ID 형식이 올바르지 않습니다. (소문자 영문/숫자 32자)" -ForegroundColor Red
+    exit 1
+} else {
+    # .env 파일 업데이트
+    $envPath = ".env"
+    if (-not (Test-Path $envPath)) {
+        Write-Host "❌ .env 파일이 없습니다." -ForegroundColor Red
+        exit 1
+    }
+    $envContentRaw = Get-Content $envPath -Raw
+    $envContentRaw = $envContentRaw.Replace("ALLOWED_EXTENSION_ID=CHANGE_AFTER_LOADING_EXTENSION", "ALLOWED_EXTENSION_ID=$extensionId")
+    $envContentRaw | Out-File -FilePath $envPath -Encoding UTF8 -NoNewline
+
+    # server/LocalServer_Final.py 업데이트 (기본값이 무엇이든 32자 토큰을 교체)
+    $serverPath = "server\LocalServer_Final.py"
+    if (-not (Test-Path $serverPath)) {
+        Write-Host "❌ 파일 없음: $serverPath" -ForegroundColor Red
+        exit 1
+    }
+    $serverContent = Get-Content $serverPath -Raw -Encoding UTF8
+    $serverContent = $serverContent -replace '(?<=os\.getenv\(\s*"ALLOWED_EXTENSION_ID"\s*,\s*")[a-z0-9]{32}(?="\s*\))', $extensionId
+    $serverContent | Out-File -FilePath $serverPath -Encoding UTF8 -NoNewline
+
+    # native_host/com.example.pii_host.json 업데이트
+    $hostConfig = (Get-Content $hostConfigPath -Raw) | ConvertFrom-Json
+    $hostConfig.allowed_origins = @("chrome-extension://$extensionId/")
+    $hostConfig | ConvertTo-Json -Depth 10 | Out-File $hostConfigPath -Encoding UTF8
+
+    Write-Host "✅ 확장 프로그램 ID가 .env / 서버 / 네이티브 호스트에 모두 반영되었습니다!" -ForegroundColor Green
+}
+
+# 9. 설치 완료
+Write-Host "`n🎉 설치 완료!" -ForegroundColor Green
+
+Write-Host "`n📋 설치 완료 확인사항:" -ForegroundColor Cyan
+Write-Host "- 서버 주소: http://127.0.0.1:9000" -ForegroundColor White
+Write-Host "- 대시보드: $dashboardUrl" -ForegroundColor White
+if ($extensionId -and $extensionId -match '^[a-z0-9]{32}$') {
+    Write-Host "- 확장 프로그램 ID: $extensionId (설정 완료)" -ForegroundColor Green
+} else {
+    Write-Host "- 확장 프로그램 ID: 수동 설정 필요" -ForegroundColor Yellow
+}
+
+Write-Host "`n🚀 다음 단계:" -ForegroundColor Cyan
+Write-Host "서버 실행: cd server && py LocalServer_Final.py" -ForegroundColor White
+
+Read-Host "`nEnter를 누르면 종료됩니다..."
