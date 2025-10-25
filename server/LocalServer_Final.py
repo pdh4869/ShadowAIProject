@@ -85,7 +85,7 @@ app = FastAPI()
 detection_history = deque(maxlen=1000)
 
 # Dashboard forwarding 설정
-DASHBOARD_URL = os.getenv('DASHBOARD_URL', 'http://192.168.0.10:5000/api/log-pii')
+DASHBOARD_URL = os.getenv('DASHBOARD_URL', 'http://127.0.0.1:5000/api/log-pii')
 DASHBOARD_REQUIRE_AUTH = os.getenv('DASHBOARD_REQUIRE_AUTH', 'false').lower() == 'true'
 DASHBOARD_API_SECRET = os.getenv('DASHBOARD_API_SECRET', '')
 
@@ -718,4 +718,5 @@ async def get_detections():
 
 
 if __name__ == "__main__":
+
     uvicorn.run("LocalServer_Final:app", host="127.0.0.1", port=9000, reload=False)
