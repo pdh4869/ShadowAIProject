@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "PII Traffic Hook (Agent)",
+  "version": "0.2.2",
+  "description": "Hook LLM send events, talk to native host, and forward payloads to local server",
+  "permissions": ["storage","activeTab","scripting","nativeMessaging","alarms"],
+  "host_permissions": ["http://127.0.0.1:9000/*","http://localhost:9000/*"],
+  "background": { 
+    "service_worker": "background.js"
+  },
+  "content_scripts": [{
+    "matches": [
+      "https://chatgpt.com/*",
+      "https://gemini.google.com/*"
+    ],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }]
+}

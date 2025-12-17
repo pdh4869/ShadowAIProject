@@ -1,0 +1,18 @@
+fastapi
+uvicorn
+transformers
+torch
+easyocr
+PyMuPDF
+Pillow
+mtcnn
+python-docx
+olefile
+openpyxl
+python-pptx
+xlrd
+numpy
+# Windows 환경에서 .doc, .xls, .ppt 파일 처리를 위해 필요
+pywin32; sys_platform == 'win32' 
+# test_request.py에서 서버 테스트를 위해 필요
+requests
