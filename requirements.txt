@@ -16,3 +16,4 @@ numpy
 pywin32; sys_platform == 'win32' 
 # test_request.py에서 서버 테스트를 위해 필요
 requests
+pymysql
